@@ -1,0 +1,44 @@
+{% extends "layout.html" %} {% block body %}
+<div class="container">
+    <!-- Example row of columns -->
+    {% if op['status'] == 1 %}
+    <br>
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Shadow Analysis</h2>
+            <small>Shadow analysis of your diagram.</small>
+            
+        </div>
+    </div>
+    <br>
+    {% else %}
+    <div class="row">
+        <div class="col-md-12">
+            <p>{{op['message']}} </p>
+        </div>
+    </div>
+    {% endif %}
+    <br>
+    <br>
+    <br>
+    <hr>
+</div>
+<!-- /container -->{% endblock %} 
+
+{% block footer %} {% if op['status'] == 1 %}
+<script type="text/javascript">
+    
+    var bounds = "{{op['data']['bounds']|safe}}";
+    var finaldesignJSON = {{op['data']['synthesis']|safe}};
+    var diagrams = {{op['data']['diagrams']|safe}};
+    var systems = {{op['data']['systems']|safe}}; //var test is now assigned to getTest which will only work on browsers  
+
+    var latLngs = bounds.split(',');
+    var southWest = L.latLng(latLngs[1], latLngs[0]);
+    var northEast = L.latLng(latLngs[3], latLngs[2]);
+    var mb = L.latLngBounds(southWest, northEast);
+
+    // input nodes map
+
+</script>
+{% endif %} {% endblock %}
