@@ -10,3 +10,5 @@ shapely==2.0.1
 cligj==0.7.2
 redis==4.5.1
 rq==1.13.0
+dacite==1.8.0
+geojson==3.0.1
