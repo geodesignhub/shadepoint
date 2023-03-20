@@ -1,4 +1,11 @@
-{% extends "layout.html" %} {% block body %}
+{% extends "layout.html" %} 
+{% block headercss %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='maplibre/maplibre-gl.css') }}">    
+<style>	
+	#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+</style>
+{% endblock %} 
+{% block body %}
 <div class="container">
     <!-- Example row of columns -->
     {% if op['status'] == 1 %}
@@ -7,7 +14,7 @@
         <div class="col-md-12">
             <h2>Shadow Analysis</h2>
             <small>Shadow analysis of your diagram.</small>
-            
+            <div id="map"></div>
         </div>
     </div>
     <br>
@@ -25,20 +32,27 @@
 </div>
 <!-- /container -->{% endblock %} 
 
-{% block footer %} {% if op['status'] == 1 %}
-<script type="text/javascript">
-    
-    var bounds = "{{op['data']['bounds']|safe}}";
-    var finaldesignJSON = {{op['data']['synthesis']|safe}};
-    var diagrams = {{op['data']['diagrams']|safe}};
-    var systems = {{op['data']['systems']|safe}}; //var test is now assigned to getTest which will only work on browsers  
+{% block footer %} 
+    {% if op['status'] == 1 %}
+        <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>    
+        <script type="text/javascript">
+            
+            var bounds = "{{op['data']['bounds']|safe}}";
+            var finaldesignJSON = {{op['data']['synthesis']|safe}};
+            var diagrams = {{op['data']['diagrams']|safe}};
+            var systems = {{op['data']['systems']|safe}}; //var test is now assigned to getTest which will only work on browsers  
 
-    var latLngs = bounds.split(',');
-    var southWest = L.latLng(latLngs[1], latLngs[0]);
-    var northEast = L.latLng(latLngs[3], latLngs[2]);
-    var mb = L.latLngBounds(southWest, northEast);
-
-    // input nodes map
-
-</script>
-{% endif %} {% endblock %}
+            var latLngs = bounds.split(',');
+            var southWest = maplibregl.LngLat(latLngs[1], latLngs[0]);
+            var northEast = maplibregl.LngLat(latLngs[3], latLngs[2]);
+            var bounds = new maplibregl.LngLatBounds(southWest,northEast);
+            // input nodes map
+            var map = new maplibregl.Map({
+                container: 'map', // container id
+                style: 'https://demotiles.maplibre.org/style.json', // style URL
+                bounds: bounds, 
+                zoom: 10 // starting zoom
+                });
+        </script>
+{% endif %} 
+{% endblock %}
