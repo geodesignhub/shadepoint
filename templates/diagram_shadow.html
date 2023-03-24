@@ -1,8 +1,8 @@
 {% extends "layout.html" %} 
 {% block headercss %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='maplibre/maplibre-gl.css') }}">    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}">    
 <style>	
-	#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+	#map { height:550px}
 </style>
 {% endblock %} 
 {% block body %}
@@ -25,34 +25,69 @@
         </div>
     </div>
     {% endif %}
+    
     <br>
-    <br>
-    <br>
-    <hr>
 </div>
 <!-- /container -->{% endblock %} 
 
-{% block footer %} 
+{% block footer %}
+
     {% if op['status'] == 1 %}
         <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>    
         <script type="text/javascript">
-            
-            var bounds = "{{op['data']['bounds']|safe}}";
-            var finaldesignJSON = {{op['data']['synthesis']|safe}};
-            var diagrams = {{op['data']['diagrams']|safe}};
-            var systems = {{op['data']['systems']|safe}}; //var test is now assigned to getTest which will only work on browsers  
+            const diagram_detail = {{op|safe}};
+            console.log(diagram_detail);
 
+            const diagram_geojson = {{op["diagram_geojson"]["geojson"]|safe}};
+            
+            var bounds = diagram_detail['project_data']['bounds']['bounds'];
             var latLngs = bounds.split(',');
-            var southWest = maplibregl.LngLat(latLngs[1], latLngs[0]);
-            var northEast = maplibregl.LngLat(latLngs[3], latLngs[2]);
+            var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
+            var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
             var bounds = new maplibregl.LngLatBounds(southWest,northEast);
             // input nodes map
             var map = new maplibregl.Map({
-                container: 'map', // container id
-                style: 'https://demotiles.maplibre.org/style.json', // style URL
+                container: 'map', // container id  
+                style:
+                'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
                 bounds: bounds, 
                 zoom: 10 // starting zoom
                 });
+
+
+                map.on('load', function() {
+
+                    map.addSource('buildings', {
+                        // GeoJSON Data source used in vector tiles, documented at
+                        // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+                        'type': 'geojson',
+                        'data': diagram_geojson
+                        });
+                        map.addLayer({
+                        'id': 'buildings-extrusion',
+                        'type': 'fill-extrusion',
+                        'source': 'buildings',
+                        'paint': {
+                        // See the MapLibre Style Specification for details on data expressions.
+                        // https://maplibre.org/maplibre-gl-js-docs/style-spec/expressions/
+                        
+                        // Get the fill-extrusion-color from the source 'color' property.
+                        'fill-extrusion-color': ['get', 'color'],
+                        
+                        // Get fill-extrusion-height from the source 'height' property.
+                        'fill-extrusion-height': ['get', 'height'],
+                        
+                        // Get fill-extrusion-base from the source 'base_height' property.
+                        'fill-extrusion-base': ['get', 'base_height'],
+                        
+                        // Make extrusions slightly opaque for see through indoor walls.
+                        'fill-extrusion-opacity': 0.5
+                        }
+                        });
+                });
+
+
         </script>
 {% endif %} 
+
 {% endblock %}

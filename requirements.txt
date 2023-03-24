@@ -12,3 +12,4 @@ redis==4.5.1
 rq==1.13.0
 dacite==1.8.0
 geojson==3.0.1
+python-dotenv==1.0.0

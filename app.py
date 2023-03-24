@@ -8,9 +8,17 @@ from dataclasses import dataclass, asdict
 from dacite import from_dict
 from typing import List
 from geojson import Feature, FeatureCollection, Polygon, LineString
-from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramDetailShadow, GeodesignhubDiagramProperties
+from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData
 from conn import get_redis
 import os
+import geojson
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(find_dotenv())
+
+ENV_FILE = find_dotenv()
+if ENV_FILE:
+    load_dotenv(ENV_FILE)
 
 redis = get_redis()
 
@@ -25,7 +33,7 @@ app = Flask(__name__)
 def home():
 	return render_template('home.html')
 
-@app.route('/diagram_shadow', methods = ['GET'])
+@app.route('/diagram_shadow/', methods = ['GET'])
 def diagram_shadow():
 	''' This is the root of the webservice, upon successful authentication a text will be displayed in the browser '''
 	try:
@@ -36,20 +44,23 @@ def diagram_shadow():
 	except KeyError as e:
 		error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
 		return Response(asdict(error_msg), status=400, mimetype='application/json')
-
+	
 	if projectid and diagramid and apitoken:
+		
 		# Initialize the API
 		myAPIHelper = GeodesignHub.GeodesignHubClient(url = config.apisettings['serviceurl'], project_id=projectid, token=apitoken)
 		# Download Data		
-		s = myAPIHelper.get_systems()
+		s = myAPIHelper.get_all_systems()
 		b = myAPIHelper.get_project_bounds()
-		d = myAPIHelper.get_diagrams()
+		diagram_id = int(diagramid)
+		d = myAPIHelper.get_single_diagram(diagid = diagram_id)
 		
 		# Check responses / data
 		try:
 			assert s.status_code == 200
 		except AssertionError as ae:			
 			error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
+			
 			return Response(asdict(error_msg), status=400, mimetype='application/json')
 		
 		systems = s.json()
@@ -65,10 +76,25 @@ def diagram_shadow():
 			return Response(asdict(error_msg), status=400, mimetype='application/json')
 
 		_diagram_details_raw = d.json()
+		# Populate Default building data if not available
+		if not bool(_diagram_details_raw['building_data']):
+			_default_building_data = {"storeys_above_ground": 10,"storeys_below_ground": 0}
+		else: 
+			_default_building_data = _diagram_details_raw['building_data']
 
 		_diagram_details_feature_collection = _diagram_details_raw['geojson']
+		
 		_all_features: List[Feature] = []
-		for f in _diagram_details_feature_collection:
+		for f in _diagram_details_feature_collection['features']:			
+			_f_props = f['properties']
+			_building_data = BuildingData(height=_default_building_data['storeys_above_ground']* 4.5, base_height=_default_building_data['storeys_below_ground']* 4.5)
+
+			_diagram_details_raw['height'] = asdict(_building_data)['height']
+			_diagram_details_raw['base_height'] = asdict(_building_data)['base_height']
+			
+			_diagram_details_raw['color'] = _f_props['color']
+			_feature_properties = from_dict(data_class = GeodesignhubFeatureProperties, data = _diagram_details_raw)
+			
 			# We assume that GDH will provide a polygon
 			if f['geometry']['type'] == 'Polygon':					
 				_geometry = Polygon(coordinates=f['geometry']['coordinates'])
@@ -77,13 +103,14 @@ def diagram_shadow():
 			else: 
 				error_msg = ErrorResponse(status=0, message="Building shadows can only be computed for polygon features, you are trying to compute shadows for .",code=400)
 				return Response(asdict(error_msg), status=400, mimetype='application/json')
-			_feature = Feature(geometry=_geometry, properties={})
+			_feature = Feature(geometry=_geometry, properties=asdict(_feature_properties))
 			_all_features.append(_feature)
 
 		_diagram_feature_collection = FeatureCollection(features=_all_features)
-		_diagram_properties = from_dict(data_class = GeodesignhubDiagramProperties, data = _diagram_details_raw)
-		diagram_data = GeodesignhubDiagramDetailShadow(geojson=_diagram_feature_collection, properties=_diagram_properties)
+		gj_serialized = json.loads(geojson.dumps(_diagram_feature_collection))
 
+		diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
+		
 
 		try:
 			assert b.status_code == 200
@@ -94,8 +121,9 @@ def diagram_shadow():
 		bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())			
 		project_data = GeodesignhubProjectData(systems=all_systems ,bounds=bounds)		
 		
-
-		success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_data=diagram_data, project_data = project_data)
+		maptiler_key = os.getenv('maptiler_key', '00000000000000')
+		success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson=diagram_geojson, project_data = project_data, maptiler_key=maptiler_key )
+		
 		
 		return render_template('diagram_shadow.html', op = asdict(success_response))
 		# return Response(msg, status=400, mimetype='application/json')

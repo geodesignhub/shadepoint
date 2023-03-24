@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import List
-from geojson import FeatureCollection
+from typing import Optional
 
 @dataclass
 class ErrorResponse:
@@ -10,28 +10,29 @@ class ErrorResponse:
     status: int
 
 @dataclass
-class BuildingData:
-    storeys_above_ground: int
-    storeys_below_ground: int
+class BuildingData:    
+    height: float
+    base_height: float
 
 @dataclass
-class GeodesignhubDiagramProperties:     
-    sysid: int
-    rank:2
-    description: str
-    building_data: BuildingData
+class GeodesignhubFeatureProperties:
+    sysid: int    
+    description: str    
+    height: float
+    base_height: float
+    color:str
 
 
 @dataclass
-class GeodesignhubDiagramDetailShadow: 
+class GeodesignhubDiagramGeoJSON: 
     # Source: https://www.geodesignhub.com/api/#diagrams-api-diagram-detail-get
-    geojson: FeatureCollection
-    properties: GeodesignhubDiagramProperties
+    geojson: dict
+    
 
 @dataclass
 class GeodesignhubSystem:
     # Source: https://www.geodesignhub.com/api/#systems-api-systems-collection-get
-    id:str
+    id:int
     sysname: str
     syscolor:str
 
@@ -47,6 +48,8 @@ class GeodesignhubProjectData:
 
 @dataclass
 class DiagramShadowSuccessResponse:
+    message: str
     status: int
     project_data: GeodesignhubProjectData
-    diagram_data: GeodesignhubDiagramDetailShadow
+    diagram_geojson: GeodesignhubDiagramGeoJSON
+    maptiler_key: str
