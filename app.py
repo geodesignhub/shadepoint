@@ -8,7 +8,10 @@ from dataclasses import dataclass, asdict
 from dacite import from_dict
 from typing import List
 from geojson import Feature, FeatureCollection, Polygon, LineString
-from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData
+from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, ShadowGenerationRequest
+import arrow
+import uuid
+import utils
 from conn import get_redis
 import os
 import geojson
@@ -91,6 +94,8 @@ def diagram_shadow():
 
 			_diagram_details_raw['height'] = asdict(_building_data)['height']
 			_diagram_details_raw['base_height'] = asdict(_building_data)['base_height']
+			_diagram_details_raw['diagram_id'] = diagram_id
+			_diagram_details_raw['building_id'] = str(uuid.uuid4())
 			
 			_diagram_details_raw['color'] = _f_props['color']
 			_feature_properties = from_dict(data_class = GeodesignhubFeatureProperties, data = _diagram_details_raw)
@@ -110,7 +115,9 @@ def diagram_shadow():
 		gj_serialized = json.loads(geojson.dumps(_diagram_feature_collection))
 
 		diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
-		
+
+		worker_data = ShadowGenerationRequest(geojson = diagram_geojson.geojson, date_time = arrow.now().isoformat())
+		result = q.enqueue(utils.compute_building_shadow,kwargs= asdict(worker_data)) #, on_success= )
 
 		try:
 			assert b.status_code == 200

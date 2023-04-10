@@ -21,6 +21,8 @@ class GeodesignhubFeatureProperties:
     height: float
     base_height: float
     color:str
+    diagram_id:int
+    building_id: str
 
 
 @dataclass
@@ -53,3 +55,8 @@ class DiagramShadowSuccessResponse:
     project_data: GeodesignhubProjectData
     diagram_geojson: GeodesignhubDiagramGeoJSON
     maptiler_key: str
+
+@dataclass
+class ShadowGenerationRequest:
+    geojson: dict
+    date_time: str
