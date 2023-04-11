@@ -16,6 +16,9 @@ from conn import get_redis
 import os
 import geojson
 from dotenv import load_dotenv, find_dotenv
+from flask_socketio import SocketIO, emit
+from flask_socketio import join_room, leave_room, send, emit
+from rq import Callback
 
 load_dotenv(find_dotenv())
 
@@ -31,13 +34,32 @@ from worker import conn
 q = Queue(connection=conn)
 
 app = Flask(__name__)
-
+socketio = SocketIO(app)
 @app.route('/', methods = ['GET'])
 def home():
 	return render_template('home.html')
 
+
+def notify_shadow_complete(job, connection, result, *args, **kwargs):
+    # send a message to the room / channel that the shadows is ready
+	print('here')
+	print(job)
+	print(result)
+	send_message_to_room({'message':'Diagram shadow generated', 'diagram_shadow_key':result.key})
+
+def shadow_generation_failure(job, connection, type, value, traceback):
+    print('jo')
+
+
+@app.route('/generated_diagram_shadow/', methods = ['GET'])
+def get_diagram_shadow(shadow_key):
+	shadow = redis.get(shadow_key)	
+	return Response(shadow, status=200, mimetype='application/json')
+	
+
+
 @app.route('/diagram_shadow/', methods = ['GET'])
-def diagram_shadow():
+def generate_diagram_shadow():
 	''' This is the root of the webservice, upon successful authentication a text will be displayed in the browser '''
 	try:
 		projectid = request.args.get('projectid')
@@ -49,6 +71,7 @@ def diagram_shadow():
 		return Response(asdict(error_msg), status=400, mimetype='application/json')
 	
 	if projectid and diagramid and apitoken:
+		shadow_date_time = arrow.now().isoformat()
 		
 		# Initialize the API
 		myAPIHelper = GeodesignHub.GeodesignHubClient(url = config.apisettings['serviceurl'], project_id=projectid, token=apitoken)
@@ -116,8 +139,8 @@ def diagram_shadow():
 
 		diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
 
-		worker_data = ShadowGenerationRequest(geojson = diagram_geojson.geojson, date_time = arrow.now().isoformat())
-		result = q.enqueue(utils.compute_building_shadow,kwargs= asdict(worker_data)) #, on_success= )
+		worker_data = ShadowGenerationRequest(diagram_id = str(diagram_id), geojson = diagram_geojson.geojson, date_time = shadow_date_time)
+		result = q.enqueue(utils.compute_building_shadow,asdict(worker_data))
 
 		try:
 			assert b.status_code == 200
@@ -139,7 +162,36 @@ def diagram_shadow():
 		return Response(msg, status=400, mimetype='application/json')
 
 
+@socketio.on('connect')
+def test_connect():
+    emit('my response', {'data': 'Connected'})
+
+@socketio.on('disconnect')
+def test_disconnect():
+    print('Client disconnected')
+
+
+@socketio.on("send message")
+def send_message_to_room(data):
+	room = data['channel']
+	emit("broadcast message",  data['message'], room=room)
+
+
+@socketio.on('join')
+def on_join(data):	
+	username = data['username']
+	room = data['room']
+	join_room(room)
+	print(username + ' has entered the %s room.'% room)
+	send(username + ' has entered the room.', to=room)
+
+@socketio.on('leave')
+def on_leave(data):
+    username = data['username']
+    room = data['room']
+    leave_room(room)
+    send(username + ' has left the room.', to=room)
 if __name__ == '__main__':
 	app.debug = True
 	port = int(os.environ.get("PORT", 5001))
-	app.run(port =5001)
+	socketio.run(app, port =5001)

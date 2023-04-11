@@ -1,10 +1,12 @@
-{% extends "layout.html" %} 
+{% extends "layout.html" %}
 {% block headercss %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}">    
-<style>	
-	#map { height:550px}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}">
+<style>
+    #map {
+        height: 550px
+    }
 </style>
-{% endblock %} 
+{% endblock %}
 {% block body %}
 <div class="container">
     <!-- Example row of columns -->
@@ -28,69 +30,88 @@
         </div>
     </div>
     {% endif %}
-    
+
     <br>
 </div>
-<!-- /container -->{% endblock %} 
+<!-- /container -->{% endblock %}
 
 {% block footer %}
 
-    {% if op['status'] == 1 %}
-        <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>    
-        <script type="text/javascript">
-            const diagram_detail = {{op|safe}};
-            console.log(diagram_detail);
+{% if op['status'] == 1 %}
+    <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.js') }}"></script>
 
-            const diagram_geojson = {{op["diagram_geojson"]["geojson"]|safe}};
-            
-            var bounds = diagram_detail['project_data']['bounds']['bounds'];
-            var latLngs = bounds.split(',');
-            var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
-            var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
-            var bounds = new maplibregl.LngLatBounds(southWest,northEast);
-            // input nodes map
-            var map = new maplibregl.Map({
-                container: 'map', // container id  
-                style:
+    <script type="text/javascript">
+        const diagram_detail = {{op|safe}};
+        console.log(diagram_detail);
+
+        const diagram_geojson = {{op["diagram_geojson"]["geojson"]|safe}};
+
+        var bounds = diagram_detail['project_data']['bounds']['bounds'];
+        var latLngs = bounds.split(',');
+        var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
+        var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
+        var bounds = new maplibregl.LngLatBounds(southWest, northEast);
+        // input nodes map
+        var map = new maplibregl.Map({
+            container: 'map', // container id  
+            style:
                 'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
-                bounds: bounds, 
-                zoom: 10 // starting zoom
+            bounds: bounds,
+            zoom: 10 // starting zoom
+        });
+
+
+        map.on('load', function () {
+            map.addSource('buildings', {
+                // GeoJSON Data source used in vector tiles, documented at
+                // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+                'type': 'geojson',
+                'data': diagram_geojson
+            });
+            map.addLayer({
+                'id': 'buildings-extrusion',
+                'type': 'fill-extrusion',
+                'source': 'buildings',
+                'paint': {
+                    // See the MapLibre Style Specification for details on data expressions.
+                    // https://maplibre.org/maplibre-gl-js-docs/style-spec/expressions/
+
+                    // Get the fill-extrusion-color from the source 'color' property.
+                    'fill-extrusion-color': ['get', 'color'],
+
+                    // Get fill-extrusion-height from the source 'height' property.
+                    'fill-extrusion-height': ['get', 'height'],
+
+                    // Get fill-extrusion-base from the source 'base_height' property.
+                    'fill-extrusion-base': ['get', 'base_height'],
+
+                    // Make extrusions slightly opaque for see through indoor walls.
+                    'fill-extrusion-opacity': 0.5
+                }
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const username = 'test223';
+            const room = '12'
+
+            // Connect to socket.io
+            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+            socket.on('connect', () => {
+                // Automatically connect to general channel
+                socket.emit('join', { "room": room, "username": username });
+
+
+                // Callback from server for sending messages
+                socket.on('broadcast message', data => {
+                    console.log(data);
                 });
+            });
+        });
 
-
-                map.on('load', function() {
-
-                    map.addSource('buildings', {
-                        // GeoJSON Data source used in vector tiles, documented at
-                        // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
-                        'type': 'geojson',
-                        'data': diagram_geojson
-                        });
-                        map.addLayer({
-                        'id': 'buildings-extrusion',
-                        'type': 'fill-extrusion',
-                        'source': 'buildings',
-                        'paint': {
-                        // See the MapLibre Style Specification for details on data expressions.
-                        // https://maplibre.org/maplibre-gl-js-docs/style-spec/expressions/
-                        
-                        // Get the fill-extrusion-color from the source 'color' property.
-                        'fill-extrusion-color': ['get', 'color'],
-                        
-                        // Get fill-extrusion-height from the source 'height' property.
-                        'fill-extrusion-height': ['get', 'height'],
-                        
-                        // Get fill-extrusion-base from the source 'base_height' property.
-                        'fill-extrusion-base': ['get', 'base_height'],
-                        
-                        // Make extrusions slightly opaque for see through indoor walls.
-                        'fill-extrusion-opacity': 0.5
-                        }
-                        });
-                });
-
-
-        </script>
-{% endif %} 
+    </script>
+{% endif %}
 
 {% endblock %}
