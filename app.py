@@ -140,7 +140,7 @@ def generate_diagram_shadow():
 		diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
 
 		worker_data = ShadowGenerationRequest(diagram_id = str(diagram_id), geojson = diagram_geojson.geojson, date_time = shadow_date_time)
-		result = q.enqueue(utils.compute_building_shadow,asdict(worker_data))
+		result = q.enqueue(utils.compute_building_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure)
 
 		try:
 			assert b.status_code == 200
