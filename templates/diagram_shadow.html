@@ -17,6 +17,7 @@
             <h2>Shadow Analysis</h2>
             <div><label for="shadow_date_time">Select (date and time):</label>
                 <input type="datetime-local" id="shadow_date_time" name="shadow_date_time">
+                <input type="submit" value="Send Request" onclick="return update_date_time();" />
             </div>
             <small>Shadow analysis of your diagram.</small>
             <div id="map"></div>
@@ -38,80 +39,104 @@
 {% block footer %}
 
 {% if op['status'] == 1 %}
-    <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.js') }}"></script>
 
-    <script type="text/javascript">
-        const diagram_detail = {{op|safe}};
-        console.log(diagram_detail);
+<script type="text/javascript">
+    const diagram_detail = {{op| safe}};
+    console.log(diagram_detail);
 
-        const diagram_geojson = {{op["diagram_geojson"]["geojson"]|safe}};
+    const diagram_geojson = {{op["diagram_geojson"]["geojson"]| safe}};
 
-        var bounds = diagram_detail['project_data']['bounds']['bounds'];
-        var latLngs = bounds.split(',');
-        var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
-        var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
-        var bounds = new maplibregl.LngLatBounds(southWest, northEast);
-        // input nodes map
-        var map = new maplibregl.Map({
-            container: 'map', // container id  
-            style:
-                'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
-            bounds: bounds,
-            zoom: 10 // starting zoom
+    var bounds = diagram_detail['project_data']['bounds']['bounds'];
+    var latLngs = bounds.split(',');
+    var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
+    var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
+    var bounds = new maplibregl.LngLatBounds(southWest, northEast);
+    // input nodes map
+    var map = new maplibregl.Map({
+        container: 'map', // container id  
+        style:
+            'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
+        bounds: bounds,
+        zoom: 10 // starting zoom
+    });
+
+
+    map.on('load', function () {
+        map.addSource('buildings', {
+            // GeoJSON Data source used in vector tiles, documented at
+            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+            'type': 'geojson',
+            'data': diagram_geojson
         });
+        map.addLayer({
+            'id': 'buildings-extrusion',
+            'type': 'fill-extrusion',
+            'source': 'buildings',
+            'paint': {
+                // See the MapLibre Style Specification for details on data expressions.
+                // https://maplibre.org/maplibre-gl-js-docs/style-spec/expressions/
 
+                // Get the fill-extrusion-color from the source 'color' property.
+                'fill-extrusion-color': ['get', 'color'],
 
-        map.on('load', function () {
-            map.addSource('buildings', {
-                // GeoJSON Data source used in vector tiles, documented at
-                // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
-                'type': 'geojson',
-                'data': diagram_geojson
-            });
-            map.addLayer({
-                'id': 'buildings-extrusion',
-                'type': 'fill-extrusion',
-                'source': 'buildings',
-                'paint': {
-                    // See the MapLibre Style Specification for details on data expressions.
-                    // https://maplibre.org/maplibre-gl-js-docs/style-spec/expressions/
+                // Get fill-extrusion-height from the source 'height' property.
+                'fill-extrusion-height': ['get', 'height'],
 
-                    // Get the fill-extrusion-color from the source 'color' property.
-                    'fill-extrusion-color': ['get', 'color'],
+                // Get fill-extrusion-base from the source 'base_height' property.
+                'fill-extrusion-base': ['get', 'base_height'],
 
-                    // Get fill-extrusion-height from the source 'height' property.
-                    'fill-extrusion-height': ['get', 'height'],
-
-                    // Get fill-extrusion-base from the source 'base_height' property.
-                    'fill-extrusion-base': ['get', 'base_height'],
-
-                    // Make extrusions slightly opaque for see through indoor walls.
-                    'fill-extrusion-opacity': 0.5
-                }
-            });
+                // Make extrusions slightly opaque for see through indoor walls.
+                'fill-extrusion-opacity': 0.5
+            }
         });
+    });
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const username = 'test223';
-            const room = '12'
+    document.addEventListener('DOMContentLoaded', () => {
+        const username = 'test223';
+        const room = diagram_detail.session_id;
 
-            // Connect to socket.io
-            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
-
-            socket.on('connect', () => {
-                // Automatically connect to general channel
-                socket.emit('join', { "room": room, "username": username });
-
-
-                // Callback from server for sending messages
-                socket.on('broadcast message', data => {
-                    console.log(data);
-                });
-            });
+        // Connect to socket.io
+        var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+        socket.on('connect', () => {
+            // Automatically connect to general channel
+            socket.emit('join', { "room": room, "username": username });
         });
+    });
+    // Callback from server for sending messages
+    socket.on('broadcast message', data => {
+        let shadow_id_key = data['shadow_key'];
+        console.log(data);
+    });
+    function get_building_shadow(shadow_id_key) {
+        fetch(url)
+            .then((response) => {
+                return response.json();
+            })
+            .then((shadow_data) => {
+                let shadows_to_render = shadow_data;
+                console.log(shadows_to_render);
+            });
+    }
+    function update_date_time() {
 
-    </script>
+        const map_querystring = window.location.search;
+        const date_params = new URLSearchParams(map_querystring);
+
+        let date_time = date_params.get('date_time');
+
+        if (!date_time) {
+            date_time = 0;
+        }
+        const dateControl = document.querySelector('input[type="datetime-local"]');
+        dateControl.value = '2017-06-01T08:30';
+        let new_url = '?date_time=' + dateControl.value;
+        window.location.href = new_url;
+        return true;
+    }
+
+</script>
 {% endif %}
 
 {% endblock %}

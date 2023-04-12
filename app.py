@@ -72,6 +72,7 @@ def generate_diagram_shadow():
 	
 	if projectid and diagramid and apitoken:
 		shadow_date_time = arrow.now().isoformat()
+		session_id = uuid.uuid4()
 		
 		# Initialize the API
 		myAPIHelper = GeodesignHub.GeodesignHubClient(url = config.apisettings['serviceurl'], project_id=projectid, token=apitoken)
@@ -139,7 +140,7 @@ def generate_diagram_shadow():
 
 		diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
 
-		worker_data = ShadowGenerationRequest(diagram_id = str(diagram_id), geojson = diagram_geojson.geojson, date_time = shadow_date_time)
+		worker_data = ShadowGenerationRequest(diagram_id = str(diagram_id), geojson = diagram_geojson.geojson, session_id = str(session_id))
 		result = q.enqueue(utils.compute_building_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure)
 
 		try:
@@ -152,7 +153,7 @@ def generate_diagram_shadow():
 		project_data = GeodesignhubProjectData(systems=all_systems ,bounds=bounds)		
 		
 		maptiler_key = os.getenv('maptiler_key', '00000000000000')
-		success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson=diagram_geojson, project_data = project_data, maptiler_key=maptiler_key )
+		success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id))
 		
 		
 		return render_template('diagram_shadow.html', op = asdict(success_response))

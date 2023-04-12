@@ -55,9 +55,10 @@ class DiagramShadowSuccessResponse:
     project_data: GeodesignhubProjectData
     diagram_geojson: GeodesignhubDiagramGeoJSON
     maptiler_key: str
+    session_id: str
 
 @dataclass
 class ShadowGenerationRequest:
     geojson: dict
     date_time: str
-    diagram_id: str
+    session_id: str

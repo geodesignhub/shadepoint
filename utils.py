@@ -20,8 +20,7 @@ def compute_building_shadow(diagramid_buildings_date_time: dict):
     
     shadows = pybdshadow.bdshadow_sunlight(buildings,_pd_date_time)
 
-    redis_key = _diagramid_building_date_time.diagram_id + _date_time
-    print(redis_key)
+    redis_key = _diagramid_building_date_time.session_id
 
     r.set(redis_key, json.dumps(shadows.to_json()))
     r.expire(redis_key, time=6000)
