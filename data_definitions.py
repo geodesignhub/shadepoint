@@ -60,5 +60,5 @@ class DiagramShadowSuccessResponse:
 @dataclass
 class ShadowGenerationRequest:
     geojson: dict
-    date_time: str
     session_id: str
+    request_date_time: str

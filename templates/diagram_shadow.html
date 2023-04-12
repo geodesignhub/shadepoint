@@ -14,12 +14,12 @@
     <br>
     <div class="row">
         <div class="col-md-12">
-            <h2>Shadow Analysis</h2>
-            <div><label for="shadow_date_time">Select (date and time):</label>
+            <h3>Shadow Analysis <small class="text-muted">For the current time</small></h3>
+            <div><label for="shadow_date_time">Select new (date and time):</label>
                 <input type="datetime-local" id="shadow_date_time" name="shadow_date_time">
-                <input type="submit" value="Send Request" onclick="return update_date_time();" />
+                <input type="submit" value="Update Shadows" onclick="return update_date_time();" />
             </div>
-            <small>Shadow analysis of your diagram.</small>
+            <br>
             <div id="map"></div>
         </div>
     </div>
@@ -43,10 +43,9 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.js') }}"></script>
 
 <script type="text/javascript">
-    const diagram_detail = {{op| safe}};
-    console.log(diagram_detail);
+    const diagram_detail = {{op|safe}};
 
-    const diagram_geojson = {{op["diagram_geojson"]["geojson"]| safe}};
+    const diagram_geojson = {{op["diagram_geojson"]["geojson"]|safe}};
 
     var bounds = diagram_detail['project_data']['bounds']['bounds'];
     var latLngs = bounds.split(',');
@@ -70,6 +69,12 @@
             'type': 'geojson',
             'data': diagram_geojson
         });
+        map.addSource('building_shadows', {
+            // GeoJSON Data source used in vector tiles, documented at
+            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+            'type': 'geojson',
+            'data':{"type": "FeatureCollection","features": []}
+        });
         map.addLayer({
             'id': 'buildings-extrusion',
             'type': 'fill-extrusion',
@@ -91,51 +96,67 @@
                 'fill-extrusion-opacity': 0.5
             }
         });
-    });
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const username = 'test223';
-        const room = diagram_detail.session_id;
-
-        // Connect to socket.io
-        var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
-        socket.on('connect', () => {
-            // Automatically connect to general channel
-            socket.emit('join', { "room": room, "username": username });
+        map.addLayer({
+            'id': 'building_shadows',
+            'type': 'fill',
+            'source': 'building_shadows',
+            'layout': {},
+            'paint': {
+                'fill-color': '#808080',
+                'fill-opacity': 0.4
+            }
         });
     });
+
     // Callback from server for sending messages
-    socket.on('broadcast message', data => {
-        let shadow_id_key = data['shadow_key'];
-        console.log(data);
-    });
-    function get_building_shadow(shadow_id_key) {
-        fetch(url)
+
+    function get_building_shadow(shadow_download_url) {
+
+        fetch(shadow_download_url)
             .then((response) => {
                 return response.json();
             })
             .then((shadow_data) => {
                 let shadows_to_render = shadow_data;
-                console.log(shadows_to_render);
+                map.getSource('building_shadows').setData(shadows_to_render);
             });
     }
     function update_date_time() {
+        let new_url = new URL(window.location.href);
+        
 
-        const map_querystring = window.location.search;
-        const date_params = new URLSearchParams(map_querystring);
+        let date_time = new_url.searchParams.delete('date_time');
 
-        let date_time = date_params.get('date_time');
-
-        if (!date_time) {
-            date_time = 0;
-        }
         const dateControl = document.querySelector('input[type="datetime-local"]');
-        dateControl.value = '2017-06-01T08:30';
-        let new_url = '?date_time=' + dateControl.value;
-        window.location.href = new_url;
+        let new_date = dateControl.value;
+        if (new_date) {
+            new_url.searchParams.append('new_url', new_date);
+            window.location.href = new_url;
+        }
         return true;
     }
 
+    // document.addEventListener('DOMContentLoaded', () => {
+    const username = 'test223';
+    const room = diagram_detail.session_id;
+
+    // Connect to socket.io
+    var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+    socket.on('connect', () => {
+        // Automatically connect to general channel
+        console.log("Conected!..");
+    });
+
+    socket.on('message_from_server', function (data) {
+        let shadow_id_key = data['shadow_key'];
+        let session_id = shadow_id_key.split(':')[0]
+        if (session_id === room) {
+            // The message is for the current sesion, download the data...
+            let shadow_download_url = window.location.origin + '/generated_diagram_shadow?shadow_key=' + shadow_id_key;
+            get_building_shadow(shadow_download_url);
+        }
+    });
+    // });
 </script>
 {% endif %}
 

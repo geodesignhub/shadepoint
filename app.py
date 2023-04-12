@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-from flask import Flask, url_for
+from flask import Flask
 from flask import render_template
 from flask import request, Response
 import json, GeodesignHub
 import config
-from dataclasses import dataclass, asdict
+from dataclasses import asdict
 from dacite import from_dict
 from typing import List
 from geojson import Feature, FeatureCollection, Polygon, LineString
@@ -16,9 +16,11 @@ from conn import get_redis
 import os
 import geojson
 from dotenv import load_dotenv, find_dotenv
-from flask_socketio import SocketIO, emit
-from flask_socketio import join_room, leave_room, send, emit
-from rq import Callback
+from flask_socketio import SocketIO
+from notifications_helper import notify_shadow_complete, shadow_generation_failure
+
+from rq import Queue
+from worker import conn
 
 load_dotenv(find_dotenv())
 
@@ -27,37 +29,30 @@ if ENV_FILE:
     load_dotenv(ENV_FILE)
 
 redis = get_redis()
-
-from rq import Queue
-from worker import conn
-
 q = Queue(connection=conn)
 
 app = Flask(__name__)
-socketio = SocketIO(app)
+redis_url = os.getenv('REDIS_URL','redis://')
+socketio = SocketIO(app= app , message_queue = redis_url)
+
+
 @app.route('/', methods = ['GET'])
 def home():
 	return render_template('home.html')
 
 
-def notify_shadow_complete(job, connection, result, *args, **kwargs):
-    # send a message to the room / channel that the shadows is ready
-	print('here')
-	print(job)
-	print(result)
-	send_message_to_room({'message':'Diagram shadow generated', 'diagram_shadow_key':result.key})
+@app.route('/generated_diagram_shadow', methods = ['GET'])
+def get_diagram_shadow():
+	shadow_key = request.args.get('shadow_key', '0')	
+	shadow_exists = redis.exists(shadow_key)
+	if shadow_exists: 
+		s = redis.get(shadow_key)	
+		shadow = json.loads(s)
+	else: 
+		shadow = {}
 
-def shadow_generation_failure(job, connection, type, value, traceback):
-    print('jo')
-
-
-@app.route('/generated_diagram_shadow/', methods = ['GET'])
-def get_diagram_shadow(shadow_key):
-	shadow = redis.get(shadow_key)	
 	return Response(shadow, status=200, mimetype='application/json')
 	
-
-
 @app.route('/diagram_shadow/', methods = ['GET'])
 def generate_diagram_shadow():
 	''' This is the root of the webservice, upon successful authentication a text will be displayed in the browser '''
@@ -69,9 +64,19 @@ def generate_diagram_shadow():
 	except KeyError as e:
 		error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
 		return Response(asdict(error_msg), status=400, mimetype='application/json')
-	
+	try:
+		r_date_time = request.args.get('date_time', None)
+		if not r_date_time:
+			raise KeyError
+		else:
+			shadow_date_time = arrow.get(r_date_time).format('YYYY-MM-DDTHH:mm:ss')
+		print('h343')
+		print(shadow_date_time)
+	except KeyError as ke: 
+		shadow_date_time = arrow.now().format('YYYY-MM-DDTHH:mm:ss')
+
 	if projectid and diagramid and apitoken:
-		shadow_date_time = arrow.now().isoformat()
+		
 		session_id = uuid.uuid4()
 		
 		# Initialize the API
@@ -140,8 +145,8 @@ def generate_diagram_shadow():
 
 		diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
 
-		worker_data = ShadowGenerationRequest(diagram_id = str(diagram_id), geojson = diagram_geojson.geojson, session_id = str(session_id))
-		result = q.enqueue(utils.compute_building_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure)
+		worker_data = ShadowGenerationRequest(geojson = diagram_geojson.geojson, session_id = str(session_id), request_date_time = shadow_date_time)
+		result = q.enqueue(utils.compute_building_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = str(session_id) + ":"+shadow_date_time)
 
 		try:
 			assert b.status_code == 200
@@ -162,36 +167,6 @@ def generate_diagram_shadow():
 		msg = ErrorResponse(status=0, message="Could download data from Geodesignhub, please check your project ID and API token.",code=400)
 		return Response(msg, status=400, mimetype='application/json')
 
-
-@socketio.on('connect')
-def test_connect():
-    emit('my response', {'data': 'Connected'})
-
-@socketio.on('disconnect')
-def test_disconnect():
-    print('Client disconnected')
-
-
-@socketio.on("send message")
-def send_message_to_room(data):
-	room = data['channel']
-	emit("broadcast message",  data['message'], room=room)
-
-
-@socketio.on('join')
-def on_join(data):	
-	username = data['username']
-	room = data['room']
-	join_room(room)
-	print(username + ' has entered the %s room.'% room)
-	send(username + ' has entered the room.', to=room)
-
-@socketio.on('leave')
-def on_leave(data):
-    username = data['username']
-    room = data['room']
-    leave_room(room)
-    send(username + ' has left the room.', to=room)
 if __name__ == '__main__':
 	app.debug = True
 	port = int(os.environ.get("PORT", 5001))
