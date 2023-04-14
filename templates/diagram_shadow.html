@@ -136,8 +136,8 @@
         return true;
     }
 
-    // document.addEventListener('DOMContentLoaded', () => {
-    const username = 'test223';
+    document.addEventListener('DOMContentLoaded', () => {
+    
     const room = diagram_detail.session_id;
 
     // Connect to socket.io
@@ -146,7 +146,6 @@
         // Automatically connect to general channel
         console.log("Conected!..");
     });
-
     socket.on('message_from_server', function (data) {
         let shadow_id_key = data['shadow_key'];
         let session_id = shadow_id_key.split(':')[0]
@@ -156,7 +155,7 @@
             get_building_shadow(shadow_download_url);
         }
     });
-    // });
+    });
 </script>
 {% endif %}
 
