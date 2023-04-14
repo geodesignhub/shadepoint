@@ -137,24 +137,24 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-    
-    const room = diagram_detail.session_id;
+        
+        const room = diagram_detail.session_id;
 
-    // Connect to socket.io
-    var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
-    socket.on('connect', () => {
-        // Automatically connect to general channel
-        console.log("Conected!..");
-    });
-    socket.on('message_from_server', function (data) {
-        let shadow_id_key = data['shadow_key'];
-        let session_id = shadow_id_key.split(':')[0]
-        if (session_id === room) {
-            // The message is for the current sesion, download the data...
-            let shadow_download_url = window.location.origin + '/generated_diagram_shadow?shadow_key=' + shadow_id_key;
-            get_building_shadow(shadow_download_url);
-        }
-    });
+        // Connect to socket.io
+        var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+        socket.on('connect', () => {
+            // Automatically connect to general channel
+            console.log("Conected!..");
+        });
+        socket.on('message_from_server', function (data) {
+            let shadow_id_key = data['shadow_key'];
+            let session_id = shadow_id_key.split(':')[0]
+            if (session_id === room) {
+                // The message is for the current sesion, download the data...
+                let shadow_download_url = window.location.origin + '/generated_diagram_shadow?shadow_key=' + shadow_id_key;
+                get_building_shadow(shadow_download_url);
+            }
+        });
     });
 </script>
 {% endif %}
