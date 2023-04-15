@@ -14,10 +14,14 @@
     <br>
     <div class="row">
         <div class="col-md-12">
-            <h3>Shadow Analysis <small class="text-muted">For the current time</small></h3>
+            <div id = "spinner" class="spinner-border text-secondary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+            <h3>Shadow Analysis <small class="text-muted"></small></h3>
             <div><label for="shadow_date_time">Select new (date and time):</label>
                 <input type="datetime-local" id="shadow_date_time" name="shadow_date_time">
                 <input type="submit" value="Update Shadows" onclick="return update_date_time();" />
+                
             </div>
             <br>
             <div id="map"></div>
@@ -109,6 +113,7 @@
     });
 
     // Callback from server for sending messages
+    var socket = 0;
 
     function get_building_shadow(shadow_download_url) {
 
@@ -117,8 +122,15 @@
                 return response.json();
             })
             .then((shadow_data) => {
+                let spinner_cont = document.getElementById('spinner');
+                spinner_cont.classList.add('d-none');
+
                 let shadows_to_render = shadow_data;
                 map.getSource('building_shadows').setData(shadows_to_render);
+            }).catch((error) => {
+                
+                console.log(error);
+                
             });
     }
     function update_date_time() {
@@ -131,6 +143,7 @@
         let new_date = dateControl.value;
         if (new_date) {
             new_url.searchParams.append('new_url', new_date);
+            socket.disconnect();
             window.location.href = new_url;
         }
         return true;
@@ -141,7 +154,7 @@
         const room = diagram_detail.session_id;
 
         // Connect to socket.io
-        var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+        socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
         socket.on('connect', () => {
             // Automatically connect to general channel
             console.log("Conected!..");

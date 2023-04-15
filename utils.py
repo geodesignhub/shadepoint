@@ -23,6 +23,6 @@ def compute_building_shadow(diagramid_buildings_date_time: dict):
     redis_key = _diagramid_building_date_time.session_id +':' +  _diagramid_building_date_time.request_date_time
     r.set(redis_key, json.dumps(shadows.to_json()))
     r.expire(redis_key, time=6000)
-    time.sleep(5)
+    time.sleep(7)
     print("Job Completed")
     
