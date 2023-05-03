@@ -16,7 +16,7 @@ from conn import get_redis
 import os
 import geojson
 from dotenv import load_dotenv, find_dotenv
-from flask_socketio import SocketIO
+from flask_sse import sse
 from notifications_helper import notify_shadow_complete, shadow_generation_failure
 
 from rq import Queue
@@ -32,9 +32,9 @@ redis = get_redis()
 q = Queue(connection=conn)
 
 app = Flask(__name__)
-redis_url = os.getenv('REDIS_URL','redis://')
-socketio = SocketIO(app= app , message_queue = redis_url)
 
+app.config["REDIS_URL"] = "redis://localhost"
+app.register_blueprint(sse, url_prefix='/stream')
 
 @app.route('/', methods = ['GET'])
 def home():
@@ -69,9 +69,7 @@ def generate_diagram_shadow():
 		if not r_date_time:
 			raise KeyError
 		else:
-			shadow_date_time = arrow.get(r_date_time).format('YYYY-MM-DDTHH:mm:ss')
-		print('h343')
-		print(shadow_date_time)
+			shadow_date_time = arrow.get(r_date_time).format('YYYY-MM-DDTHH:mm:ss')		
 	except KeyError as ke: 
 		shadow_date_time = arrow.now().format('YYYY-MM-DDTHH:mm:ss')
 
@@ -170,4 +168,4 @@ def generate_diagram_shadow():
 if __name__ == '__main__':
 	app.debug = True
 	port = int(os.environ.get("PORT", 5001))
-	socketio.run(app, port =5001)
+	app.runport =5001)
