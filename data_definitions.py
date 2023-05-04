@@ -26,6 +26,20 @@ class GeodesignhubFeatureProperties:
 
 
 @dataclass
+class GeodesignhubDesignFeatureProperties:
+    author:str
+    description: str    
+    height: float
+    base_height: float
+    color:str
+    diagram_id:int
+    building_id: str
+    areatype:str
+    min_height: float
+    max_height:float
+
+
+@dataclass
 class GeodesignhubDiagramGeoJSON: 
     # Source: https://www.geodesignhub.com/api/#diagrams-api-diagram-detail-get
     geojson: dict
@@ -54,6 +68,15 @@ class DiagramShadowSuccessResponse:
     status: int
     project_data: GeodesignhubProjectData
     diagram_geojson: GeodesignhubDiagramGeoJSON
+    maptiler_key: str
+    session_id: str
+
+@dataclass
+class DiagramShadowSuccessResponse:
+    message: str
+    status: int
+    project_data: GeodesignhubProjectData
+    design_geojson: GeodesignhubDiagramGeoJSON
     maptiler_key: str
     session_id: str
 
