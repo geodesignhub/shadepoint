@@ -16,7 +16,7 @@ from conn import get_redis
 import os
 import geojson
 from dotenv import load_dotenv, find_dotenv
-from flask_sse import sse
+from dashboard import create_app
 from notifications_helper import notify_shadow_complete, shadow_generation_failure
 
 from rq import Queue
@@ -31,10 +31,7 @@ if ENV_FILE:
 redis = get_redis()
 q = Queue(connection=conn)
 
-app = Flask(__name__)
-
-app.config["REDIS_URL"] = "redis://localhost"
-app.register_blueprint(sse, url_prefix='/stream')
+app = create_app()
 
 @app.route('/', methods = ['GET'])
 def home():
@@ -168,4 +165,4 @@ def generate_diagram_shadow():
 if __name__ == '__main__':
 	app.debug = True
 	port = int(os.environ.get("PORT", 5001))
-	app.runport =5001)
+	app.run(port =port)
