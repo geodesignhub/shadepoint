@@ -8,7 +8,7 @@ from dataclasses import asdict
 from dacite import from_dict
 from typing import List
 from geojson import Feature, FeatureCollection, Polygon, LineString
-from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, ShadowGenerationRequest, GeodesignhubDesignFeatureProperties
+from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, ShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse
 import arrow
 import uuid
 import utils
@@ -154,7 +154,7 @@ def generate_design_shadow():
 		project_data = GeodesignhubProjectData(systems=all_systems ,bounds=bounds)		
 		
 		maptiler_key = os.getenv('maptiler_key', '00000000000000')
-		success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",design_geojson= design_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id))
+		success_response = DesignShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",design_geojson= design_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id))
 		
 		
 		return render_template('design_shadow.html', op = asdict(success_response))

@@ -72,7 +72,7 @@ class DiagramShadowSuccessResponse:
     session_id: str
 
 @dataclass
-class DiagramShadowSuccessResponse:
+class DesignShadowSuccessResponse:
     message: str
     status: int
     project_data: GeodesignhubProjectData
