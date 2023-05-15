@@ -93,6 +93,18 @@ class RoadsDownloadRequest:
     request_date_time: str
     roads_url: str
 
+@dataclass
+class ShadowsRoadsIntersectionRequest:
+    job_id: str
+    bounds: str
+    session_id: str
+    request_date_time: str
+    roads_url: str
+
+@dataclass
+class RoadsShadowsData: 
+    roads: str
+    shadows_key: str
 
 @dataclass
 class RoadsShadowOverlap: 

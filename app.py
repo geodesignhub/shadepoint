@@ -8,7 +8,7 @@ from dataclasses import asdict
 from dacite import from_dict
 from typing import List
 from geojson import Feature, FeatureCollection, Polygon, LineString
-from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, ShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest
+from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, ShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest, ShadowsRoadsIntersectionRequest
 import arrow
 import uuid
 import utils
@@ -65,7 +65,13 @@ def get_downloaded_roads():
 		
 	# TODO: Kick off compute_road_shadow_overlap and use the same roads_key
 
-	return Response(json.dumps(roads), status=200, mimetype='application/json')
+	rds = json.dumps(roads)
+	shadow_roads_intersection_job = ShadowsRoadsIntersectionRequest(roads= rds, job_id = roads_key, shadows_key= roads_key)
+	roads_intersection_result = q.enqueue(utils.compute_road_shadow_overlap, asdict(roads_download_job), on_success= notify_roads_download_complete, on_failure = notify_roads_download_failure, job_id = str(session_id) + ":"+ shadow_date_time +":roads")
+
+
+
+	return Response(rds, status=200, mimetype='application/json')
 	
 
 @app.route('/get_shadow_roads_stats', methods = ['GET'])

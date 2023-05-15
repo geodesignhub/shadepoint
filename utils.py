@@ -2,7 +2,7 @@
 import arrow
 import time
 import pandas as pd
-from data_definitions import ShadowGenerationRequest, RoadsDownloadRequest, RoadsShadowOverlap
+from data_definitions import ShadowGenerationRequest, RoadsDownloadRequest, RoadsShadowOverlap,RoadsShadowsData
 from dacite import from_dict
 
 import geopandas as gpd
@@ -51,7 +51,6 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
         
         if download_request.status_code == 200:
             fc = download_request.json()    
-            print(fc)
             r.set(roads_storage_key, json.dumps(fc))
         else: 
             print("Error")
@@ -100,11 +99,12 @@ def compute_shadow(geojson_session_date_time: dict):
     time.sleep(7)
     print("Job Completed")
     
-def compute_road_shadow_overlap(shadow_geojson, bounds) -> RoadsShadowOverlap: 
+def compute_road_shadow_overlap(roads_shadows_data:RoadsShadowsData) -> RoadsShadowOverlap: 
+    _roads_shadows_data = from_dict(data_class = RoadsShadowsData, data = roads_shadows_data)
+    roads = _roads_shadows_data.roads
+    shadows_key = _roads_shadows_data.shadows_key
 
-    r_url = os.environ.get("ROADS_URL", None)
-    roads_url = r_url.replace('__bounds__', bounds)
-    roads = download_roads(bounds=bounds, roads_url=roads_url)
+    shadows = r.get(shadows_key)
 
     intersections: List[LineString] = []
     all_roads: List[LineString] = []
@@ -116,7 +116,7 @@ def compute_road_shadow_overlap(shadow_geojson, bounds) -> RoadsShadowOverlap:
         l = LineString(coordinates = line_feature['geometry']['cooridnates'])
         all_roads.append(l)
 
-    for shadow_feature in shadow_geojson['features']:
+    for shadow_feature in shadows['features']:
         s = Polygon(shadow_feature['geometry']['coordinates'])
         all_shadows.append(s)
 
