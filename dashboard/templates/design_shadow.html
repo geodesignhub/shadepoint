@@ -79,6 +79,12 @@
             'type': 'geojson',
             'data': { "type": "FeatureCollection", "features": [] }
         });
+        map.addSource('bike_pedestrian_roads', {
+            // GeoJSON Data source used in vector tiles, documented at
+            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+            'type': 'geojson',
+            'data':{"type": "FeatureCollection","features": []}
+        });
         map.addLayer({
             'id': 'buildings-extrusion',
             'type': 'fill-extrusion',
@@ -111,6 +117,16 @@
             }
         });
 
+        map.addLayer({
+            'id': 'bike_pedestrian_roads',
+            'type': 'fill',
+            'source': 'bike_pedestrian_roads',
+            'layout': {},
+            'paint': {
+                'fill-color': '#422518',
+                'fill-opacity': 0.8
+            }
+        });
         map.addControl(
             new maplibregl.NavigationControl({
                 visualizePitch: true,
@@ -141,6 +157,25 @@
 
             });
     }
+    
+    function get_downloaded_roads(roads_url) {
+
+fetch(roads_url)
+    .then((response) => {
+        return response.json();
+    })
+    .then((roads_data) => {
+        // let spinner_cont = document.getElementById('spinner');
+        // spinner_cont.classList.add('d-none');
+
+        let roads_to_render = roads_data;
+        map.getSource('bike_pedestrian_roads').setData(roads_to_render);
+    }).catch((error) => {
+        
+        console.log(error);
+        
+    });
+}
     function update_date_time() {
         let new_url = new URL(window.location.href);
 
@@ -171,6 +206,19 @@
                 get_building_shadow(shadow_download_url);
             }
         }, false);
+        
+        source.addEventListener('roads_key', function(event) {
+            var data = JSON.parse(event.data);
+            // do what you want with this data
+            let roads_key = data['roads_key'];
+            let session_id = roads_key.split(':')[0]
+            if (session_id === room) {
+                // The message is for the current sesion, download the data...
+                let roads_download_url = window.location.origin + '/get_downloaded_roads?shadow_key=' + roads_key;
+                get_downloaded_roads(roads_download_url);
+            }
+        }, false);
+
 
     });
 </script>

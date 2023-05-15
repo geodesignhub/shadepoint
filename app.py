@@ -8,7 +8,7 @@ from dataclasses import asdict
 from dacite import from_dict
 from typing import List
 from geojson import Feature, FeatureCollection, Polygon, LineString
-from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, ShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse
+from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, ShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest
 import arrow
 import uuid
 import utils
@@ -17,7 +17,7 @@ import os
 import geojson
 from dotenv import load_dotenv, find_dotenv
 from dashboard import create_app
-from notifications_helper import notify_shadow_complete, shadow_generation_failure
+from notifications_helper import notify_shadow_complete, shadow_generation_failure, notify_roads_download_complete, notify_roads_download_failure
 
 from rq import Queue
 from worker import conn
@@ -47,6 +47,39 @@ def get_diagram_shadow():
 		shadow = json.loads(s)
 	else: 
 		shadow = {}
+
+	return Response(shadow, status=200, mimetype='application/json')
+	
+
+@app.route('/get_downloaded_roads', methods = ['GET'])
+def get_downloaded_roads():
+	roads_key = request.args.get('roads_key', '0')	
+	roads_session_exists = redis.exists(roads_key)
+	if roads_session_exists: 
+		roads_data_key = redis.get(roads_key)	
+		r_raw = redis.get(roads_data_key)	
+		
+		roads = json.loads(r_raw.decode('utf-8'))
+	else: 
+		roads = {}
+		
+	# TODO: Kick off compute_road_shadow_overlap and use the same roads_key
+
+	return Response(json.dumps(roads), status=200, mimetype='application/json')
+	
+
+@app.route('/get_shadow_roads_stats', methods = ['GET'])
+def generate_shadow_road_stats():
+	shadow_key = request.args.get('shadow_key', '0')	
+	shadow_exists = redis.exists(shadow_key)
+	if shadow_exists: 
+		s = redis.get(shadow_key)	
+		shadow = json.loads(s)
+	else: 
+		shadow = {}
+
+
+	# intersection
 
 	return Response(shadow, status=200, mimetype='application/json')
 	
@@ -142,7 +175,8 @@ def generate_design_shadow():
 		design_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
 
 		worker_data = ShadowGenerationRequest(geojson = design_geojson.geojson, session_id = str(session_id), request_date_time = shadow_date_time)
-		result = q.enqueue(utils.compute_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = str(session_id) + ":"+shadow_date_time)
+
+		result = q.enqueue(utils.compute_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = str(session_id) + ":"+ shadow_date_time)
 
 		try:
 			assert b.status_code == 200
@@ -254,7 +288,7 @@ def generate_diagram_shadow():
 		diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
 
 		worker_data = ShadowGenerationRequest(geojson = diagram_geojson.geojson, session_id = str(session_id), request_date_time = shadow_date_time)
-		result = q.enqueue(utils.compute_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = str(session_id) + ":"+shadow_date_time)
+		result = q.enqueue(utils.compute_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = str(session_id) + ":"+ shadow_date_time)
 
 		try:
 			assert b.status_code == 200
@@ -265,6 +299,12 @@ def generate_diagram_shadow():
 		bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())			
 		project_data = GeodesignhubProjectData(systems=all_systems ,bounds=bounds)		
 		
+		r_url = os.getenv("ROADS_URL", None)
+		# download the roads 
+		if r_url:			
+			roads_download_job = RoadsDownloadRequest(bounds= bounds.bounds,  session_id = str(session_id), request_date_time=shadow_date_time,roads_url=r_url)
+			roads_download_result = q.enqueue(utils.download_roads, asdict(roads_download_job), on_success= notify_roads_download_complete, on_failure = notify_roads_download_failure, job_id = str(session_id) + ":"+ shadow_date_time +":roads")
+
 		maptiler_key = os.getenv('maptiler_key', '00000000000000')
 		success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id))
 		

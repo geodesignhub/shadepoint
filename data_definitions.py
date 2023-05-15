@@ -85,3 +85,17 @@ class ShadowGenerationRequest:
     geojson: dict
     session_id: str
     request_date_time: str
+    
+@dataclass
+class RoadsDownloadRequest:
+    bounds: str
+    session_id: str
+    request_date_time: str
+    roads_url: str
+
+
+@dataclass
+class RoadsShadowOverlap: 
+    total_roads_kms: str
+    shadow_kms: str
+    

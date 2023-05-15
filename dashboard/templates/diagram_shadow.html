@@ -79,6 +79,12 @@
             'type': 'geojson',
             'data':{"type": "FeatureCollection","features": []}
         });
+        map.addSource('bike_pedestrian_roads', {
+            // GeoJSON Data source used in vector tiles, documented at
+            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+            'type': 'geojson',
+            'data':{"type": "FeatureCollection","features": []}
+        });
         map.addLayer({
             'id': 'buildings-extrusion',
             'type': 'fill-extrusion',
@@ -110,6 +116,19 @@
                 'fill-opacity': 0.4
             }
         });
+        map.addLayer({
+            'id': 'bike_pedestrian_roads',
+            'type': 'line',
+            'source': 'bike_pedestrian_roads',
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round'
+                },
+            'paint': {
+                'line-color': '#422518',
+                'line-width': 3
+                }
+        });
     });
 
     // Callback from server for sending messages
@@ -127,6 +146,25 @@
 
                 let shadows_to_render = shadow_data;
                 map.getSource('building_shadows').setData(shadows_to_render);
+            }).catch((error) => {
+                
+                console.log(error);
+                
+            });
+    }
+
+    function get_downloaded_roads(roads_url) {
+
+        fetch(roads_url)
+            .then((response) => {
+                return response.json();
+            })
+            .then((roads_data) => {
+                // let spinner_cont = document.getElementById('spinner');
+                // spinner_cont.classList.add('d-none');
+
+                let roads_to_render = roads_data;
+                map.getSource('bike_pedestrian_roads').setData(roads_to_render);
             }).catch((error) => {
                 
                 console.log(error);
@@ -162,6 +200,18 @@
                 // The message is for the current sesion, download the data...
                 let shadow_download_url = window.location.origin + '/generated_diagram_shadow?shadow_key=' + shadow_id_key;
                 get_building_shadow(shadow_download_url);
+            }
+        }, false);
+        
+        source.addEventListener('roads_download_success', function(event) {
+            var data = JSON.parse(event.data);
+            // do what you want with this data
+            let roads_key = data['roads_key'];
+            let session_id = roads_key.split(':')[0]
+            if (session_id === room) {
+                // The message is for the current sesion, download the data...
+                let roads_download_url = window.location.origin + '/get_downloaded_roads?roads_key=' + roads_key;
+                get_downloaded_roads(roads_download_url);
             }
         }, false);
 
