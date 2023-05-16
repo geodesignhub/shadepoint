@@ -144,6 +144,14 @@
                 'line-width': 3
                 }
         });
+        
+        map.addControl(
+            new maplibregl.NavigationControl({
+                visualizePitch: true,
+                showZoom: true,
+                showCompass: true
+            })
+        );
     });
 
     

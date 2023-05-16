@@ -8,7 +8,7 @@ from dataclasses import asdict
 from dacite import from_dict
 from typing import List
 from geojson import Feature, FeatureCollection, Polygon, LineString
-from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, ShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest, ShadowsRoadsIntersectionRequest
+from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, ShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest, ShadowsRoadsIntersectionRequest, RoadsShadowOverlap
 import arrow
 import uuid
 import utils
@@ -89,11 +89,9 @@ def generate_shadow_road_stats():
 		s = redis.get(roads_shadow_stats_key)	
 		shadow_stats = json.loads(s)
 	else: 
-		shadow_stats = {}
+		default_shadow =  RoadsShadowOverlap(total_roads_kms=0.0, shadowed_kms=0.0, job_id = '0000')
+		shadow_stats = asdict(default_shadow)
 
-
-	# intersection
-	print(shadow_stats)
 
 	return Response(json.dumps(shadow_stats), status=200, mimetype='application/json')
 	

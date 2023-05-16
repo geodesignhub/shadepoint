@@ -27,6 +27,22 @@
             <div id="map"></div>
         </div>
     </div>
+    <div id="shadow_stats" class="row d-none">
+        <div class="col-md-6">
+            <h4>
+                <span id='total_roads'></span>
+                <small class="text-muted">Total Roads (meters)</small>
+            </h4>            
+        </div>
+        <div class="col-md-6">
+            <h4>
+                <span id='shadowed_roads'></span>
+                <small class="text-muted">Shadowed Roads (meters)</small>
+            </h4>            
+
+        </div>
+    </div>
+    <br>
     <br>
     {% else %}
     <div class="row">
@@ -158,22 +174,43 @@
     
     function get_downloaded_roads(roads_url) {
 
-fetch(roads_url)
-    .then((response) => {
-        return response.json();
-    })
-    .then((roads_data) => {
-        // let spinner_cont = document.getElementById('spinner');
-        // spinner_cont.classList.add('d-none');
+        fetch(roads_url)
+            .then((response) => {
+                return response.json();
+            })
+            .then((roads_data) => {
+                // let spinner_cont = document.getElementById('spinner');
+                // spinner_cont.classList.add('d-none');
 
-        let roads_to_render = roads_data;
-        map.getSource('bike_pedestrian_roads').setData(roads_to_render);
-    }).catch((error) => {
-        
-        console.log(error);
-        
-    });
-}
+                let roads_to_render = roads_data;
+                map.getSource('bike_pedestrian_roads').setData(roads_to_render);
+            }).catch((error) => {
+                
+                console.log(error);
+                
+            });
+        }
+    function get_road_shadow_stats(roads_shadow_stats_url) {
+
+        fetch(roads_shadow_stats_url)
+            .then((response) => {
+                return response.json();
+            })
+            .then((roads_shadow_data) => {                
+                let shadow_stats_cont = document.getElementById('shadow_stats');
+                shadow_stats_cont.classList.remove('d-none');                
+                let total_roads = document.getElementById('total_roads');
+                total_roads.innerHTML = roads_shadow_data['total_roads_kms'];
+                
+                let shadowed_roads = document.getElementById('shadowed_roads');
+                shadowed_roads.innerHTML = roads_shadow_data['shadowed_kms']
+                
+            }).catch((error) => {
+                
+                console.log(error);
+                
+            });
+    }
     function update_date_time() {
         let new_url = new URL(window.location.href);
 
