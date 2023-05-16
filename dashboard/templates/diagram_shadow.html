@@ -27,6 +27,21 @@
             <div id="map"></div>
         </div>
     </div>
+    <div id="shadow_stats" class="row d-none">
+        <div class="col-md-6">
+            <h4>
+                <span id='total_roads'></span>
+                <small class="text-muted">Total Roads (meters)</small>
+            </h4>            
+        </div>
+        <div class="col-md-6">
+            <h4>
+                <span id='shadowed_roads'></span>
+                <small class="text-muted">Shadowed Roads (meters)</small>
+            </h4>            
+
+        </div>
+    </div>
     <br>
     {% else %}
     <div class="row">
@@ -131,9 +146,7 @@
         });
     });
 
-    // Callback from server for sending messages
-    var socket = 0;
-
+    
     function get_building_shadow(shadow_download_url) {
 
         fetch(shadow_download_url)
@@ -171,17 +184,36 @@
                 
             });
     }
+
+    function get_road_shadow_stats(roads_shadow_stats_url) {
+
+        fetch(roads_shadow_stats_url)
+            .then((response) => {
+                return response.json();
+            })
+            .then((roads_shadow_data) => {                
+                let shadow_stats_cont = document.getElementById('shadow_stats');
+                shadow_stats_cont.classList.remove('d-none');                
+                let total_roads = document.getElementById('total_roads');
+                total_roads.innerHTML = roads_shadow_data['total_roads_kms'];
+                
+                let shadowed_roads = document.getElementById('shadowed_roads');
+                shadowed_roads.innerHTML = roads_shadow_data['shadowed_kms']
+                
+            }).catch((error) => {
+                
+                console.log(error);
+                
+            });
+    }
     function update_date_time() {
-        let new_url = new URL(window.location.href);
-        
+        let new_url = new URL(window.location.href);        
 
         let date_time = new_url.searchParams.delete('date_time');
-
         const dateControl = document.querySelector('input[type="datetime-local"]');
         let new_date = dateControl.value;
         if (new_date) {
-            new_url.searchParams.append('new_url', new_date);
-            socket.disconnect();
+            new_url.searchParams.append('date_time', new_date);            
             window.location.href = new_url;
         }
         return true;
@@ -212,6 +244,18 @@
                 // The message is for the current sesion, download the data...
                 let roads_download_url = window.location.origin + '/get_downloaded_roads?roads_key=' + roads_key;
                 get_downloaded_roads(roads_download_url);
+            }
+        }, false);
+        
+        source.addEventListener('roads_shadow_complete', function(event) {
+            var data = JSON.parse(event.data);
+            // do what you want with this data
+            let roads_shadow_stats_key = data['roads_shadow_stats_key'];
+            let session_id = roads_shadow_stats_key.split(':')[0]
+            if (session_id === room) {
+                // The message is for the current sesion, download the data...
+                let roads_shadow_stats_url = window.location.origin + '/get_shadow_roads_stats?roads_shadow_stats_key=' + roads_shadow_stats_key;
+                get_road_shadow_stats(roads_shadow_stats_url);
             }
         }, false);
 

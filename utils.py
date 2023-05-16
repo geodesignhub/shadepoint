@@ -2,16 +2,19 @@
 import arrow
 import time
 import pandas as pd
-from data_definitions import ShadowGenerationRequest, RoadsDownloadRequest, RoadsShadowOverlap,RoadsShadowsData
+from data_definitions import ShadowGenerationRequest, RoadsDownloadRequest, RoadsShadowOverlap,ShadowsRoadsIntersectionRequest
 from dacite import from_dict
-
+from pyproj import Geod
 import geopandas as gpd
 import pybdshadow
 from shapely.geometry import Polygon, LineString
+from shapely.geometry import shape
+from shapely.geometry.polygon import Polygon
 import json
 from typing import List
 import requests
 import numpy as np
+from dataclasses import asdict
 from conn import get_redis
 from shapely.prepared import prep
 from shapely import STRtree
@@ -99,41 +102,55 @@ def compute_shadow(geojson_session_date_time: dict):
     time.sleep(7)
     print("Job Completed")
     
-def compute_road_shadow_overlap(roads_shadows_data:RoadsShadowsData) -> RoadsShadowOverlap: 
-    _roads_shadows_data = from_dict(data_class = RoadsShadowsData, data = roads_shadows_data)
-    roads = _roads_shadows_data.roads
-    shadows_key = _roads_shadows_data.shadows_key
-
-    shadows = r.get(shadows_key)
+def compute_road_shadow_overlap(roads_shadows_data:ShadowsRoadsIntersectionRequest) -> RoadsShadowOverlap: 
+    _roads_shadows_data = from_dict(data_class = ShadowsRoadsIntersectionRequest, data = roads_shadows_data)
+    roads_str = _roads_shadows_data.roads
+    shadows_str = _roads_shadows_data.shadows
+    job_id = _roads_shadows_data.job_id
+    geod = Geod(ellps="WGS84")
+    roads = json.loads(roads_str)    
+    processed_shadows = json.loads(shadows_str)
 
     intersections: List[LineString] = []
     all_roads: List[LineString] = []
     all_shadows: List[Polygon] = []
+
+    total_length = 0
+    shadowed_kms = 0
     
     for line_feature in roads['features']:
+        l = LineString(coordinates = line_feature['geometry']['coordinates'])
+        all_roads.append(l)        
+        segment_length = geod.geometry_length(l)
+
+        print("Segment Length {segment_length:.3f}".format(segment_length= segment_length))
+        total_length += segment_length
 
 
-        l = LineString(coordinates = line_feature['geometry']['cooridnates'])
-        all_roads.append(l)
-
-    for shadow_feature in shadows['features']:
-        s = Polygon(shadow_feature['geometry']['coordinates'])
+    for shadow_feature in processed_shadows['features']:       
+        
+        s: Polygon = shape(shadow_feature['geometry'])
         all_shadows.append(s)
 
     roads_tree = STRtree(all_roads)
 
     for current_s in all_shadows:
         relevant_roads = [all_roads[idx] for idx in roads_tree.query(current_s, predicate="intersects")]
-        print(relevant_roads)
 
         for relevant_road in relevant_roads:
-            intersection = relevant_road.intersects(current_s)
+            # line_buffered = relevant_road.buffer(0.0001)
+            intersection = relevant_road.intersection(current_s)
+            intersection_length = geod.geometry_length(intersection)
+            
+            print("Intersection Length {intersection_length:.3f}".format(intersection_length= intersection_length))
+
             intersections.append(intersection)
+            shadowed_kms += intersection_length
 
-    print(intersections)
+    road_shadow_overlap = RoadsShadowOverlap(total_roads_kms=round(total_length,2), shadowed_kms=round(shadowed_kms,2), job_id = job_id)
 
-
-
-    # hits = filter(prepared_polygon.intersects, all_roads)
+    r.set(job_id, json.dumps(asdict(road_shadow_overlap)))
+    time.sleep(1)
+    print("Intersection Completed")
     
 

@@ -136,8 +136,6 @@
         );
     });
 
-    // Callback from server for sending messages
-    var socket = 0;
 
     function get_building_shadow(shadow_download_url) {
 
@@ -184,8 +182,7 @@ fetch(roads_url)
         const dateControl = document.querySelector('input[type="datetime-local"]');
         let new_date = dateControl.value;
         if (new_date) {
-            new_url.searchParams.append('new_url', new_date);
-            socket.disconnect();
+            new_url.searchParams.append('date_time', new_date);
             window.location.href = new_url;
         }
         return true;

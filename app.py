@@ -17,7 +17,7 @@ import os
 import geojson
 from dotenv import load_dotenv, find_dotenv
 from dashboard import create_app
-from notifications_helper import notify_shadow_complete, shadow_generation_failure, notify_roads_download_complete, notify_roads_download_failure
+from notifications_helper import notify_shadow_complete, shadow_generation_failure, notify_roads_download_complete, notify_roads_download_failure, notify_roads_shadow_intersection_complete, notify_roads_shadow_intersection_failure
 
 from rq import Queue
 from worker import conn
@@ -40,6 +40,7 @@ def home():
 
 @app.route('/generated_diagram_shadow', methods = ['GET'])
 def get_diagram_shadow():
+
 	shadow_key = request.args.get('shadow_key', '0')	
 	shadow_exists = redis.exists(shadow_key)
 	if shadow_exists: 
@@ -57,37 +58,44 @@ def get_downloaded_roads():
 	roads_session_exists = redis.exists(roads_key)
 	if roads_session_exists: 
 		roads_data_key = redis.get(roads_key)	
-		r_raw = redis.get(roads_data_key)	
-		
+		r_raw = redis.get(roads_data_key)			
 		roads = json.loads(r_raw.decode('utf-8'))
 	else: 
 		roads = {}
 		
 	# TODO: Kick off compute_road_shadow_overlap and use the same roads_key
-
+	
 	rds = json.dumps(roads)
-	shadow_roads_intersection_job = ShadowsRoadsIntersectionRequest(roads= rds, job_id = roads_key, shadows_key= roads_key)
-	roads_intersection_result = q.enqueue(utils.compute_road_shadow_overlap, asdict(roads_download_job), on_success= notify_roads_download_complete, on_failure = notify_roads_download_failure, job_id = str(session_id) + ":"+ shadow_date_time +":roads")
+	shadows_key = roads_key[:-6]
+	shadows_str = redis.get(shadows_key)
+	
+	job_id = roads_key.split(':')[0] + ':roads_shadow"'
+	shadows = json.loads(shadows_str.decode('utf-8'))
 
+	shadow_roads_intersection_job = ShadowsRoadsIntersectionRequest(roads= rds, job_id = job_id, shadows= shadows)
 
+	# print(shadow_roads_intersection_job)
+		
+	roads_intersection_result = q.enqueue(utils.compute_road_shadow_overlap, asdict(shadow_roads_intersection_job), on_success= notify_roads_shadow_intersection_complete, on_failure = notify_roads_shadow_intersection_failure, job_id = job_id )
 
 	return Response(rds, status=200, mimetype='application/json')
 	
 
 @app.route('/get_shadow_roads_stats', methods = ['GET'])
 def generate_shadow_road_stats():
-	shadow_key = request.args.get('shadow_key', '0')	
-	shadow_exists = redis.exists(shadow_key)
-	if shadow_exists: 
-		s = redis.get(shadow_key)	
-		shadow = json.loads(s)
+	roads_shadow_stats_key = request.args.get('roads_shadow_stats_key', '0')	
+	roads_shadow_stats_exists = redis.exists(roads_shadow_stats_key)
+	if roads_shadow_stats_exists: 
+		s = redis.get(roads_shadow_stats_key)	
+		shadow_stats = json.loads(s)
 	else: 
-		shadow = {}
+		shadow_stats = {}
 
 
 	# intersection
+	print(shadow_stats)
 
-	return Response(shadow, status=200, mimetype='application/json')
+	return Response(json.dumps(shadow_stats), status=200, mimetype='application/json')
 	
 
 @app.route('/design_shadow/', methods = ['GET'])
@@ -215,18 +223,16 @@ def generate_diagram_shadow():
 		error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
 		return Response(asdict(error_msg), status=400, mimetype='application/json')
 	try:
-		r_date_time = request.args.get('date_time', None)
+		r_date_time = request.args.get('date_time', None)		
 		if not r_date_time:
 			raise KeyError
 		else:
 			shadow_date_time = arrow.get(r_date_time).format('YYYY-MM-DDTHH:mm:ss')		
 	except KeyError as ke: 
 		shadow_date_time = arrow.now().format('YYYY-MM-DDTHH:mm:ss')
-
-	if projectid and diagramid and apitoken:
-		
-		session_id = uuid.uuid4()
-		
+	
+	if projectid and diagramid and apitoken:		
+		session_id = uuid.uuid4()		
 		# Initialize the API
 		myAPIHelper = GeodesignHub.GeodesignHubClient(url = config.apisettings['serviceurl'], project_id=projectid, token=apitoken)
 		# Download Data		
