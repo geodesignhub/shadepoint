@@ -231,14 +231,14 @@
         
         const room = diagram_detail.session_id;
         var source = new EventSource("{{ url_for('sse.stream') }}");
-        source.addEventListener('diagram_shadow_success', function(event) {
+        source.addEventListener('shadow_generation_success', function(event) {
             var data = JSON.parse(event.data);
             // do what you want with this data
             let shadow_id_key = data['shadow_key'];
             let session_id = shadow_id_key.split(':')[0]
             if (session_id === room) {
                 // The message is for the current sesion, download the data...
-                let shadow_download_url = window.location.origin + '/generated_diagram_shadow?shadow_key=' + shadow_id_key;
+                let shadow_download_url = window.location.origin + '/generated_shadow?shadow_key=' + shadow_id_key;
                 get_building_shadow(shadow_download_url);
             }
         }, false);
