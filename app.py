@@ -8,7 +8,7 @@ from dataclasses import asdict
 from dacite import from_dict
 from typing import List
 from geojson import Feature, FeatureCollection, Polygon, LineString
-from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, ShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest, ShadowsRoadsIntersectionRequest, RoadsShadowOverlap
+from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, ShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest, ShadowsRoadsIntersectionRequest, RoadsShadowOverlap,TreesDownloadRequest, GeodesignhubProjectCenter
 import arrow
 import uuid
 import utils
@@ -17,7 +17,7 @@ import os
 import geojson
 from dotenv import load_dotenv, find_dotenv
 from dashboard import create_app
-from notifications_helper import notify_shadow_complete, shadow_generation_failure, notify_roads_download_complete, notify_roads_download_failure, notify_roads_shadow_intersection_complete, notify_roads_shadow_intersection_failure
+from notifications_helper import notify_shadow_complete, shadow_generation_failure, notify_roads_download_complete, notify_roads_download_failure, notify_roads_shadow_intersection_complete, notify_roads_shadow_intersection_failure, notify_trees_download_complete, notify_trees_download_failure
 
 from rq import Queue
 from worker import conn
@@ -74,11 +74,38 @@ def get_downloaded_roads():
 
 	shadow_roads_intersection_job = ShadowsRoadsIntersectionRequest(roads= rds, job_id = job_id, shadows= shadows)
 
-	# print(shadow_roads_intersection_job)
-		
+	# print(shadow_roads_intersection_job)		
 	roads_intersection_result = q.enqueue(utils.compute_road_shadow_overlap, asdict(shadow_roads_intersection_job), on_success= notify_roads_shadow_intersection_complete, on_failure = notify_roads_shadow_intersection_failure, job_id = job_id )
 
 	return Response(rds, status=200, mimetype='application/json')
+	
+@app.route('/get_downloaded_trees', methods = ['GET'])
+def get_downloaded_trees():
+	trees_key = request.args.get('trees_key', '0')	
+	trees_session_exists = redis.exists(trees_key)
+	if trees_session_exists: 
+		trees_data_key = redis.get(trees_key)	
+		r_raw = redis.get(trees_data_key)			
+		trees = json.loads(r_raw.decode('utf-8'))
+	else: 
+		trees = {}
+		
+	# TODO: Kick off compute_road_shadow_overlap and use the same roads_key
+	
+	trs = json.dumps(trees)
+	print('here')
+	# shadows_key = trees_key[:-6]
+	# shadows_str = redis.get(shadows_key)
+	
+	# job_id = trees_key.split(':')[0] + ':trees_shadow"'
+	# shadows = json.loads(shadows_str.decode('utf-8'))
+
+	# shadow_roads_intersection_job = ShadowsRoadsIntersectionRequest(roads= rds, job_id = job_id, shadows= shadows)
+
+	# # print(shadow_roads_intersection_job)		
+	# roads_intersection_result = q.enqueue(utils.compute_road_shadow_overlap, asdict(shadow_roads_intersection_job), on_success= notify_roads_shadow_intersection_complete, on_failure = notify_roads_shadow_intersection_failure, job_id = job_id )
+
+	return Response(trs, status=200, mimetype='application/json')
 	
 
 @app.route('/get_shadow_roads_stats', methods = ['GET'])
@@ -91,7 +118,6 @@ def generate_shadow_road_stats():
 	else: 
 		default_shadow =  RoadsShadowOverlap(total_roads_kms=0.0, shadowed_kms=0.0, job_id = '0000')
 		shadow_stats = asdict(default_shadow)
-
 
 	return Response(json.dumps(shadow_stats), status=200, mimetype='application/json')
 	
@@ -125,6 +151,7 @@ def generate_design_shadow():
 		# Download Data		
 		s = myAPIHelper.get_all_systems()
 		b = myAPIHelper.get_project_bounds()
+		c = myAPIHelper.get_project_center()
 		r = myAPIHelper.get_single_synthesis(teamid = int(cteamid), synthesisid = synthesisid)
 		
 		# Check responses / data
@@ -196,8 +223,9 @@ def generate_design_shadow():
 			error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
 			return Response(asdict(error_msg), status=400, mimetype='application/json')
 
+		center = from_dict(data_class=GeodesignhubProjectCenter,data = c.json())
 		bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())			
-		project_data = GeodesignhubProjectData(systems=all_systems ,bounds=bounds)		
+		project_data = GeodesignhubProjectData(systems=all_systems , bounds=bounds, center=center)
 		
 		maptiler_key = os.getenv('maptiler_key', '00000000000000')
 		success_response = DesignShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",design_geojson= design_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id))
@@ -236,6 +264,7 @@ def generate_diagram_shadow():
 		# Download Data		
 		s = myAPIHelper.get_all_systems()
 		b = myAPIHelper.get_project_bounds()
+		c = myAPIHelper.get_project_center()
 		diagram_id = int(diagramid)
 		d = myAPIHelper.get_single_diagram(diagid = diagram_id)
 		
@@ -267,7 +296,7 @@ def generate_diagram_shadow():
 			_default_building_data = _diagram_details_raw['building_data']
 
 		_diagram_details_feature_collection = _diagram_details_raw['geojson']
-		
+
 		_all_features: List[Feature] = []
 		for f in _diagram_details_feature_collection['features']:			
 			_f_props = f['properties']
@@ -305,15 +334,20 @@ def generate_diagram_shadow():
 		except AssertionError as ae:
 			error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
 			return Response(asdict(error_msg), status=400, mimetype='application/json')
-
+		center = from_dict(data_class=GeodesignhubProjectCenter,data = c.json())
 		bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())			
-		project_data = GeodesignhubProjectData(systems=all_systems ,bounds=bounds)		
+		project_data = GeodesignhubProjectData(systems=all_systems ,bounds=bounds, center=center)		
 		
 		r_url = os.getenv("ROADS_URL", None)
 		# download the roads 
 		if r_url:			
 			roads_download_job = RoadsDownloadRequest(bounds= bounds.bounds,  session_id = str(session_id), request_date_time=shadow_date_time,roads_url=r_url)
 			roads_download_result = q.enqueue(utils.download_roads, asdict(roads_download_job), on_success= notify_roads_download_complete, on_failure = notify_roads_download_failure, job_id = str(session_id) + ":"+ shadow_date_time +":roads")
+		t_url = os.getenv("TREES_URL", None)
+		# download the roads 
+		if t_url:			
+			trees_download_job = TreesDownloadRequest(bounds= bounds.bounds,  session_id = str(session_id), request_date_time=shadow_date_time,trees_url=t_url)
+			trees_download_result = q.enqueue(utils.download_trees, asdict(trees_download_job), on_success= notify_trees_download_complete, on_failure = notify_trees_download_failure, job_id = str(session_id) + ":"+ shadow_date_time +":trees")
 
 		maptiler_key = os.getenv('maptiler_key', '00000000000000')
 		success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id))

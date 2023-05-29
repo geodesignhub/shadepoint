@@ -14,14 +14,14 @@
     <br>
     <div class="row">
         <div class="col-md-12">
-            <div id = "spinner" class="spinner-border text-secondary" role="status">
-            <span class="visually-hidden">Loading...</span>
-          </div>
+            <div id="spinner" class="spinner-border text-secondary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
             <h3>Shadow Analysis <small class="text-muted"></small></h3>
             <div><label for="shadow_date_time">Select new (date and time):</label>
                 <input type="datetime-local" id="shadow_date_time" name="shadow_date_time">
                 <input type="submit" value="Update Shadows" onclick="return update_date_time();" />
-                
+
             </div>
             <br>
             <div id="map"></div>
@@ -32,13 +32,13 @@
             <h4>
                 <span id='total_roads'></span>
                 <small class="text-muted">Total Roads (meters)</small>
-            </h4>            
+            </h4>
         </div>
         <div class="col-md-6">
             <h4>
                 <span id='shadowed_roads'></span>
                 <small class="text-muted">Shadowed Roads (meters)</small>
-            </h4>            
+            </h4>
 
         </div>
     </div>
@@ -59,14 +59,18 @@
 
 {% if op['status'] == 1 %}
 <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
-
+<script type="text/javascript" src="https://unpkg.com/babylonjs@5.42.2/babylon.js"></script>
+<script type="text/javascript" src="https://unpkg.com/babylonjs-loaders@5.42.2/babylonjs.loaders.min.js"></script>
 
 <script type="text/javascript">
     const diagram_detail = {{op|safe}};
 
     const diagram_geojson = {{op["diagram_geojson"]["geojson"]|safe}};
-
     var bounds = diagram_detail['project_data']['bounds']['bounds'];
+    var center = diagram_detail['project_data']['center']['center'];
+    var map_center = center.split(',');
+    var map_center_lat = map_center[0];
+    var map_center_lng = map_center[1];
     var latLngs = bounds.split(',');
     var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
     var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
@@ -80,6 +84,40 @@
         zoom: 10 // starting zoom
     });
 
+    // World matrix parameters
+    var worldOrigin = [ map_center_lat,map_center_lng];
+    var worldAltitude = 0;
+
+    // Maplibre.js default coordinate system (no rotations)
+    // +x east, -y north, +z up
+    //var worldRotate = [0, 0, 0];
+
+    // Babylon.js default coordinate system
+    // +x east, +y up, +z north
+    var worldRotate = [Math.PI / 2, 0, 0];
+
+    // Calculate mercator coordinates and scale
+    var worldOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(
+        worldOrigin,
+        worldAltitude
+    );
+    const worldScale = worldOriginMercator.meterInMercatorCoordinateUnits();
+
+    // Calculate world matrix
+    var worldMatrix = BABYLON.Matrix.Compose(
+        new BABYLON.Vector3(worldScale, worldScale, worldScale),
+        BABYLON.Quaternion.FromEulerAngles(
+            worldRotate[0],
+            worldRotate[1],
+            worldRotate[2]
+        ),
+        new BABYLON.Vector3(
+            worldOriginMercator.x,
+            worldOriginMercator.y,
+            worldOriginMercator.z
+        )
+    );
+
 
     map.on('load', function () {
         map.addSource('buildings', {
@@ -92,13 +130,13 @@
             // GeoJSON Data source used in vector tiles, documented at
             // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
             'type': 'geojson',
-            'data':{"type": "FeatureCollection","features": []}
+            'data': { "type": "FeatureCollection", "features": [] }
         });
         map.addSource('bike_pedestrian_roads', {
             // GeoJSON Data source used in vector tiles, documented at
             // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
             'type': 'geojson',
-            'data':{"type": "FeatureCollection","features": []}
+            'data': { "type": "FeatureCollection", "features": [] }
         });
         map.addLayer({
             'id': 'buildings-extrusion',
@@ -138,23 +176,106 @@
             'layout': {
                 'line-join': 'round',
                 'line-cap': 'round'
-                },
+            },
             'paint': {
                 'line-color': '#422518',
                 'line-width': 3
-                }
+            }
         });
-        
+
         map.addControl(
             new maplibregl.NavigationControl({
                 visualizePitch: true,
                 showZoom: true,
                 showCompass: true
             })
-        );
-    });
+        );     
 
+    });
     
+        // configuration of the custom layer for a 3D model per the CustomLayerInterface
+        var customLayer = {
+            id: '3d-model',
+            type: 'custom',
+            renderingMode: '3d',
+            onAdd: function (map, gl) {
+                this.engine = new BABYLON.Engine(
+                    gl,
+                    true,
+                    {
+                        useHighPrecisionMatrix: true // Important to prevent jitter at mercator scale
+                    },
+                    true
+                );
+                this.scene = new BABYLON.Scene(this.engine);
+                this.scene.autoClear = false;
+                this.scene.detachControl();
+
+                this.scene.beforeRender = () => {
+                    this.engine.wipeCaches(true);
+                };
+
+                // create simple camera (will have its project matrix manually calculated)
+                this.camera = new BABYLON.Camera(
+                    'Camera',
+                    new BABYLON.Vector3(0, 0, 0),
+                    this.scene
+                );
+
+                // create simple light
+                const light = new BABYLON.HemisphericLight(
+                    'light1',
+                    new BABYLON.Vector3(0, 0, 100),
+                    this.scene
+                );
+                light.intensity = 0.7;
+
+                // Add debug axes viewer, positioned at origin, 10 meter axis lengths
+                new BABYLON.AxesViewer(this.scene, 10);
+
+                // load GLTF model in to the scene
+                BABYLON.SceneLoader.LoadAssetContainerAsync(
+                    'https://aerobridge-pro-datastore.ams3.digitaloceanspaces.com/WinTest/sprawl/fast_urban_tree.glb',
+                    '',
+                    this.scene
+                ).then((modelContainer) => {
+                    modelContainer.addAllToScene();
+
+                    const rootMesh = modelContainer.createRootMesh();
+
+                    // If using maplibre.js coordinate system (+z up)
+                    //rootMesh.rotation.x = Math.PI/2
+
+                    // Create a second mesh
+                    const rootMesh2 = rootMesh.clone();
+
+                    // Position in babylon.js coordinate system
+                    rootMesh2.position.x = 25; // +east, meters
+                    rootMesh2.position.z = 25; // +north, meters
+                });
+
+                this.map = map;
+            },
+            render: function (gl, matrix) {
+                const cameraMatrix = BABYLON.Matrix.FromArray(matrix);
+
+                // world-view-projection matrix
+                const wvpMatrix = worldMatrix.multiply(cameraMatrix);
+
+                this.camera.freezeProjectionMatrix(wvpMatrix);
+
+                this.scene.render(false);
+                this.map.triggerRepaint();
+            }
+        };
+        
+
+
+    map.on('style.load', function () {
+            map.addLayer(customLayer);
+        });
+
+
     function get_building_shadow(shadow_download_url) {
 
         fetch(shadow_download_url)
@@ -168,9 +289,9 @@
                 let shadows_to_render = shadow_data;
                 map.getSource('building_shadows').setData(shadows_to_render);
             }).catch((error) => {
-                
+
                 console.log(error);
-                
+
             });
     }
 
@@ -187,9 +308,28 @@
                 let roads_to_render = roads_data;
                 map.getSource('bike_pedestrian_roads').setData(roads_to_render);
             }).catch((error) => {
-                
+
                 console.log(error);
-                
+
+            });
+    }
+
+    function get_downloaded_trees(trees_url) {
+
+        fetch(trees_url)
+            .then((response) => {
+                return response.json();
+            })
+            .then((trees_data) => {
+                // let spinner_cont = document.getElementById('spinner');
+                // spinner_cont.classList.add('d-none');
+
+                let trees_to_render = trees_data;
+                console.log(trees_data);
+            }).catch((error) => {
+
+                console.log(error);
+
             });
     }
 
@@ -199,39 +339,39 @@
             .then((response) => {
                 return response.json();
             })
-            .then((roads_shadow_data) => {                
+            .then((roads_shadow_data) => {
                 let shadow_stats_cont = document.getElementById('shadow_stats');
-                shadow_stats_cont.classList.remove('d-none');                
+                shadow_stats_cont.classList.remove('d-none');
                 let total_roads = document.getElementById('total_roads');
                 total_roads.innerHTML = roads_shadow_data['total_roads_kms'];
-                
+
                 let shadowed_roads = document.getElementById('shadowed_roads');
                 shadowed_roads.innerHTML = roads_shadow_data['shadowed_kms']
-                
+
             }).catch((error) => {
-                
+
                 console.log(error);
-                
+
             });
     }
     function update_date_time() {
-        let new_url = new URL(window.location.href);        
+        let new_url = new URL(window.location.href);
 
         let date_time = new_url.searchParams.delete('date_time');
         const dateControl = document.querySelector('input[type="datetime-local"]');
         let new_date = dateControl.value;
         if (new_date) {
-            new_url.searchParams.append('date_time', new_date);            
+            new_url.searchParams.append('date_time', new_date);
             window.location.href = new_url;
         }
         return true;
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        
+
         const room = diagram_detail.session_id;
         var source = new EventSource("{{ url_for('sse.stream') }}");
-        source.addEventListener('diagram_shadow_success', function(event) {
+        source.addEventListener('diagram_shadow_success', function (event) {
             var data = JSON.parse(event.data);
             // do what you want with this data
             let shadow_id_key = data['shadow_key'];
@@ -242,8 +382,8 @@
                 get_building_shadow(shadow_download_url);
             }
         }, false);
-        
-        source.addEventListener('roads_download_success', function(event) {
+
+        source.addEventListener('roads_download_success', function (event) {
             var data = JSON.parse(event.data);
             // do what you want with this data
             let roads_key = data['roads_key'];
@@ -254,8 +394,21 @@
                 get_downloaded_roads(roads_download_url);
             }
         }, false);
-        
-        source.addEventListener('roads_shadow_complete', function(event) {
+
+
+        // source.addEventListener('trees_download_success', function (event) {
+        //     var data = JSON.parse(event.data);
+        //     // do what you want with this data
+        //     let trees_key = data['trees_key'];
+        //     let session_id = trees_key.split(':')[0]
+        //     if (session_id === room) {
+        //         // The message is for the current sesion, download the data...
+        //         let trees_download_url = window.location.origin + '/get_downloaded_trees?trees_key=' + trees_key;
+        //         get_downloaded_trees(trees_download_url);
+        //     }
+        // }, false);
+
+        source.addEventListener('roads_shadow_complete', function (event) {
             var data = JSON.parse(event.data);
             // do what you want with this data
             let roads_shadow_stats_key = data['roads_shadow_stats_key'];

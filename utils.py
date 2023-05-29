@@ -2,7 +2,7 @@
 import arrow
 import time
 import pandas as pd
-from data_definitions import ShadowGenerationRequest, RoadsDownloadRequest, RoadsShadowOverlap,ShadowsRoadsIntersectionRequest
+from data_definitions import ShadowGenerationRequest, RoadsDownloadRequest, RoadsShadowOverlap,ShadowsRoadsIntersectionRequest, TreesDownloadRequest
 from dacite import from_dict
 from pyproj import Geod
 import geopandas as gpd
@@ -64,6 +64,40 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
     return fc
 
 
+def download_trees(trees_download_request: TreesDownloadRequest):
+    _trees_download_request = from_dict(data_class = TreesDownloadRequest, data = trees_download_request)
+    bounds = _trees_download_request.bounds
+    trees_url =_trees_download_request.trees_url
+    session_trees_key = _trees_download_request.session_id +':' + _trees_download_request.request_date_time +':' +  'trees'
+    bounds_hash= hashlib.sha512(bounds.encode('utf-8')).hexdigest()
+    
+    '''A function to download roads GeoJSON from GDH data server for the given bounds,  '''
+    fc = {"type":"FeatureCollection","features":[]}
+    trees_storage_key = bounds_hash[:15] + ':trees'
+    
+    r.set(session_trees_key, trees_storage_key)
+    r.expire(session_trees_key, time =6000)
+    
+    if r.exists(trees_storage_key):
+        fc_str = r.get(trees_storage_key)
+        fc = json.loads(fc_str)
+
+    else:         
+        t_url = trees_url
+        download_request = requests.get(t_url)
+        
+        if download_request.status_code == 200:
+            fc = download_request.json()    
+            r.set(trees_storage_key, json.dumps(fc))
+        else: 
+            print("Error")
+            r.set(trees_storage_key, json.dumps({"type":"FeatureCollection", "features":[]}))
+        
+        r.expire(trees_storage_key, time = 60000)
+        
+    return fc
+
+
 def create_point_grid(geojson_feature):
     """ This function takes a policy polygon feature and generates a point grid """
     
@@ -92,6 +126,14 @@ def compute_shadow(geojson_session_date_time: dict):
     _diagramid_building_date_time = from_dict(data_class = ShadowGenerationRequest, data = geojson_session_date_time)
     
     _date_time = arrow.get(_diagramid_building_date_time.request_date_time).isoformat()
+
+    # Tree computations
+
+    trees_url = os.getenv("TREES_URL", None)
+    # download the roads 
+    if trees_url:			
+        pass
+
     
     buildings = gpd.GeoDataFrame.from_features(_diagramid_building_date_time.geojson['features'])
     _pd_date_time =pd.to_datetime(_date_time).tz_convert('UTC')    

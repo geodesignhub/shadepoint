@@ -42,3 +42,18 @@ def notify_roads_shadow_intersection_complete(job, connection, result, *args, **
         
 def notify_roads_shadow_intersection_failure(job, connection, type, value, traceback):
     print('Job with %s failed..'% str(job.id))
+
+def notify_trees_download_complete(job, connection, result, *args, **kwargs):
+    # send a message to the room / channel that the shadows is ready
+    
+    job_id = job.id  
+    app = create_app()      
+    with app.app_context():
+        sse.publish({"trees_key": job_id}, type='trees_download_success')
+
+    print('Job with id %s downloaded trees data successfully..'% str(job.id))
+
+        
+def notify_trees_download_failure(job, connection, type, value, traceback):
+    print('Job with %s failed..'% str(job.id))
+

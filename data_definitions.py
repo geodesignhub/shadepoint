@@ -54,13 +54,18 @@ class GeodesignhubSystem:
 
 @dataclass
 class GeodesignhubProjectBounds:
-    # Source: https://www.geodesignhub.com/api/#systems-api-systems-collection-get
+    
     bounds: str
+
+@dataclass
+class GeodesignhubProjectCenter:    
+    center: str
 
 @dataclass
 class GeodesignhubProjectData:
     systems: List[GeodesignhubSystem]
     bounds: GeodesignhubProjectBounds
+    center: GeodesignhubProjectCenter
 
 @dataclass
 class DiagramShadowSuccessResponse:
@@ -92,6 +97,14 @@ class RoadsDownloadRequest:
     session_id: str
     request_date_time: str
     roads_url: str
+
+@dataclass
+class TreesDownloadRequest:
+    bounds: str
+    session_id: str
+    request_date_time: str
+    trees_url: str
+
 
 @dataclass
 class ShadowsRoadsIntersectionRequest:

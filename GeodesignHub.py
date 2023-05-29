@@ -1,6 +1,6 @@
 import requests, json
 
-# Version: 1.2.6
+# Version: 1.2.11
 
 class GeodesignHubClient():
 	'''
@@ -9,7 +9,7 @@ class GeodesignHubClient():
 
 	'''
 
-	def __init__(self, url:str, token:str, project_id:str):
+	def __init__(self,token:str, url:str =None, project_id:str=None):
 		'''
 		Declare your project id, token and the url (optional). 
 		'''
@@ -27,6 +27,13 @@ class GeodesignHubClient():
 	def get_all_systems(self):
 		''' This method gets all systems for a particular project.  '''
 		securl = self.securl+ 'projects'+ '/' + self.project_id + '/' +'systems' + '/'
+		headers = {'Authorization': 'Token '+ self.token}
+		r = self.session.get(securl, headers=headers)
+		return r
+	
+	def get_project_center(self):
+		''' This method gets the center as lat,lng for a particular project.  '''
+		securl = self.securl+ 'projects'+ '/' + self.project_id + '/' +'center' + '/'
 		headers = {'Authorization': 'Token '+ self.token}
 		r = self.session.get(securl, headers=headers)
 		return r
@@ -129,7 +136,7 @@ class GeodesignHubClient():
 	def post_as_diagram(self, geoms, projectorpolicy:str, featuretype:str, description:str, sysid:str, fundingtype:str):
 		''' Create a self.session object with correct headers and creds. '''
 		securl = self.securl+ 'projects'+ '/' + self.project_id + '/' +'systems'+'/'+ str(sysid) + '/'+ 'add' +'/' + projectorpolicy +'/'
-		headers = {'Authorization': 'Token '+ self.token, 'content-type': 'application/json'}
+		headers = {'Authorization': 'Token '+ self.token, 'Content-Type': 'application/json'}
 		postdata = {'geometry':geoms, 'description':description, 'featuretype':featuretype, 'fundingtype':fundingtype}
 		r = self.session.post(securl, headers= headers, data = json.dumps(postdata))
 		return r
@@ -163,7 +170,7 @@ class GeodesignHubClient():
 		if username:
 			securl += username +'/'
 		
-		headers = {'Authorization': 'Token '+ self.token, 'content-type': 'application/json'}
+		headers = {'Authorization': 'Token '+ self.token, 'Content-Type': 'application/json'}
 
 		r = self.session.post(securl, headers= headers, data = json.dumps(geoms))
 		return r
@@ -173,7 +180,7 @@ class GeodesignHubClient():
 		securl = self.securl+ 'projects'+ '/' + self.project_id + '/' +'systems'+'/'+ str(sysid) + '/i/map/json/'
 		if username:
 			securl += username +'/'
-		headers = {'Authorization': 'Token '+ self.token, 'content-type': 'application/json'}
+		headers = {'Authorization': 'Token '+ self.token, 'Content-Type': 'application/json'}
 		r = self.session.post(securl, headers= headers, data = json.dumps(geoms))
 		return r
 
@@ -189,7 +196,7 @@ class GeodesignHubClient():
 	def post_gdservice_JSON(self, geometry, jobid:str):
 		''' Create a self.session object with correct headers and creds. '''
 		securl = self.securl+ 'gdservices/callback/'
-		headers = {'Authorization': 'Token '+ self.token, 'content-type': 'application/json'}
+		headers = {'Authorization': 'Token '+ self.token, 'Content-Type': 'application/json'}
 		data = {"geometry": geometry, "jobid": jobid}
 		r = self.session.post(securl, headers= headers, data = json.dumps(data))
 		return r
@@ -201,5 +208,14 @@ class GeodesignHubClient():
 			securl += username +'/'
 		headers = {'Authorization': 'Token '+ self.token}
 		r = self.session.post(securl, headers= headers, files = {'geoms.gbf':geoms})
+		return r
+
+	def create_new_project(self, project_create_payload):
+		
+		''' Create a self.session object with correct headers and creds. '''
+		securl = self.securl+ 'projects/create/'
+		
+		headers = {'Authorization': 'Token '+ self.token,'Content-Type': 'application/json'}
+		r = self.session.post(securl, headers= headers, data = json.dumps(project_create_payload))
 		return r
 
