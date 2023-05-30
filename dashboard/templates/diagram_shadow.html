@@ -63,9 +63,9 @@
 <script type="text/javascript" src="https://unpkg.com/babylonjs-loaders@5.42.2/babylonjs.loaders.min.js"></script>
 
 <script type="text/javascript">
-    const diagram_detail = {{op|safe}};
+    const diagram_detail = {{ op| safe}};
 
-    const diagram_geojson = {{op["diagram_geojson"]["geojson"]|safe}};
+    const diagram_geojson = {{ op["diagram_geojson"]["geojson"]| safe}};
     var bounds = diagram_detail['project_data']['bounds']['bounds'];
     var center = diagram_detail['project_data']['center']['center'];
     var map_center = center.split(',');
@@ -85,39 +85,8 @@
     });
 
     // World matrix parameters
-    var worldOrigin = [ map_center_lat,map_center_lng];
-    var worldAltitude = 0;
-
-    // Maplibre.js default coordinate system (no rotations)
-    // +x east, -y north, +z up
-    //var worldRotate = [0, 0, 0];
-
-    // Babylon.js default coordinate system
-    // +x east, +y up, +z north
-    var worldRotate = [Math.PI / 2, 0, 0];
-
-    // Calculate mercator coordinates and scale
-    var worldOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(
-        worldOrigin,
-        worldAltitude
-    );
-    const worldScale = worldOriginMercator.meterInMercatorCoordinateUnits();
-
-    // Calculate world matrix
-    var worldMatrix = BABYLON.Matrix.Compose(
-        new BABYLON.Vector3(worldScale, worldScale, worldScale),
-        BABYLON.Quaternion.FromEulerAngles(
-            worldRotate[0],
-            worldRotate[1],
-            worldRotate[2]
-        ),
-        new BABYLON.Vector3(
-            worldOriginMercator.x,
-            worldOriginMercator.y,
-            worldOriginMercator.z
-        )
-    );
-
+    const worldOrigin = [map_center_lat, map_center_lng];
+    const tree_glb = 'https://aerobridge-pro-datastore.ams3.digitaloceanspaces.com/WinTest/sprawl/fast_urban_tree.glb';
 
     map.on('load', function () {
         map.addSource('buildings', {
@@ -189,91 +158,124 @@
                 showZoom: true,
                 showCompass: true
             })
-        );     
+        );
 
     });
-    
-        // configuration of the custom layer for a 3D model per the CustomLayerInterface
-        var customLayer = {
-            id: '3d-model',
-            type: 'custom',
-            renderingMode: '3d',
-            onAdd: function (map, gl) {
-                this.engine = new BABYLON.Engine(
-                    gl,
-                    true,
-                    {
-                        useHighPrecisionMatrix: true // Important to prevent jitter at mercator scale
-                    },
-                    true
-                );
-                this.scene = new BABYLON.Scene(this.engine);
-                this.scene.autoClear = false;
-                this.scene.detachControl();
 
-                this.scene.beforeRender = () => {
-                    this.engine.wipeCaches(true);
-                };
+    class AddMapCustomLayer {
 
-                // create simple camera (will have its project matrix manually calculated)
-                this.camera = new BABYLON.Camera(
-                    'Camera',
-                    new BABYLON.Vector3(0, 0, 0),
-                    this.scene
-                );
-
-                // create simple light
-                const light = new BABYLON.HemisphericLight(
-                    'light1',
-                    new BABYLON.Vector3(0, 0, 100),
-                    this.scene
-                );
-                light.intensity = 0.7;
-
-                // Add debug axes viewer, positioned at origin, 10 meter axis lengths
-                new BABYLON.AxesViewer(this.scene, 10);
-
-                // load GLTF model in to the scene
-                BABYLON.SceneLoader.LoadAssetContainerAsync(
-                    'https://aerobridge-pro-datastore.ams3.digitaloceanspaces.com/WinTest/sprawl/fast_urban_tree.glb',
-                    '',
-                    this.scene
-                ).then((modelContainer) => {
-                    modelContainer.addAllToScene();
-
-                    const rootMesh = modelContainer.createRootMesh();
-
-                    // If using maplibre.js coordinate system (+z up)
-                    //rootMesh.rotation.x = Math.PI/2
-
-                    // Create a second mesh
-                    const rootMesh2 = rootMesh.clone();
-
-                    // Position in babylon.js coordinate system
-                    rootMesh2.position.x = 25; // +east, meters
-                    rootMesh2.position.z = 25; // +north, meters
-                });
-
-                this.map = map;
-            },
-            render: function (gl, matrix) {
-                const cameraMatrix = BABYLON.Matrix.FromArray(matrix);
-
-                // world-view-projection matrix
-                const wvpMatrix = worldMatrix.multiply(cameraMatrix);
-
-                this.camera.freezeProjectionMatrix(wvpMatrix);
-
-                this.scene.render(false);
-                this.map.triggerRepaint();
-            }
-        };
+        worldOrigin;
+        camera;
+        engine;
+        scene;
+        iconImage;
+        constructor(worldOrigin, iconImage) {
+            
+            this.id = '3d-model' + this.uuidv4();
+            this.type = 'custom';
+            this.renderingMode = '3d';
+            this.worldOrigin = worldOrigin;
+            this.iconImage = iconImage;
+            
+        }
         
+        worldAltitude = 0;
+
+        worldRotate = [Math.PI / 2, 0, 0];
+        
+
+        worldOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(
+            worldOrigin,
+            this.worldAltitude
+        );
+        worldScale = this.worldOriginMercator.meterInMercatorCoordinateUnits();
+
+
+        worldMatrix = BABYLON.Matrix.Compose(
+            new BABYLON.Vector3(this.worldScale, this.worldScale, this.worldScale),
+            BABYLON.Quaternion.FromEulerAngles(
+                this.worldRotate[0],
+                this.worldRotate[1],
+                this.worldRotate[2]
+            ),
+            new BABYLON.Vector3(
+                this.worldOriginMercator.x,
+                this.worldOriginMercator.y,
+                this.worldOriginMercator.z
+            )
+        );
+        uuidv4() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        };
+        onAdd(map, gl) {
+
+            this.engine = new BABYLON.Engine(
+                gl,
+                true,
+                {
+                    useHighPrecisionMatrix: true // Important to prevent jitter at mercator scale
+                },
+                true
+            );
+            this.scene = new BABYLON.Scene(this.engine);
+            this.scene.autoClear = false;
+            this.scene.detachControl();
+
+            this.scene.beforeRender = () => {
+                this.engine.wipeCaches(true);
+            };
+
+            // create simple camera (will have its project matrix manually calculated)
+            this.camera = new BABYLON.Camera(
+                'Camera',
+                new BABYLON.Vector3(0, 0, 0),
+                this.scene
+            );
+
+            // create simple light
+            const light = new BABYLON.HemisphericLight(
+                'light1',
+                new BABYLON.Vector3(0, 0, 100),
+                this.scene
+            );
+            light.intensity = 0.7;
+            // Add debug axes viewer, positioned at origin, 10 meter axis lengths
+            new BABYLON.AxesViewer(this.scene, 10);
+
+            // load GLTF model in to the scene
+            BABYLON.SceneLoader.LoadAssetContainerAsync(this.iconImage,
+                '',
+                this.scene
+            ).then((modelContainer) => {
+                modelContainer.addAllToScene();
+                const rootMesh = modelContainer.createRootMesh();
+                rootMesh.scaling.scaleInPlace(0.015);
+   
+            });
+
+            this.map = map;
+        };
+        render(gl, matrix) {
+            const cameraMatrix = BABYLON.Matrix.FromArray(matrix);
+
+            // world-view-projection matrix
+            const wvpMatrix = this.worldMatrix.multiply(cameraMatrix);
+
+            this.camera.freezeProjectionMatrix(wvpMatrix);
+
+            this.scene.render(false);
+            this.map.triggerRepaint();
+        }
+    }
 
 
     map.on('style.load', function () {
-            map.addLayer(customLayer);
-        });
+
+        map.addLayer(new AddMapCustomLayer(worldOrigin, tree_glb)); // map.addLayer(customLayer);
+    });
 
 
     function get_building_shadow(shadow_download_url) {
