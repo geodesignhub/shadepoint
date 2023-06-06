@@ -8,9 +8,10 @@ from dataclasses import asdict
 from dacite import from_dict
 from typing import List
 from geojson import Feature, FeatureCollection, Polygon, LineString
-from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, ShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest, ShadowsRoadsIntersectionRequest, RoadsShadowOverlap,TreesDownloadRequest, GeodesignhubProjectCenter
+from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, GeodesignhubDataShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest, ShadowsRoadsIntersectionRequest, RoadsShadowOverlap,TreesDownloadRequest, GeodesignhubProjectCenter
 import arrow
 import uuid
+from download_helper import ExternalDataDownloader, GeodesignhubDataDownloader
 import utils
 from conn import get_redis
 import os
@@ -32,6 +33,9 @@ redis = get_redis()
 q = Queue(connection=conn)
 
 app = create_app()
+
+
+
 
 @app.route('/', methods = ['GET'])
 def home():
@@ -213,7 +217,7 @@ def generate_design_shadow():
 
 		design_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
 
-		worker_data = ShadowGenerationRequest(geojson = design_geojson.geojson, session_id = str(session_id), request_date_time = shadow_date_time)
+		worker_data = GeodesignhubDataShadowGenerationRequest(geojson = design_geojson.geojson, session_id = str(session_id), request_date_time = shadow_date_time)
 
 		result = q.enqueue(utils.compute_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = str(session_id) + ":"+ shadow_date_time)
 
@@ -247,7 +251,7 @@ def generate_diagram_shadow():
 
 	except KeyError as e:
 		error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
-		return Response(asdict(error_msg), status=400, mimetype='application/json')
+		return Response(asdict(error_msg), status=400, mimetype='application/json')	
 	try:
 		r_date_time = request.args.get('date_time', None)		
 		if not r_date_time:
@@ -260,101 +264,21 @@ def generate_diagram_shadow():
 	if projectid and diagramid and apitoken:		
 		session_id = uuid.uuid4()		
 		# Initialize the API
-		myAPIHelper = GeodesignHub.GeodesignHubClient(url = config.apisettings['serviceurl'], project_id=projectid, token=apitoken)
-		# Download Data		
-		s = myAPIHelper.get_all_systems()
-		b = myAPIHelper.get_project_bounds()
-		c = myAPIHelper.get_project_center()
-		diagram_id = int(diagramid)
-		d = myAPIHelper.get_single_diagram(diagid = diagram_id)
-		
-		# Check responses / data
-		try:
-			assert s.status_code == 200
-		except AssertionError as ae:			
-			error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
-			
-			return Response(asdict(error_msg), status=400, mimetype='application/json')
-		
-		systems = s.json()
-		all_systems: List[GeodesignhubSystem] = []
-		for s in systems:
-			current_system = from_dict(data_class = GeodesignhubSystem, data = s)
-			all_systems.append(current_system)
-			
-		try:
-			assert d.status_code == 200
-		except AssertionError as ae:
+		## Download data from GDH
+		my_geodesignhub_downloader = GeodesignhubDataDownloader(session_id = session_id, project_id= projectid, diagram_id=diagramid, apitoken=apitoken)
+		project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
+		if not project_data:
 			error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
 			return Response(asdict(error_msg), status=400, mimetype='application/json')
+		else:
+			_diagram_feature_collection = my_geodesignhub_downloader.download_diagram_data_from_geodesignhub()
+			gj_serialized = json.loads(geojson.dumps(_diagram_feature_collection))
+			diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
 
-		_diagram_details_raw = d.json()
-		# Populate Default building data if not available
-		if not bool(_diagram_details_raw['building_data']):
-			_default_building_data = {"storeys_above_ground": 10,"storeys_below_ground": 0}
-		else: 
-			_default_building_data = _diagram_details_raw['building_data']
-
-		_diagram_details_feature_collection = _diagram_details_raw['geojson']
-
-		_all_features: List[Feature] = []
-		for f in _diagram_details_feature_collection['features']:			
-			_f_props = f['properties']
-			_building_data = BuildingData(height=_default_building_data['storeys_above_ground']* 4.5, base_height=_default_building_data['storeys_below_ground']* 4.5)
-
-			_diagram_details_raw['height'] = asdict(_building_data)['height']
-			_diagram_details_raw['base_height'] = asdict(_building_data)['base_height']
-			_diagram_details_raw['diagram_id'] = diagram_id
-			_diagram_details_raw['building_id'] = str(uuid.uuid4())
+			maptiler_key = os.getenv('maptiler_key', '00000000000000')
+			success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id))			
 			
-			_diagram_details_raw['color'] = _f_props['color']
-			_feature_properties = from_dict(data_class = GeodesignhubFeatureProperties, data = _diagram_details_raw)
-			
-			# We assume that GDH will provide a polygon
-			if f['geometry']['type'] == 'Polygon':					
-				_geometry = Polygon(coordinates=f['geometry']['coordinates'])
-			elif f['geometry']['type'] == 'LineString':
-				_geometry = LineString(coordinates=f['geometry']['coordinates'])
-			else: 
-				error_msg = ErrorResponse(status=0, message="Building shadows can only be computed for polygon features, you are trying to compute shadows for .",code=400)
-				return Response(asdict(error_msg), status=400, mimetype='application/json')
-			_feature = Feature(geometry=_geometry, properties=asdict(_feature_properties))
-			_all_features.append(_feature)
-
-		_diagram_feature_collection = FeatureCollection(features=_all_features)
-		gj_serialized = json.loads(geojson.dumps(_diagram_feature_collection))
-
-		diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
-
-		worker_data = ShadowGenerationRequest(geojson = diagram_geojson.geojson, session_id = str(session_id), request_date_time = shadow_date_time)
-		result = q.enqueue(utils.compute_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = str(session_id) + ":"+ shadow_date_time)
-
-		try:
-			assert b.status_code == 200
-		except AssertionError as ae:
-			error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
-			return Response(asdict(error_msg), status=400, mimetype='application/json')
-		center = from_dict(data_class=GeodesignhubProjectCenter,data = c.json())
-		bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())			
-		project_data = GeodesignhubProjectData(systems=all_systems ,bounds=bounds, center=center)		
-		
-		r_url = os.getenv("ROADS_URL", None)
-		# download the roads 
-		if r_url:			
-			roads_download_job = RoadsDownloadRequest(bounds= bounds.bounds,  session_id = str(session_id), request_date_time=shadow_date_time,roads_url=r_url)
-			roads_download_result = q.enqueue(utils.download_roads, asdict(roads_download_job), on_success= notify_roads_download_complete, on_failure = notify_roads_download_failure, job_id = str(session_id) + ":"+ shadow_date_time +":roads")
-		t_url = os.getenv("TREES_URL", None)
-		# download the roads 
-		if t_url:			
-			trees_download_job = TreesDownloadRequest(bounds= bounds.bounds,  session_id = str(session_id), request_date_time=shadow_date_time,trees_url=t_url)
-			trees_download_result = q.enqueue(utils.download_trees, asdict(trees_download_job), on_success= notify_trees_download_complete, on_failure = notify_trees_download_failure, job_id = str(session_id) + ":"+ shadow_date_time +":trees")
-
-		maptiler_key = os.getenv('maptiler_key', '00000000000000')
-		success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id))
-		
-		
-		return render_template('diagram_shadow.html', op = asdict(success_response))
-		# return Response(msg, status=400, mimetype='application/json')
+			return render_template('diagram_shadow.html', op = asdict(success_response))		
 	else:	
 		msg = ErrorResponse(status=0, message="Could download data from Geodesignhub, please check your project ID and API token.",code=400)
 		return Response(msg, status=400, mimetype='application/json')

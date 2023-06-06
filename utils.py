@@ -2,7 +2,7 @@
 import arrow
 import time
 import pandas as pd
-from data_definitions import ShadowGenerationRequest, RoadsDownloadRequest, RoadsShadowOverlap,ShadowsRoadsIntersectionRequest, TreesDownloadRequest
+from data_definitions import GeodesignhubDataShadowGenerationRequest, RoadsDownloadRequest, RoadsShadowOverlap,ShadowsRoadsIntersectionRequest, TreesDownloadRequest
 from dacite import from_dict
 from pyproj import Geod
 import geopandas as gpd
@@ -123,7 +123,7 @@ def create_point_grid(geojson_feature):
 
 
 def compute_shadow(geojson_session_date_time: dict):
-    _diagramid_building_date_time = from_dict(data_class = ShadowGenerationRequest, data = geojson_session_date_time)
+    _diagramid_building_date_time = from_dict(data_class = GeodesignhubDataShadowGenerationRequest, data = geojson_session_date_time)
     
     _date_time = arrow.get(_diagramid_building_date_time.request_date_time).isoformat()
 
@@ -196,4 +196,3 @@ def compute_road_shadow_overlap(roads_shadows_data:ShadowsRoadsIntersectionReque
     time.sleep(1)
     print("Intersection Completed")
     
-

@@ -86,7 +86,7 @@ class DesignShadowSuccessResponse:
     session_id: str
 
 @dataclass
-class ShadowGenerationRequest:
+class GeodesignhubDataShadowGenerationRequest:
     geojson: dict
     session_id: str
     request_date_time: str
