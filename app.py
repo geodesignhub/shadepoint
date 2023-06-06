@@ -38,7 +38,7 @@ def home():
 	return render_template('home.html')
 
 
-@app.route('/generated_diagram_shadow', methods = ['GET'])
+@app.route('/generated_shadow', methods = ['GET'])
 def get_diagram_shadow():
 
 	shadow_key = request.args.get('shadow_key', '0')	

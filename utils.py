@@ -137,9 +137,10 @@ def compute_shadow(geojson_session_date_time: dict):
     
     buildings = gpd.GeoDataFrame.from_features(_diagramid_building_date_time.geojson['features'])
     _pd_date_time =pd.to_datetime(_date_time).tz_convert('UTC')    
-    shadows = pybdshadow.bdshadow_sunlight(buildings,_pd_date_time)    
+    shadows = pybdshadow.bdshadow_sunlight(buildings,_pd_date_time) 
+    dissolved_shadows = shadows.dissolve()   
     redis_key = _diagramid_building_date_time.session_id +':' +  _diagramid_building_date_time.request_date_time
-    r.set(redis_key, json.dumps(shadows.to_json()))
+    r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
     r.expire(redis_key, time=6000)
     time.sleep(7)
     print("Job Completed")
