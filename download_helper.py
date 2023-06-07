@@ -1,6 +1,7 @@
 
 from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, GeodesignhubDataShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest, ShadowsRoadsIntersectionRequest, RoadsShadowOverlap,TreesDownloadRequest, GeodesignhubProjectCenter, RoadsShadowsComputationStartRequest
 import utils
+import geojson
 import os
 from dataclasses import asdict
 from dacite import from_dict
@@ -36,10 +37,107 @@ class GeodesignhubDataDownloader():
         self.session_id = session_id
         self.project_id = project_id
         self.apitoken = apitoken
-        self.cteam_id = cteam_id
+        self.cteam_id = cteam_id        
         self.synthesis_id = synthesis_id
-        self.diagram_id = int(diagram_id)
+        d = int(diagram_id) if diagram_id else None
+        self.diagram_id = d
+        self.api_helper = GeodesignHub.GeodesignHubClient(url = config.apisettings['serviceurl'], project_id=self.project_id, token=self.apitoken)
        
+    def download_project_systems(self) -> Optional[List[GeodesignhubSystem]]:
+        
+        s = self.api_helper.get_all_systems()
+        # Check responses / data
+        try:
+            assert s.status_code == 200
+        except AssertionError as ae:			
+            error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
+            
+            return None
+
+        systems = s.json()
+        all_systems: List[GeodesignhubSystem] = []
+        for s in systems:
+            current_system = from_dict(data_class = GeodesignhubSystem, data = s)
+            all_systems.append(current_system)
+            
+
+        return all_systems
+    
+       
+    def download_project_bounds(self) -> Optional[GeodesignhubProjectBounds]:
+        
+        b = self.api_helper.get_project_bounds()
+    
+        try:
+            assert b.status_code == 200
+        except AssertionError as ae:
+            error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
+            return None
+
+        bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())			
+
+        return bounds
+    
+       
+    def download_project_center(self) -> Optional[GeodesignhubProjectCenter]:
+        
+        c = self.api_helper.get_project_center()
+        try:
+            assert c.status_code == 200
+        except AssertionError as ae:			
+            error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
+            
+            return None
+        center = from_dict(data_class=GeodesignhubProjectCenter,data = c.json())
+        return center
+    
+    def download_design_data_from_geodesignhub(self) -> Optional[FeatureCollection]:
+
+        r = self.api_helper.get_single_synthesis(teamid = int(self.cteam_id), synthesisid = self.synthesis_id)
+
+        try:
+            assert r.status_code == 200
+        except AssertionError as ae:
+            error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
+            return None
+
+        _design_details_raw = r.json()
+        _all_features: List[Feature] = []
+        # Populate Default building data if not available
+        for _single_diagram_feature in _design_details_raw['features']:
+            _diagram_properties = _single_diagram_feature['properties']
+            _project_or_policy = _diagram_properties['areatype']
+            _diagram_properties['height'] = _diagram_properties['max_height']
+            _diagram_properties['base_height'] = _diagram_properties['min_height']
+            _diagram_properties['diagram_id'] = _diagram_properties['diagramid']
+            _diagram_properties['building_id'] = str(uuid.uuid4())
+            
+            _feature_properties = from_dict(data_class = GeodesignhubDesignFeatureProperties, data = _diagram_properties)
+                
+            if _project_or_policy =='policy':
+                point_grid = utils.create_point_grid(geojson_feature=_single_diagram_feature)
+                
+                _feature_properties.height = 0
+                _feature_properties.base_height = 0
+                for _point_feature in point_grid['features']:
+                    _point_geometry = Polygon(coordinates=_point_feature['geometry']['coordinates'])
+                    _feature = Feature(geometry=_point_geometry, properties=asdict(_feature_properties))
+                    _all_features.append(_feature)
+            else:				
+                # We assume that GDH will provide a polygon
+                if _single_diagram_feature['geometry']['type'] == 'Polygon':					
+                    _geometry = Polygon(coordinates=_single_diagram_feature['geometry']['coordinates'])
+                elif _single_diagram_feature['geometry']['type'] == 'LineString':
+                    _geometry = LineString(coordinates=_single_diagram_feature['geometry']['coordinates'])
+                else: 
+                    error_msg = ErrorResponse(status=0, message="Building shadows can only be computed for polygon features, you are trying to compute shadows for .",code=400)
+                    return None
+                _feature = Feature(geometry=_geometry, properties=asdict(_feature_properties))
+                _all_features.append(_feature)
+
+        _diagram_feature_collection = FeatureCollection(features=_all_features)  
+        return _diagram_feature_collection      
+
 
     def download_diagram_data_from_geodesignhub(self) -> Optional[FeatureCollection]:
         
@@ -99,8 +197,6 @@ class GeodesignhubDataDownloader():
         b = myAPIHelper.get_project_bounds()
         c = myAPIHelper.get_project_center()
         
-        d = myAPIHelper.get_single_diagram(diagid = self.diagram_id)
-        
         # Check responses / data
         try:
             assert s.status_code == 200
@@ -114,12 +210,6 @@ class GeodesignhubDataDownloader():
             current_system = from_dict(data_class = GeodesignhubSystem, data = s)
             all_systems.append(current_system)
             
-        try:
-            assert d.status_code == 200
-        except AssertionError as ae:
-            error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)                        
-            return None
-
         try:
             assert b.status_code == 200
         except AssertionError as ae:

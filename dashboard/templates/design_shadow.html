@@ -132,15 +132,17 @@
                 'fill-opacity': 0.4
             }
         });
-
         map.addLayer({
             'id': 'bike_pedestrian_roads',
-            'type': 'fill',
+            'type': 'line',
             'source': 'bike_pedestrian_roads',
-            'layout': {},
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
             'paint': {
-                'fill-color': '#422518',
-                'fill-opacity': 0.8
+                'line-color': '#422518',
+                'line-width': 3
             }
         });
         map.addControl(
@@ -166,9 +168,7 @@
                 let shadows_to_render = shadow_data;
                 map.getSource('building_shadows').setData(shadows_to_render);
             }).catch((error) => {
-
                 console.log(error);
-
             });
     }
     
@@ -183,6 +183,7 @@
                 // spinner_cont.classList.add('d-none');
 
                 let roads_to_render = roads_data;
+                // console.log(roads_to_render)
                 map.getSource('bike_pedestrian_roads').setData(roads_to_render);
             }).catch((error) => {
                 
