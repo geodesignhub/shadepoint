@@ -1,5 +1,5 @@
 
-from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, GeodesignhubDataShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest, ShadowsRoadsIntersectionRequest, RoadsShadowOverlap,TreesDownloadRequest, GeodesignhubProjectCenter
+from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, GeodesignhubDataShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest, ShadowsRoadsIntersectionRequest, RoadsShadowOverlap,TreesDownloadRequest, GeodesignhubProjectCenter, RoadsShadowsComputationStartRequest
 import utils
 import os
 from dataclasses import asdict
@@ -15,6 +15,7 @@ from uuid import uuid4
 import uuid
 from rq import Queue
 from worker import conn
+import json
 
 load_dotenv(find_dotenv())
 
@@ -37,15 +38,14 @@ class GeodesignhubDataDownloader():
         self.apitoken = apitoken
         self.cteam_id = cteam_id
         self.synthesis_id = synthesis_id
-        self.diagram_id = diagram_id
+        self.diagram_id = int(diagram_id)
        
 
     def download_diagram_data_from_geodesignhub(self) -> Optional[FeatureCollection]:
         
-        myAPIHelper = GeodesignHub.GeodesignHubClient(url = config.apisettings['serviceurl'], project_id=self.projectid, token=self.apitoken)
+        myAPIHelper = GeodesignHub.GeodesignHubClient(url = config.apisettings['serviceurl'], project_id=self.project_id, token=self.apitoken)
         # Download Data		
-        diagram_id = int(self.diagramid)
-        d = myAPIHelper.get_single_diagram(diagid = diagram_id)
+        d = myAPIHelper.get_single_diagram(diagid = self.diagram_id)
 
         try:
             assert d.status_code == 200
@@ -70,9 +70,8 @@ class GeodesignhubDataDownloader():
 
             _diagram_details_raw['height'] = asdict(_building_data)['height']
             _diagram_details_raw['base_height'] = asdict(_building_data)['base_height']
-            _diagram_details_raw['diagram_id'] = diagram_id
-            _diagram_details_raw['building_id'] = str(uuid.uuid4())
-            
+            _diagram_details_raw['diagram_id'] = self.diagram_id
+            _diagram_details_raw['building_id'] = str(uuid.uuid4())            
             _diagram_details_raw['color'] = _f_props['color']
             _feature_properties = from_dict(data_class = GeodesignhubFeatureProperties, data = _diagram_details_raw)
             
@@ -94,13 +93,13 @@ class GeodesignhubDataDownloader():
 
     def download_project_data_from_geodesignhub(self) -> Optional[GeodesignhubProjectData]:
         
-        myAPIHelper = GeodesignHub.GeodesignHubClient(url = config.apisettings['serviceurl'], project_id=self.projectid, token=self.apitoken)
+        myAPIHelper = GeodesignHub.GeodesignHubClient(url = config.apisettings['serviceurl'], project_id=self.project_id, token=self.apitoken)
         # Download Data		
         s = myAPIHelper.get_all_systems()
         b = myAPIHelper.get_project_bounds()
         c = myAPIHelper.get_project_center()
-        diagram_id = int(self.diagramid)
-        d = myAPIHelper.get_single_diagram(diagid = diagram_id)
+        
+        d = myAPIHelper.get_single_diagram(diagid = self.diagram_id)
         
         # Check responses / data
         try:
@@ -136,23 +135,19 @@ class GeodesignhubDataDownloader():
         
 class ShadowComputationHelper():
 
-    def __init__(self, session_id:uuid4, shadow_date_time:str, bounds: str, geodesignhub_data, roads_data=None, trees_data=None, buildings_data=None ):
-        self.geodesignhub_data = geodesignhub_data
+    def __init__(self, session_id:str, shadow_date_time:str, bounds: str, design_diagram_geojson=None):
+        self.gdh_geojson = design_diagram_geojson
         self.session_id = session_id
         self.shadow_date_time = shadow_date_time
         self.bounds = bounds        
-        self.roads_data = roads_data
-        self.trees_data = trees_data
-        self.buildings_data = buildings_data
-        self.combined_gdh_trees = {'type': 'FeatureCollection', 'features':[]}
-
+        
     def download_roads_async(self,):
-        roads_download_job = RoadsDownloadRequest(bounds= self.bounds,  session_id = str(self.session_id), request_date_time=self.shadow_date_time,roads_url=self.roads_url)
-        roads_download_result = q.enqueue(utils.download_roads, asdict(roads_download_job), on_success= notify_roads_download_complete, on_failure = notify_roads_download_failure, job_id = str(self.session_id) + ":"+ self.shadow_date_time +":roads")
+        roads_download_job = RoadsDownloadRequest(bounds= self.bounds,  session_id = self.session_id, request_date_time=self.shadow_date_time,roads_url=self.roads_url)
+        roads_download_result = q.enqueue(utils.download_roads, asdict(roads_download_job), on_success= notify_roads_download_complete, on_failure = notify_roads_download_failure, job_id = self.session_id + ":"+ self.shadow_date_time +":roads")
 
     def download_trees_async(self,):        
-        trees_download_job = TreesDownloadRequest(bounds= self.bounds,  session_id = str(self.session_id), request_date_time=self.shadow_date_time,trees_url=self.trees_url)
-        trees_download_result = q.enqueue(utils.download_trees, asdict(trees_download_job), on_success= notify_trees_download_complete, on_failure = notify_trees_download_failure, job_id = str(self.session_id) + ":"+ self.shadow_date_time +":trees")
+        trees_download_job = TreesDownloadRequest(bounds= self.bounds,  session_id = self.session_id, request_date_time=self.shadow_date_time,trees_url=self.trees_url)
+        trees_download_result = q.enqueue(utils.download_trees, asdict(trees_download_job), on_success= notify_trees_download_complete, on_failure = notify_trees_download_failure, job_id = self.session_id + ":"+ self.shadow_date_time +":trees")
 
     def combine_gdh_trees_data(self):
         ''' This method combines Geodesignhub and trees data and updates the combined_gdh_trees FeatureCollection '''
@@ -166,20 +161,33 @@ class ShadowComputationHelper():
         t_url = os.getenv("TREES_URL", None)
         b_url = os.getenv("BUILDINGS_URL", None)
         # download the roads 			
-        if r_url:			
-            self.download_roads_async()
+        # if r_url:			
+        #     self.download_roads_async()
         # download the roads 
-        if t_url:			
-            self.download_trees_async()
+        # if t_url:			
+        #     self.download_trees_async()
         # if b_url:			
         # 	my_downloads_helper.download_buildings_async()
+		
+        if r_url:			
+            roads_download_job = RoadsDownloadRequest(bounds= self.bounds,  session_id = str(self.session_id), request_date_time=self.shadow_date_time,roads_url=r_url)
 
-        roads_download_job = RoadsDownloadRequest(bounds= self.bounds,  session_id = str(self.session_id), request_date_time=self.shadow_date_time,roads_url=self.roads_url)
-        roads_download_result = q.enqueue(utils.download_roads, asdict(roads_download_job), on_success= notify_roads_download_complete, on_failure = notify_roads_download_failure, job_id = str(self.session_id) + ":"+ self.shadow_date_time +":roads")
+            roads_download_result = q.enqueue(utils.download_roads, asdict(roads_download_job), on_success= notify_roads_download_complete, on_failure = notify_roads_download_failure, job_id = self.session_id + ":"+ self.shadow_date_time +":roads")
 
-        trees_download_job = TreesDownloadRequest(bounds= self.bounds,  session_id = str(self.session_id), request_date_time=self.shadow_date_time,trees_url=self.trees_url)
-        trees_download_result = q.enqueue(utils.download_trees, asdict(trees_download_job), on_success= notify_trees_download_complete, on_failure = notify_trees_download_failure, job_id = str(self.session_id) + ":"+ self.shadow_date_time +":trees")
-
-		# worker_data = GeodesignhubDataShadowGenerationRequest(geojson = self.combined_gdh_trees.geojson, session_id = str(session_id), request_date_time = shadow_date_time)
-		# result = q.enqueue(utils.compute_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = str(session_id) + ":"+ shadow_date_time,  depends_on=[trees_download_job])
+        if t_url:			
+            trees_download_job = TreesDownloadRequest(bounds= self.bounds,  session_id = str(self.session_id), request_date_time=self.shadow_date_time,trees_url=t_url)
+            trees_download_result = q.enqueue(utils.download_trees, asdict(trees_download_job), on_success= notify_trees_download_complete, on_failure = notify_trees_download_failure, job_id = self.session_id + ":"+ self.shadow_date_time +":trees")
+            # first download the trees and then compute design shadow
+            
+            worker_data = GeodesignhubDataShadowGenerationRequest(buildings= self.gdh_geojson, session_id = self.session_id, request_date_time = self.shadow_date_time, bounds =self.bounds)
+            shadow_result = q.enqueue(utils.compute_shadow_with_trees,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = self.session_id + ":"+ self.shadow_date_time,  depends_on=[trees_download_result])
+        else: 
+            worker_data = GeodesignhubDataShadowGenerationRequest(buildings= self.gdh_geojson, session_id = self.session_id, request_date_time = self.shadow_date_time, bounds =self.bounds)
+            shadow_result = q.enqueue(utils.compute_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = self.session_id + ":"+ self.shadow_date_time)
     
+        if r_url:	
+            # Roads URL is provided compute intersections
+            _roads_shadows_start_processing = RoadsShadowsComputationStartRequest(bounds = self.bounds, session_id= self.session_id, request_date_time= self. shadow_date_time)
+            job_id = self.session_id + ':roads_shadow"'
+            
+            roads_intersection_result = q.enqueue(utils.kickoff_roads_shadows_stats, asdict(_roads_shadows_start_processing), on_success= notify_roads_shadow_intersection_complete, on_failure = notify_roads_shadow_intersection_failure, job_id = job_id , depends_on = [shadow_result, roads_download_result])

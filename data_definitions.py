@@ -15,6 +15,11 @@ class BuildingData:
     base_height: float
 
 @dataclass
+class TreeData:    
+    height: float
+    base_height: float
+
+@dataclass
 class GeodesignhubFeatureProperties:
     sysid: int    
     description: str    
@@ -23,6 +28,12 @@ class GeodesignhubFeatureProperties:
     color:str
     diagram_id:int
     building_id: str
+
+@dataclass
+class RoadsShadowsComputationStartRequest:
+    bounds: str
+    session_id: str
+    request_date_time: str
 
 
 @dataclass
@@ -87,9 +98,11 @@ class DesignShadowSuccessResponse:
 
 @dataclass
 class GeodesignhubDataShadowGenerationRequest:
-    geojson: dict
+    buildings: dict
     session_id: str
     request_date_time: str
+    bounds: str
+    
     
 @dataclass
 class RoadsDownloadRequest:
@@ -109,9 +122,8 @@ class TreesDownloadRequest:
 @dataclass
 class ShadowsRoadsIntersectionRequest:
     roads: str
-    job_id: str
     shadows: str
-
+    job_id: str
 
 @dataclass
 class RoadsShadowOverlap: 

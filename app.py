@@ -11,7 +11,7 @@ from geojson import Feature, FeatureCollection, Polygon, LineString
 from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, GeodesignhubDataShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest, ShadowsRoadsIntersectionRequest, RoadsShadowOverlap,TreesDownloadRequest, GeodesignhubProjectCenter
 import arrow
 import uuid
-from download_helper import ExternalDataDownloader, GeodesignhubDataDownloader
+from download_helper import GeodesignhubDataDownloader, ShadowComputationHelper
 import utils
 from conn import get_redis
 import os
@@ -33,8 +33,6 @@ redis = get_redis()
 q = Queue(connection=conn)
 
 app = create_app()
-
-
 
 
 @app.route('/', methods = ['GET'])
@@ -70,16 +68,17 @@ def get_downloaded_roads():
 	# TODO: Kick off compute_road_shadow_overlap and use the same roads_key
 	
 	rds = json.dumps(roads)
-	shadows_key = roads_key[:-6]
-	shadows_str = redis.get(shadows_key)
+	# shadows_key = roads_key[:-6]
 	
-	job_id = roads_key.split(':')[0] + ':roads_shadow"'
-	shadows = json.loads(shadows_str.decode('utf-8'))
+	# shadows_str = redis.get(shadows_key)
+	
+	# job_id = roads_key.split(':')[0] + ':roads_shadow"'
+	# shadows = json.loads(shadows_str.decode('utf-8'))
 
-	shadow_roads_intersection_job = ShadowsRoadsIntersectionRequest(roads= rds, job_id = job_id, shadows= shadows)
+	# shadow_roads_intersection_job = ShadowsRoadsIntersectionRequest(roads= rds, job_id = job_id, shadows= shadows)
 
 	# print(shadow_roads_intersection_job)		
-	roads_intersection_result = q.enqueue(utils.compute_road_shadow_overlap, asdict(shadow_roads_intersection_job), on_success= notify_roads_shadow_intersection_complete, on_failure = notify_roads_shadow_intersection_failure, job_id = job_id )
+	# # roads_intersection_result = q.enqueue(utils.compute_road_shadow_overlap, asdict(shadow_roads_intersection_job), on_success= notify_roads_shadow_intersection_complete, on_failure = notify_roads_shadow_intersection_failure, job_id = job_id )
 
 	return Response(rds, status=200, mimetype='application/json')
 	
@@ -97,7 +96,7 @@ def get_downloaded_trees():
 	# TODO: Kick off compute_road_shadow_overlap and use the same roads_key
 	
 	trs = json.dumps(trees)
-	print('here')
+	
 	# shadows_key = trees_key[:-6]
 	# shadows_str = redis.get(shadows_key)
 	
@@ -273,10 +272,12 @@ def generate_diagram_shadow():
 		else:
 			_diagram_feature_collection = my_geodesignhub_downloader.download_diagram_data_from_geodesignhub()
 			gj_serialized = json.loads(geojson.dumps(_diagram_feature_collection))
-			diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
-
-			maptiler_key = os.getenv('maptiler_key', '00000000000000')
-			success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id))			
+			diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)			
+			maptiler_key = os.getenv('maptiler_key', '00000000000000')			
+			shadow_computation_helper = ShadowComputationHelper(session_id = str(session_id),  design_diagram_geojson = gj_serialized, shadow_date_time = shadow_date_time, bounds = project_data.bounds.bounds)
+			shadow_computation_helper.compute_gdh_trees_shadow()
+			success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id))		
+							
 			
 			return render_template('diagram_shadow.html', op = asdict(success_response))		
 	else:	

@@ -2,7 +2,7 @@
 import arrow
 import time
 import pandas as pd
-from data_definitions import GeodesignhubDataShadowGenerationRequest, RoadsDownloadRequest, RoadsShadowOverlap,ShadowsRoadsIntersectionRequest, TreesDownloadRequest
+from data_definitions import GeodesignhubDataShadowGenerationRequest, RoadsDownloadRequest, RoadsShadowOverlap,ShadowsRoadsIntersectionRequest, TreesDownloadRequest, TreeData, RoadsShadowsComputationStartRequest
 from dacite import from_dict
 from pyproj import Geod
 import geopandas as gpd
@@ -11,12 +11,12 @@ from shapely.geometry import Polygon, LineString
 from shapely.geometry import shape
 from shapely.geometry.polygon import Polygon
 import json
+import uuid
 from typing import List
 import requests
 import numpy as np
 from dataclasses import asdict
 from conn import get_redis
-from shapely.prepared import prep
 from shapely import STRtree
 import os
 import hashlib
@@ -39,7 +39,6 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
     '''A function to download roads GeoJSON from GDH data server for the given bounds,  '''
     fc = {"type":"FeatureCollection","features":[]}
     roads_storage_key = bounds_hash[:15] + ':roads'
-    
     r.set(session_roads_key, roads_storage_key)
     r.expire(session_roads_key, time =6000)
     
@@ -70,6 +69,7 @@ def download_trees(trees_download_request: TreesDownloadRequest):
     trees_url =_trees_download_request.trees_url
     session_trees_key = _trees_download_request.session_id +':' + _trees_download_request.request_date_time +':' +  'trees'
     bounds_hash= hashlib.sha512(bounds.encode('utf-8')).hexdigest()
+    
     
     '''A function to download roads GeoJSON from GDH data server for the given bounds,  '''
     fc = {"type":"FeatureCollection","features":[]}
@@ -121,21 +121,65 @@ def create_point_grid(geojson_feature):
     #print(filtered_points)
     return point_gj
 
+def kickoff_roads_shadows_stats(roads_shadow_computation_start):
+    _roads_shadow_computation_details = from_dict(data_class = RoadsShadowsComputationStartRequest, data = roads_shadow_computation_start)
+    
+    
+    shadows_key = _roads_shadow_computation_details.session_id +':' +  _roads_shadow_computation_details.request_date_time
+    shadows_str = r.get(shadows_key)
+    shadows = json.loads(shadows_str.decode('utf-8'))
+
+    bounds = _roads_shadow_computation_details.bounds
+
+    bounds_hash= hashlib.sha512(bounds.encode('utf-8')).hexdigest()
+    roads_storage_key = bounds_hash[:15] + ':roads'
+    roads_str = r.get(roads_storage_key)
+    roads = json.loads(roads_str.decode('utf-8'))
+    
+    shadow_roads_intersection_data = ShadowsRoadsIntersectionRequest(roads= json.dumps(roads), shadows=shadows, job_id =_roads_shadow_computation_details.session_id + ':roads_shadow"' )
+    compute_road_shadow_overlap(roads_shadows_data = asdict(shadow_roads_intersection_data))
+    # print(shadow_roads_intersection_data)	
 
 def compute_shadow(geojson_session_date_time: dict):
     _diagramid_building_date_time = from_dict(data_class = GeodesignhubDataShadowGenerationRequest, data = geojson_session_date_time)
     
     _date_time = arrow.get(_diagramid_building_date_time.request_date_time).isoformat()
-
-    # Tree computations
-
-    trees_url = os.getenv("TREES_URL", None)
-    # download the roads 
-    if trees_url:			
-        pass
-
     
-    buildings = gpd.GeoDataFrame.from_features(_diagramid_building_date_time.geojson['features'])
+    buildings = gpd.GeoDataFrame.from_features(_diagramid_building_date_time.buildings['features'])
+    _pd_date_time =pd.to_datetime(_date_time).tz_convert('UTC')    
+    shadows = pybdshadow.bdshadow_sunlight(buildings,_pd_date_time) 
+    dissolved_shadows = shadows.dissolve()   
+    redis_key = _diagramid_building_date_time.session_id +':' +  _diagramid_building_date_time.request_date_time
+    r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
+    r.expire(redis_key, time=6000)
+    time.sleep(7)
+    print("Job Completed")
+
+
+def compute_shadow_with_trees(geojson_session_date_time: dict):
+    _diagramid_building_date_time = from_dict(data_class = GeodesignhubDataShadowGenerationRequest, data = geojson_session_date_time)
+    
+    _date_time = arrow.get(_diagramid_building_date_time.request_date_time).isoformat()
+    bounds = _diagramid_building_date_time.bounds
+    # Combine trees and buildings into one FC
+    bounds_hash= hashlib.sha512(bounds.encode('utf-8')).hexdigest()
+    tress_buildings_features = _diagramid_building_date_time.buildings['features']
+    bounds_hash_key = bounds_hash[:15] + ':trees'
+    downloaded_trees_raw = r.get(bounds_hash_key)
+
+    downloaded_trees_fc = json.loads(downloaded_trees_raw)    
+    downloaded_trees_features = downloaded_trees_fc['features']
+    for tree_feature in downloaded_trees_features:
+        tree_properties = {}        
+        _tree_height = TreeData(height=10, base_height=0)
+        tree_properties['height'] = asdict(_tree_height)['height']
+        tree_properties['base_height'] = asdict(_tree_height)['base_height']
+        tree_properties['tree_id'] = str(uuid.uuid4())    
+        tree_feature['properties'] = tree_properties
+        tress_buildings_features.append(tree_feature)
+
+
+    buildings = gpd.GeoDataFrame.from_features(tress_buildings_features)
     _pd_date_time =pd.to_datetime(_date_time).tz_convert('UTC')    
     shadows = pybdshadow.bdshadow_sunlight(buildings,_pd_date_time) 
     dissolved_shadows = shadows.dissolve()   
@@ -146,14 +190,17 @@ def compute_shadow(geojson_session_date_time: dict):
     print("Job Completed")
     
 def compute_road_shadow_overlap(roads_shadows_data:ShadowsRoadsIntersectionRequest) -> RoadsShadowOverlap: 
+    
     _roads_shadows_data = from_dict(data_class = ShadowsRoadsIntersectionRequest, data = roads_shadows_data)
     roads_str = _roads_shadows_data.roads
     shadows_str = _roads_shadows_data.shadows
+
     job_id = _roads_shadows_data.job_id
     geod = Geod(ellps="WGS84")
     roads = json.loads(roads_str)    
-    processed_shadows = json.loads(shadows_str)
-
+    shadows = json.loads(shadows_str)
+    
+    
     intersections: List[LineString] = []
     all_roads: List[LineString] = []
     all_shadows: List[Polygon] = []
@@ -169,8 +216,7 @@ def compute_road_shadow_overlap(roads_shadows_data:ShadowsRoadsIntersectionReque
         print("Segment Length {segment_length:.3f}".format(segment_length= segment_length))
         total_length += segment_length
 
-
-    for shadow_feature in processed_shadows['features']:       
+    for shadow_feature in shadows['features']:       
         
         s: Polygon = shape(shadow_feature['geometry'])
         all_shadows.append(s)

@@ -60,9 +60,9 @@
 {% if op['status'] == 1 %}
 <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
 <script type="text/javascript">
-    const diagram_detail = {{ op|safe}};
+    const diagram_detail = {{ op|safe }};
 
-    const diagram_geojson = {{ op["diagram_geojson"]["geojson"]|safe}};
+    const diagram_geojson = {{ op["diagram_geojson"]["geojson"]|safe }};
     var bounds = diagram_detail['project_data']['bounds']['bounds'];
     var center = diagram_detail['project_data']['center']['center'];
     var map_center = center.split(',');
@@ -79,6 +79,81 @@
             'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
         bounds: bounds,
         zoom: 10 // starting zoom
+    });
+
+
+    map.on('load', function () {
+        map.addSource('buildings', {
+            // GeoJSON Data source used in vector tiles, documented at
+            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+            'type': 'geojson',
+            'data': diagram_geojson
+        });
+        map.addSource('building_shadows', {
+            // GeoJSON Data source used in vector tiles, documented at
+            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+            'type': 'geojson',
+            'data': { "type": "FeatureCollection", "features": [] }
+        });
+        map.addSource('bike_pedestrian_roads', {
+            // GeoJSON Data source used in vector tiles, documented at
+            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+            'type': 'geojson',
+            'data': { "type": "FeatureCollection", "features": [] }
+        });
+        map.addLayer({
+            'id': 'buildings-extrusion',
+            'type': 'fill-extrusion',
+            'source': 'buildings',
+            'paint': {
+                // See the MapLibre Style Specification for details on data expressions.
+                // https://maplibre.org/maplibre-gl-js-docs/style-spec/expressions/
+
+                // Get the fill-extrusion-color from the source 'color' property.
+                'fill-extrusion-color': ['get', 'color'],
+
+                // Get fill-extrusion-height from the source 'height' property.
+                'fill-extrusion-height': ['get', 'height'],
+
+                // Get fill-extrusion-base from the source 'base_height' property.
+                'fill-extrusion-base': ['get', 'base_height'],
+
+                // Make extrusions slightly opaque for see through indoor walls.
+                'fill-extrusion-opacity': 0.5
+            }
+        });
+        map.addLayer({
+            'id': 'building_shadows',
+            'type': 'fill',
+            'source': 'building_shadows',
+            'layout': {},
+            'paint': {
+                'fill-color': '#808080',
+                'fill-opacity': 0.4
+            }
+        });
+        map.addLayer({
+            'id': 'bike_pedestrian_roads',
+            'type': 'line',
+            'source': 'bike_pedestrian_roads',
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            'paint': {
+                'line-color': '#422518',
+                'line-width': 3
+            }
+        });
+
+        map.addControl(
+            new maplibregl.NavigationControl({
+                visualizePitch: true,
+                showZoom: true,
+                showCompass: true
+            })
+        );
+
     });
 
 
