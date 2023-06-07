@@ -10,6 +10,6 @@ class Config(object):
     ROADS_URL = os.environ.get("ROADS_URL", None)
 
 apisettings = {
-  "serviceurl": "http://local.test:8000/api/v1/",
-  # "serviceurl": "https://www.geodesignhub.com/api/v1/"
+  # "serviceurl": "http://local.test:8000/api/v1/",
+  "serviceurl": "https://www.geodesignhub.com/api/v1/"
 }
