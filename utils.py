@@ -47,12 +47,19 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
         fc = json.loads(fc_str)
 
     else: 
-        # r_url = roads_url.replace('__bounds__', bounds)
-        r_url = roads_url
+
+        
+        bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)
+        
+        if bounds_filtering:
+            r_url = roads_url.replace('__bounds__', bounds)
+            
+        else:
+            r_url = roads_url
         download_request = requests.get(r_url)
         
         if download_request.status_code == 200:
-            fc = download_request.json()    
+            fc = download_request.json()                
             r.set(roads_storage_key, json.dumps(fc))
         else: 
             print("Error")
@@ -84,15 +91,13 @@ def download_trees(trees_download_request: TreesDownloadRequest):
 
     else:         
         t_url = trees_url
-        download_request = requests.get(t_url)
-        
+        download_request = requests.get(t_url)        
         if download_request.status_code == 200:
             fc = download_request.json()    
             r.set(trees_storage_key, json.dumps(fc))
         else: 
             print("Error")
-            r.set(trees_storage_key, json.dumps({"type":"FeatureCollection", "features":[]}))
-        
+            r.set(trees_storage_key, json.dumps({"type":"FeatureCollection", "features":[]}))        
         r.expire(trees_storage_key, time = 60000)
         
     return fc
@@ -209,6 +214,7 @@ def compute_road_shadow_overlap(roads_shadows_data:ShadowsRoadsIntersectionReque
     shadowed_kms = 0
     
     for line_feature in roads['features']:
+        
         l = LineString(coordinates = line_feature['geometry']['coordinates'])
         all_roads.append(l)        
         segment_length = geod.geometry_length(l)

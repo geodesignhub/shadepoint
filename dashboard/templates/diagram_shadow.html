@@ -95,6 +95,12 @@
             'type': 'geojson',
             'data': { "type": "FeatureCollection", "features": [] }
         });
+        map.addSource('tree_canopy', {
+            // GeoJSON Data source used in vector tiles, documented at
+            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+            'type': 'geojson',
+            'data': { "type": "FeatureCollection", "features": [] }
+        });
         map.addSource('bike_pedestrian_roads', {
             // GeoJSON Data source used in vector tiles, documented at
             // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
@@ -120,6 +126,17 @@
 
                 // Make extrusions slightly opaque for see through indoor walls.
                 'fill-extrusion-opacity': 0.5
+            }
+        });
+        
+        map.addLayer({
+            'id': 'tree_canopy',
+            'type': 'fill',
+            'source': 'tree_canopy',
+            'layout': {},
+            'paint': {
+                'fill-color': '#006400',
+                'fill-opacity': 0.4
             }
         });
         map.addLayer({
@@ -195,7 +212,7 @@
             });
     }
 
-    function get_downloaded_trees(trees_url) {
+    function get_downloaded_tree_canpoy(trees_url) {
 
         fetch(trees_url)
             .then((response) => {
@@ -206,6 +223,7 @@
                 // spinner_cont.classList.add('d-none');
 
                 let trees_to_render = trees_data;
+                // map.getSource('tree_canopy').setData(trees_to_render);
                 console.log(trees_data);
             }).catch((error) => {
 
