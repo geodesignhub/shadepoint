@@ -18,11 +18,7 @@
                 <span class="visually-hidden">Loading...</span>
             </div>
             <h3>Shadow Analysis <small class="text-muted"></small></h3>
-            <div><label for="shadow_date_time">Select new (date and time):</label>
-                <input type="datetime-local" id="shadow_date_time" name="shadow_date_time">
-                <input type="submit" value="Update Shadows" onclick="return update_date_time();" />
 
-            </div>
             <br>
             <div id="map"></div>
         </div>
@@ -252,18 +248,7 @@
 
             });
     }
-    function update_date_time() {
-        let new_url = new URL(window.location.href);
-
-        let date_time = new_url.searchParams.delete('date_time');
-        const dateControl = document.querySelector('input[type="datetime-local"]');
-        let new_date = dateControl.value;
-        if (new_date) {
-            new_url.searchParams.append('date_time', new_date);
-            window.location.href = new_url;
-        }
-        return true;
-    }
+    
 
     document.addEventListener('DOMContentLoaded', () => {
 
@@ -296,17 +281,17 @@
         }, false);
 
 
-        // source.addEventListener('trees_download_success', function (event) {
-        //     var data = JSON.parse(event.data);
-        //     // do what you want with this data
-        //     let trees_key = data['trees_key'];
-        //     let session_id = trees_key.split(':')[0]
-        //     if (session_id === room) {
-        //         // The message is for the current sesion, download the data...
-        //         let trees_download_url = window.location.origin + '/get_downloaded_trees?trees_key=' + trees_key;
-        //         get_downloaded_trees(trees_download_url);
-        //     }
-        // }, false);
+        source.addEventListener('trees_download_success', function (event) {
+            var data = JSON.parse(event.data);
+            // do what you want with this data
+            let trees_key = data['trees_key'];
+            let session_id = trees_key.split(':')[0]
+            if (session_id === room) {
+                // The message is for the current sesion, download the data...
+                let trees_download_url = window.location.origin + '/get_downloaded_trees?trees_key=' + trees_key;
+                get_downloaded_trees(trees_download_url);
+            }
+        }, false);
 
         source.addEventListener('roads_shadow_complete', function (event) {
             var data = JSON.parse(event.data);

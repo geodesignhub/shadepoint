@@ -49,6 +49,11 @@ class GeodesignhubDesignFeatureProperties:
     min_height: float
     max_height:float
 
+@dataclass
+class ExistingBuildingsFeatureProperties: 
+    height: float
+    base_height:float
+    building_id: str
 
 @dataclass
 class GeodesignhubDiagramGeoJSON: 
@@ -103,6 +108,13 @@ class GeodesignhubDataShadowGenerationRequest:
     request_date_time: str
     bounds: str
     
+
+@dataclass
+class ExistingBuildingsDataShadowGenerationRequest:
+    session_id: str
+    request_date_time: str
+    bounds: str
+    
     
 @dataclass
 class RoadsDownloadRequest:
@@ -117,6 +129,21 @@ class TreesDownloadRequest:
     session_id: str
     request_date_time: str
     trees_url: str
+
+@dataclass
+class BuildingsDownloadRequest:
+    bounds: str
+    session_id: str
+    request_date_time: str
+    buildings_url: str
+
+
+@dataclass
+class CanopyDownloadRequest:
+    bounds: str
+    session_id: str
+    request_date_time: str
+    canopy_url: str
 
 
 @dataclass

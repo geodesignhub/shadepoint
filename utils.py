@@ -2,12 +2,12 @@
 import arrow
 import time
 import pandas as pd
-from data_definitions import GeodesignhubDataShadowGenerationRequest, RoadsDownloadRequest, RoadsShadowOverlap,ShadowsRoadsIntersectionRequest, TreesDownloadRequest, TreeData, RoadsShadowsComputationStartRequest
+from data_definitions import GeodesignhubDataShadowGenerationRequest, RoadsDownloadRequest, RoadsShadowOverlap,ShadowsRoadsIntersectionRequest, TreesDownloadRequest, TreeData, RoadsShadowsComputationStartRequest, CanopyDownloadRequest, BuildingsDownloadRequest, ExistingBuildingsDataShadowGenerationRequest, ExistingBuildingsFeatureProperties
 from dacite import from_dict
 from pyproj import Geod
 import geopandas as gpd
 import pybdshadow
-from shapely.geometry import Polygon, LineString
+from shapely.geometry import Polygon, LineString, MultiLineString
 from shapely.geometry import shape
 from shapely.geometry.polygon import Polygon
 import json
@@ -25,9 +25,7 @@ load_dotenv(find_dotenv())
 ENV_FILE = find_dotenv()
 if ENV_FILE:
     load_dotenv(ENV_FILE)
-
 r = get_redis()
-
 
 def download_roads(roads_download_request: RoadsDownloadRequest):
     _roads_download_request = from_dict(data_class = RoadsDownloadRequest, data = roads_download_request)
@@ -47,17 +45,13 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
         fc = json.loads(fc_str)
 
     else: 
-
-        
-        bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)
-        
+        bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)        
         if bounds_filtering:
-            r_url = roads_url.replace('__bounds__', bounds)
-            
+            # If bounds filtering is enabled, the bounds parameter in the URL is replaced with the current bounds
+            r_url = roads_url.replace('__bounds__', bounds)            
         else:
             r_url = roads_url
-        download_request = requests.get(r_url)
-        
+        download_request = requests.get(r_url)        
         if download_request.status_code == 200:
             fc = download_request.json()                
             r.set(roads_storage_key, json.dumps(fc))
@@ -88,9 +82,14 @@ def download_trees(trees_download_request: TreesDownloadRequest):
     if r.exists(trees_storage_key):
         fc_str = r.get(trees_storage_key)
         fc = json.loads(fc_str)
+    else:
+        bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)        
+        if bounds_filtering:
+            # If bounds filtering is enabled, the bounds parameter in the URL is replaced with the current bounds
+            t_url = trees_url.replace('__bounds__', bounds)            
+        else:
+            t_url = trees_url
 
-    else:         
-        t_url = trees_url
         download_request = requests.get(t_url)        
         if download_request.status_code == 200:
             fc = download_request.json()    
@@ -102,6 +101,51 @@ def download_trees(trees_download_request: TreesDownloadRequest):
         
     return fc
 
+
+def download_existing_buildings(buildings_download_request: BuildingsDownloadRequest):
+    _buildings_download_request = from_dict(data_class = BuildingsDownloadRequest, data = buildings_download_request)
+    bounds = _buildings_download_request.bounds
+    _buildings_url =_buildings_download_request.buildings_url
+    session_existing_buildings_key = _buildings_download_request.session_id +':' + _buildings_download_request.request_date_time +':' +  'existing_buildings'
+    bounds_hash= hashlib.sha512(bounds.encode('utf-8')).hexdigest()
+    
+    
+    '''A function to download roads GeoJSON from GDH data server for the given bounds,  '''
+    fc = {"type":"FeatureCollection","features":[]}
+    buildings_storage_key = bounds_hash[:15] + ':existing_buildings'
+    
+    r.set(session_existing_buildings_key, buildings_storage_key)
+    r.expire(session_existing_buildings_key, time =6000)
+    
+    if r.exists(buildings_storage_key):
+        fc_str = r.get(buildings_storage_key)
+        fc = json.loads(fc_str)
+    else:
+        bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)        
+        if bounds_filtering:
+            # If bounds filtering is enabled, the bounds parameter in the URL is replaced with the current bounds
+            b_url = _buildings_url.replace('__bounds__', bounds)            
+        else:
+            b_url = _buildings_url
+
+        download_request = requests.get(b_url)        
+        if download_request.status_code == 200:
+            fc = {"type":"FeatureCollection", "features":[]}
+            raw_fc = download_request.json()    
+            # Check the FC 
+            for f in raw_fc['features']:
+                _f_prop = f['properties']
+                new_prop = ExistingBuildingsFeatureProperties(height= _f_prop['max_height'], base_height=0, building_id = str(uuid.uuid4()))
+                f['properties'] = asdict(new_prop)
+                fc['features'].append(f)
+
+            r.set(buildings_storage_key, json.dumps(fc))
+        else: 
+            print("Error")
+            r.set(buildings_storage_key, json.dumps({"type":"FeatureCollection", "features":[]}))        
+        r.expire(buildings_storage_key, time = 60000)
+        
+    return fc
 
 def create_point_grid(geojson_feature):
     """ This function takes a policy polygon feature and generates a point grid """
@@ -126,16 +170,29 @@ def create_point_grid(geojson_feature):
     #print(filtered_points)
     return point_gj
 
-def kickoff_roads_shadows_stats(roads_shadow_computation_start):
-    _roads_shadow_computation_details = from_dict(data_class = RoadsShadowsComputationStartRequest, data = roads_shadow_computation_start)
+def kickoff_gdh_roads_shadows_stats(roads_shadow_computation_start):
+    _roads_shadow_computation_details = from_dict(data_class = RoadsShadowsComputationStartRequest, data = roads_shadow_computation_start)   
     
-    
-    shadows_key = _roads_shadow_computation_details.session_id +':' +  _roads_shadow_computation_details.request_date_time
+    shadows_key = _roads_shadow_computation_details.session_id +':' +  _roads_shadow_computation_details.request_date_time + '_gdh_buildings_canopy_shadow'
     shadows_str = r.get(shadows_key)
     shadows = json.loads(shadows_str.decode('utf-8'))
-
     bounds = _roads_shadow_computation_details.bounds
+    bounds_hash= hashlib.sha512(bounds.encode('utf-8')).hexdigest()
+    roads_storage_key = bounds_hash[:15] + ':roads'
+    roads_str = r.get(roads_storage_key)
+    roads = json.loads(roads_str.decode('utf-8'))
+    
+    shadow_roads_intersection_data = ShadowsRoadsIntersectionRequest(roads= json.dumps(roads), shadows=shadows, job_id =_roads_shadow_computation_details.session_id + ':roads_shadow"' )
+    compute_road_shadow_overlap(roads_shadows_data = asdict(shadow_roads_intersection_data))
+    # print(shadow_roads_intersection_data)	
 
+def kickoff_existing_buildings_roads_shadows_stats(roads_shadow_computation_start):
+    _roads_shadow_computation_details = from_dict(data_class = RoadsShadowsComputationStartRequest, data = roads_shadow_computation_start)   
+    
+    shadows_key = _roads_shadow_computation_details.session_id +':' +  _roads_shadow_computation_details.request_date_time + '_existing_buildings_canopy_shadow'
+    shadows_str = r.get(shadows_key)
+    shadows = json.loads(shadows_str.decode('utf-8'))
+    bounds = _roads_shadow_computation_details.bounds
     bounds_hash= hashlib.sha512(bounds.encode('utf-8')).hexdigest()
     roads_storage_key = bounds_hash[:15] + ':roads'
     roads_str = r.get(roads_storage_key)
@@ -152,43 +209,74 @@ def compute_shadow(geojson_session_date_time: dict):
     
     buildings = gpd.GeoDataFrame.from_features(_diagramid_building_date_time.buildings['features'])
     _pd_date_time =pd.to_datetime(_date_time).tz_convert('UTC')    
+    
     shadows = pybdshadow.bdshadow_sunlight(buildings,_pd_date_time) 
     dissolved_shadows = shadows.dissolve()   
-    redis_key = _diagramid_building_date_time.session_id +':' +  _diagramid_building_date_time.request_date_time
+    redis_key = _diagramid_building_date_time.session_id +':' +  _diagramid_building_date_time.request_date_time + '_gdh_buildings_canopy_shadow'
     r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
     r.expire(redis_key, time=6000)
     time.sleep(7)
     print("Job Completed")
 
-
-def compute_shadow_with_trees(geojson_session_date_time: dict):
-    _diagramid_building_date_time = from_dict(data_class = GeodesignhubDataShadowGenerationRequest, data = geojson_session_date_time)
+def compute_existing_buildings_shadow_with_tree_canopy(geojson_session_date_time: dict):
+    _existing_building_date_time = from_dict(data_class = ExistingBuildingsDataShadowGenerationRequest, data = geojson_session_date_time)    
+    _date_time = arrow.get(_existing_building_date_time.request_date_time).isoformat()    
+    _pd_date_time =pd.to_datetime(_date_time).tz_convert('UTC')        
+    # Combine trees and buildings into one FC
     
-    _date_time = arrow.get(_diagramid_building_date_time.request_date_time).isoformat()
+    bounds = _existing_building_date_time.bounds
+    bounds_hash= hashlib.sha512(bounds.encode('utf-8')).hexdigest()
+    trees_hash_key = bounds_hash[:15] + ':trees'
+    existing_buildings_hash_key = bounds_hash[:15] + ':existing_buildings'
+    
+    _existing_buildings_raw = r.get(existing_buildings_hash_key)
+    existing_buildings_fc = json.loads(_existing_buildings_raw)    
+  
+    existing_buildings = gpd.GeoDataFrame.from_features(existing_buildings_fc['features'])
+    
+    existing_buildings_shadows = pybdshadow.bdshadow_sunlight(existing_buildings,_pd_date_time)
+
+    # Merge the canopy with the shadow 
+    downloaded_trees_raw = r.get(trees_hash_key)
+    downloaded_tree_canopy_fc = json.loads(downloaded_trees_raw)    
+    _downloaded_tree_canopy_features = downloaded_tree_canopy_fc['features']
+    canopy_gdf = gpd.GeoDataFrame.from_features(_downloaded_tree_canopy_features)
+
+    ## Merge the downloaded tree canopy with shadows
+    combined_shadows = pd.concat([existing_buildings_shadows, canopy_gdf])
+
+    dissolved_shadows = combined_shadows.dissolve()   
+
+    redis_key = _existing_building_date_time.session_id +':' +  _existing_building_date_time.request_date_time + '_existing_buildings_canopy_shadow'
+    r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
+    r.expire(redis_key, time=6000)
+    time.sleep(7)
+    print("Existing Buildings + Canopy Shadow Completed")
+    
+def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
+    _diagramid_building_date_time = from_dict(data_class = GeodesignhubDataShadowGenerationRequest, data = geojson_session_date_time)    
+    _date_time = arrow.get(_diagramid_building_date_time.request_date_time).isoformat()    
+    gdh_design_diagram_buildings = gpd.GeoDataFrame.from_features(_diagramid_building_date_time.buildings['features'])
+    _pd_date_time =pd.to_datetime(_date_time).tz_convert('UTC')        
+    shadows = pybdshadow.bdshadow_sunlight(gdh_design_diagram_buildings,_pd_date_time)
+
+    # Merge the canopy with the shadow 
     bounds = _diagramid_building_date_time.bounds
     # Combine trees and buildings into one FC
     bounds_hash= hashlib.sha512(bounds.encode('utf-8')).hexdigest()
-    tress_buildings_features = _diagramid_building_date_time.buildings['features']
     bounds_hash_key = bounds_hash[:15] + ':trees'
     downloaded_trees_raw = r.get(bounds_hash_key)
 
-    downloaded_trees_fc = json.loads(downloaded_trees_raw)    
-    downloaded_trees_features = downloaded_trees_fc['features']
-    for tree_feature in downloaded_trees_features:
-        tree_properties = {}        
-        _tree_height = TreeData(height=10, base_height=0)
-        tree_properties['height'] = asdict(_tree_height)['height']
-        tree_properties['base_height'] = asdict(_tree_height)['base_height']
-        tree_properties['tree_id'] = str(uuid.uuid4())    
-        tree_feature['properties'] = tree_properties
-        tress_buildings_features.append(tree_feature)
+    downloaded_tree_canopy_fc = json.loads(downloaded_trees_raw)    
+    _downloaded_tree_canopy_features = downloaded_tree_canopy_fc['features']
+    canopy_gdf = gpd.GeoDataFrame.from_features(_downloaded_tree_canopy_features)
 
+    ## Merge the downloaded tree canopy with shadows
+    combined_shadows = pd.concat([shadows, canopy_gdf])
 
-    buildings = gpd.GeoDataFrame.from_features(tress_buildings_features)
-    _pd_date_time =pd.to_datetime(_date_time).tz_convert('UTC')    
-    shadows = pybdshadow.bdshadow_sunlight(buildings,_pd_date_time) 
-    dissolved_shadows = shadows.dissolve()   
-    redis_key = _diagramid_building_date_time.session_id +':' +  _diagramid_building_date_time.request_date_time
+    dissolved_shadows = combined_shadows.dissolve()   
+
+    redis_key = _diagramid_building_date_time.session_id +':' +  _diagramid_building_date_time.request_date_time + '_gdh_buildings_canopy_shadow'
     r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
     r.expire(redis_key, time=6000)
     time.sleep(7)
@@ -214,11 +302,12 @@ def compute_road_shadow_overlap(roads_shadows_data:ShadowsRoadsIntersectionReque
     shadowed_kms = 0
     
     for line_feature in roads['features']:
-        
-        l = LineString(coordinates = line_feature['geometry']['coordinates'])
+        if line_feature['geometry']['type'] == 'LineString':
+            l = LineString(line_feature['geometry']['coordinates'])
+        elif line_feature['geometry']['type'] == 'MultiLineString':            
+            l = MultiLineString(line_feature['geometry']['coordinates'])        
         all_roads.append(l)        
         segment_length = geod.geometry_length(l)
-
         print("Segment Length {segment_length:.3f}".format(segment_length= segment_length))
         total_length += segment_length
 

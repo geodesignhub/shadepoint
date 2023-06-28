@@ -1,24 +1,18 @@
 #!/usr/bin/env python3
-from flask import Flask
+
 from flask import render_template
 from flask import request, Response
-import json, GeodesignHub
-import config
 from dataclasses import asdict
-from dacite import from_dict
-from typing import List
-from geojson import Feature, FeatureCollection, Polygon, LineString
-from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubDiagramGeoJSON, GeodesignhubFeatureProperties,BuildingData, GeodesignhubDataShadowGenerationRequest, GeodesignhubDesignFeatureProperties, DesignShadowSuccessResponse, RoadsDownloadRequest, ShadowsRoadsIntersectionRequest, RoadsShadowOverlap,TreesDownloadRequest, GeodesignhubProjectCenter
+from data_definitions import ErrorResponse, DiagramShadowSuccessResponse, GeodesignhubDiagramGeoJSON, DesignShadowSuccessResponse,RoadsShadowOverlap
 import arrow
 import uuid
 from download_helper import GeodesignhubDataDownloader, ShadowComputationHelper
-import utils
+import json
 from conn import get_redis
 import os
 import geojson
 from dotenv import load_dotenv, find_dotenv
 from dashboard import create_app
-from notifications_helper import notify_shadow_complete, shadow_generation_failure, notify_roads_download_complete, notify_roads_download_failure, notify_roads_shadow_intersection_complete, notify_roads_shadow_intersection_failure, notify_trees_download_complete, notify_trees_download_failure
 
 from rq import Queue
 from worker import conn
@@ -39,10 +33,8 @@ app = create_app()
 def home():
 	return render_template('home.html')
 
-
 @app.route('/generated_shadow', methods = ['GET'])
 def get_diagram_shadow():
-
 	shadow_key = request.args.get('shadow_key', '0')	
 	shadow_exists = redis.exists(shadow_key)
 	if shadow_exists: 
@@ -50,9 +42,8 @@ def get_diagram_shadow():
 		shadow = json.loads(s)
 	else: 
 		shadow = {}
-
 	return Response(shadow, status=200, mimetype='application/json')
-	
+
 
 @app.route('/get_downloaded_roads', methods = ['GET'])
 def get_downloaded_roads():
@@ -77,12 +68,10 @@ def get_downloaded_trees():
 		r_raw = redis.get(trees_data_key)			
 		trees = json.loads(r_raw.decode('utf-8'))
 	else: 
-		trees = {}
-		
+		trees = {}	
 		
 	trs = json.dumps(trees)
 	
-
 	return Response(trs, status=200, mimetype='application/json')
 	
 
@@ -136,7 +125,7 @@ def generate_design_shadow():
 		design_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
 		
 		shadow_computation_helper = ShadowComputationHelper(session_id = str(session_id),  design_diagram_geojson = gj_serialized, shadow_date_time = shadow_date_time, bounds = project_data.bounds.bounds)
-		shadow_computation_helper.compute_gdh_trees_shadow()
+		shadow_computation_helper.compute_buildings_shadow()
 		# worker_data = GeodesignhubDataShadowGenerationRequest(design_diagram_geojson = gj_serialized, session_id = str(session_id), request_date_time = shadow_date_time)
 
 		# result = q.enqueue(utils.compute_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = str(session_id) + ":"+ shadow_date_time)
@@ -188,7 +177,7 @@ def generate_diagram_shadow():
 			diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)			
 			maptiler_key = os.getenv('maptiler_key', '00000000000000')			
 			shadow_computation_helper = ShadowComputationHelper(session_id = str(session_id),  design_diagram_geojson = gj_serialized, shadow_date_time = shadow_date_time, bounds = project_data.bounds.bounds)
-			shadow_computation_helper.compute_gdh_trees_shadow()
+			shadow_computation_helper.compute_buildings_shadow()
 			success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id))		
 							
 			
