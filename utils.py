@@ -198,7 +198,7 @@ def kickoff_existing_buildings_roads_shadows_stats(roads_shadow_computation_star
     roads_str = r.get(roads_storage_key)
     roads = json.loads(roads_str.decode('utf-8'))
     
-    shadow_roads_intersection_data = ShadowsRoadsIntersectionRequest(roads= json.dumps(roads), shadows=shadows, job_id =_roads_shadow_computation_details.session_id + ':roads_shadow"' )
+    shadow_roads_intersection_data = ShadowsRoadsIntersectionRequest(roads= json.dumps(roads), shadows=json.dumps(shadows), job_id =_roads_shadow_computation_details.session_id + ':existing_buildings_roads_shadow"' )
     compute_road_shadow_overlap(roads_shadows_data = asdict(shadow_roads_intersection_data))
     # print(shadow_roads_intersection_data)	
 
@@ -231,7 +231,7 @@ def compute_existing_buildings_shadow_with_tree_canopy(geojson_session_date_time
     
     _existing_buildings_raw = r.get(existing_buildings_hash_key)
     existing_buildings_fc = json.loads(_existing_buildings_raw)    
-  
+    
     existing_buildings = gpd.GeoDataFrame.from_features(existing_buildings_fc['features'])
     
     existing_buildings_shadows = pybdshadow.bdshadow_sunlight(existing_buildings,_pd_date_time)
@@ -248,7 +248,7 @@ def compute_existing_buildings_shadow_with_tree_canopy(geojson_session_date_time
     dissolved_shadows = combined_shadows.dissolve()   
 
     redis_key = _existing_building_date_time.session_id +':' +  _existing_building_date_time.request_date_time + '_existing_buildings_canopy_shadow'
-    r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
+    r.set(redis_key, dissolved_shadows.to_json())
     r.expire(redis_key, time=6000)
     time.sleep(7)
     print("Existing Buildings + Canopy Shadow Completed")
