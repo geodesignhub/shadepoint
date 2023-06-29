@@ -265,7 +265,7 @@ class ShadowComputationHelper():
 
            
             _gdh_roads_shadows_start_processing = RoadsShadowsComputationStartRequest(bounds = self.bounds, session_id= self.session_id, request_date_time= self. shadow_date_time)
-            job_id = self.session_id + ':gdh_roads_shadow"'
+            job_id = self.session_id + ':gdh_roads_shadow'
             gdh_roads_intersection_result = q.enqueue(utils.kickoff_gdh_roads_shadows_stats, asdict(_gdh_roads_shadows_start_processing), on_success= notify_gdh_roads_shadow_intersection_complete, on_failure = notify_gdh_roads_shadow_intersection_failure, job_id = job_id , depends_on = [gdh_shadow_result])
 
             # # generate the existing buildings Shadows

@@ -182,7 +182,7 @@ def kickoff_gdh_roads_shadows_stats(roads_shadow_computation_start):
     roads_str = r.get(roads_storage_key)
     roads = json.loads(roads_str.decode('utf-8'))
     
-    shadow_roads_intersection_data = ShadowsRoadsIntersectionRequest(roads= json.dumps(roads), shadows=shadows, job_id =_roads_shadow_computation_details.session_id + ':roads_shadow"' )
+    shadow_roads_intersection_data = ShadowsRoadsIntersectionRequest(roads= json.dumps(roads), shadows=shadows, job_id =_roads_shadow_computation_details.session_id + ':gdh_roads_shadow' )
     compute_road_shadow_overlap(roads_shadows_data = asdict(shadow_roads_intersection_data))
     # print(shadow_roads_intersection_data)	
 

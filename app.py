@@ -36,14 +36,16 @@ def home():
 @app.route('/generated_shadow', methods = ['GET'])
 def get_diagram_shadow():
 	shadow_key = request.args.get('shadow_key', '0')	
+	
 	shadow_exists = redis.exists(shadow_key)
+	
 	if shadow_exists: 
 		s = redis.get(shadow_key)	
 		shadow = json.loads(s)
 	else: 
-		shadow = {}
+		shadow = {"type":"FeatureCollection", "features":[]}
+	
 	return Response(shadow, status=200, mimetype='application/json')
-
 
 @app.route('/get_downloaded_roads', methods = ['GET'])
 def get_downloaded_roads():
@@ -54,7 +56,7 @@ def get_downloaded_roads():
 		r_raw = redis.get(roads_data_key)			
 		roads = json.loads(r_raw.decode('utf-8'))
 	else: 
-		roads = {}
+		roads = {"type":"FeatureCollection", "features":[]}
 		
 	rds = json.dumps(roads)
 	return Response(rds, status=200, mimetype='application/json')
@@ -68,7 +70,7 @@ def get_downloaded_trees():
 		r_raw = redis.get(trees_data_key)			
 		trees = json.loads(r_raw.decode('utf-8'))
 	else: 
-		trees = {}	
+		trees = {"type":"FeatureCollection", "features":[]}
 		
 	trs = json.dumps(trees)
 	
@@ -77,15 +79,18 @@ def get_downloaded_trees():
 
 @app.route('/get_shadow_roads_stats', methods = ['GET'])
 def generate_shadow_road_stats():
-	roads_shadow_stats_key = request.args.get('roads_shadow_stats_key', '0')	
+	roads_shadow_stats_key = request.args.get('roads_shadow_stats_key', '0')
+	
+	print(roads_shadow_stats_key)
 	roads_shadow_stats_exists = redis.exists(roads_shadow_stats_key)
+	print(roads_shadow_stats_exists)
 	if roads_shadow_stats_exists: 
 		s = redis.get(roads_shadow_stats_key)	
 		shadow_stats = json.loads(s)
 	else: 
 		default_shadow =  RoadsShadowOverlap(total_roads_kms=0.0, shadowed_kms=0.0, job_id = '0000')
 		shadow_stats = asdict(default_shadow)
-
+	print(shadow_stats)
 	return Response(json.dumps(shadow_stats), status=200, mimetype='application/json')
 	
 
