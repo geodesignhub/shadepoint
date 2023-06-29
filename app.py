@@ -43,7 +43,7 @@ def get_diagram_shadow():
 		shadow = json.loads(s)
 	else: 
 		shadow = {"type":"FeatureCollection", "features":[]}	
-	return Response(json.dumps(shadow), status=200, mimetype='application/json')
+	return Response(shadow, status=200, mimetype='application/json')
 
 @app.route('/existing_buildings_generated_shadow', methods = ['GET'])
 def get_existing_buildings_shadow():
@@ -114,7 +114,7 @@ def generate_shadow_road_stats():
 		s = redis.get(roads_shadow_stats_key)	
 		shadow_stats = json.loads(s)
 	else: 
-		default_shadow =  RoadsShadowOverlap(total_roads_kms=0.0, shadowed_kms=0.0, job_id = '0000')
+		default_shadow = RoadsShadowOverlap(total_roads_kms=0.0, shadowed_kms=0.0, job_id = '0000')
 		shadow_stats = asdict(default_shadow)
 	
 	return Response(json.dumps(shadow_stats), status=200, mimetype='application/json')

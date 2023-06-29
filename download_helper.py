@@ -14,6 +14,7 @@ from notifications_helper import notify_shadow_complete, shadow_generation_failu
 from uuid import uuid4
 import uuid
 from rq import Queue
+from rq.job import Dependency
 from worker import conn
 
 load_dotenv(find_dotenv())
@@ -250,27 +251,31 @@ class ShadowComputationHelper():
             roads_download_job = RoadsDownloadRequest(bounds= self.bounds,  session_id = str(self.session_id), request_date_time=self.shadow_date_time,roads_url=r_url)
             roads_download_result = q.enqueue(utils.download_roads, asdict(roads_download_job), on_success= notify_roads_download_complete, on_failure = notify_roads_download_failure, job_id = self.session_id + ":"+ self.shadow_date_time +":roads")
             
-            # generate the GDH Shadows
-
-            # gdh_worker_data = GeodesignhubDataShadowGenerationRequest(buildings= self.gdh_geojson, session_id = self.session_id, request_date_time = self.shadow_date_time, bounds =self.bounds)
-            
-            # gdh_shadow_result = q.enqueue(utils.compute_gdh_shadow_with_tree_canopy,asdict(gdh_worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = self.session_id + ":"+ self.shadow_date_time,  depends_on=[roads_download_result, trees_download_result])
-
-           
-            # _gdh_roads_shadows_start_processing = RoadsShadowsComputationStartRequest(bounds = self.bounds, session_id= self.session_id, request_date_time= self. shadow_date_time)
-            # job_id = self.session_id + ':gdh_roads_shadow'
-            # gdh_roads_intersection_result = q.enqueue(utils.kickoff_gdh_roads_shadows_stats, asdict(_gdh_roads_shadows_start_processing), on_success= notify_gdh_roads_shadow_intersection_complete, on_failure = notify_gdh_roads_shadow_intersection_failure, job_id = job_id , depends_on = [gdh_shadow_result,roads_download_result, trees_download_result])
-
             # # download existing buildings 
             buildings_download_job = BuildingsDownloadRequest(bounds= self.bounds,  session_id = str(self.session_id), request_date_time=self.shadow_date_time,buildings_url=b_url)
             buildings_download_result = q.enqueue(utils.download_existing_buildings, asdict(buildings_download_job), on_success= notify_buildings_download_complete, on_failure = notify_buildings_download_failure, job_id = self.session_id + ":"+ self.shadow_date_time +":existing_buildings")
+
+                    
+            existing_buildings_shadow_dependency = Dependency(jobs=[trees_download_result, roads_download_result, buildings_download_result], allow_failure=False,enqueue_at_front=True)
             
+            gdh_buildings_shadow_dependency = Dependency(jobs=[trees_download_result, roads_download_result],allow_failure=False,enqueue_at_front=True)
+
+
             # generate the existing buildings Shadows
             existing_worker_data = ExistingBuildingsDataShadowGenerationRequest(session_id = self.session_id, request_date_time = self.shadow_date_time, bounds =self.bounds)
-            existing_shadow_result = q.enqueue(utils.compute_existing_buildings_shadow_with_tree_canopy,asdict(existing_worker_data), on_success= existing_buildings_notify_shadow_complete, on_failure = existing_buildings_shadow_generation_failure, job_id = self.session_id + ":"+ self.shadow_date_time,  depends_on=[buildings_download_result,roads_download_result, trees_download_result])
+            existing_shadow_result = q.enqueue(utils.compute_existing_buildings_shadow_with_tree_canopy,asdict(existing_worker_data), on_success= existing_buildings_notify_shadow_complete, on_failure = existing_buildings_shadow_generation_failure, job_id = self.session_id + ":"+ self.shadow_date_time,  depends_on=existing_buildings_shadow_dependency)
 
             # Compute roads shadow interection based on Existing Buildings
 
             _existing_roads_shadows_start_processing = RoadsShadowsComputationStartRequest(bounds = self.bounds, session_id= self.session_id, request_date_time= self. shadow_date_time)
-            job_id = self.session_id + ':existing_buildings_roads_shadow"'
-            existing_roads_intersection_result = q.enqueue(utils.kickoff_existing_buildings_roads_shadows_stats, asdict(_existing_roads_shadows_start_processing), on_success= notify_existing_roads_shadow_intersection_complete, on_failure = notify_existing_roads_shadow_intersection_failure, job_id = job_id , depends_on = [existing_shadow_result])
+            
+            existing_roads_intersection_result = q.enqueue(utils.kickoff_existing_buildings_roads_shadows_stats, asdict(_existing_roads_shadows_start_processing), on_success= notify_existing_roads_shadow_intersection_complete, on_failure = notify_existing_roads_shadow_intersection_failure, job_id = self.session_id + ':existing_buildings_roads_shadow' , depends_on = [existing_shadow_result])
+
+            # generate the GDH Shadows
+            gdh_worker_data = GeodesignhubDataShadowGenerationRequest(buildings= self.gdh_geojson, session_id = self.session_id, request_date_time = self.shadow_date_time, bounds =self.bounds)
+            
+            gdh_shadow_result = q.enqueue(utils.compute_gdh_shadow_with_tree_canopy,asdict(gdh_worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = self.session_id + ":"+ self.shadow_date_time,  depends_on=gdh_buildings_shadow_dependency)
+           
+            _gdh_roads_shadows_start_processing = RoadsShadowsComputationStartRequest(bounds = self.bounds, session_id= self.session_id, request_date_time= self. shadow_date_time)
+            
+            gdh_roads_intersection_result = q.enqueue(utils.kickoff_gdh_roads_shadows_stats, asdict(_gdh_roads_shadows_start_processing), on_success= notify_gdh_roads_shadow_intersection_complete, on_failure = notify_gdh_roads_shadow_intersection_failure, job_id = self.session_id + ':gdh_roads_shadow' , depends_on = [gdh_shadow_result])

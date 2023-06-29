@@ -202,6 +202,12 @@ def kickoff_existing_buildings_roads_shadows_stats(roads_shadow_computation_star
     compute_road_shadow_overlap(roads_shadows_data = asdict(shadow_roads_intersection_data))
     # print(shadow_roads_intersection_data)	
 
+# def compute_existing_buildings_shadow_roads_analysis(geojson_session_date_time):
+#     compute_existing_buildings_shadow_with_tree_canopy(geojson_session_date_time)
+#     kickoff_existing_buildings_roads_shadows_stats(geojson_session_date_time)
+
+
+
 def compute_shadow(geojson_session_date_time: dict):
     _diagramid_building_date_time = from_dict(data_class = GeodesignhubDataShadowGenerationRequest, data = geojson_session_date_time)
     
