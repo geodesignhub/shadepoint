@@ -91,6 +91,7 @@ class DiagramShadowSuccessResponse:
     diagram_geojson: GeodesignhubDiagramGeoJSON
     maptiler_key: str
     session_id: str
+    shadow_date_time:str
 
 @dataclass
 class DesignShadowSuccessResponse:
@@ -100,6 +101,7 @@ class DesignShadowSuccessResponse:
     design_geojson: GeodesignhubDiagramGeoJSON
     maptiler_key: str
     session_id: str
+    shadow_date_time:str
 
 @dataclass
 class GeodesignhubDataShadowGenerationRequest:

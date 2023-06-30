@@ -23,24 +23,9 @@
             <div id="map"></div>
         </div>
     </div>
-    <div id="existing_buildings_shadow_stats" class="row d-none">
-        <div class="row"><div class="col-md-12">Existing Calculations</div></div>
-        <div class="col-md-6">
-            <h4>
-                <span id='existing_buildings_total_roads'></span>
-                <small class="text-muted">Total Roads (meters)</small>
-            </h4>            
-        </div>
-        <div class="col-md-6">
-            <h4>
-                <span id='existing_buildings_shadowed_roads'></span>
-                <small class="text-muted">Shadowed Roads (meters)</small>
-            </h4>            
-
-        </div>
-    </div>
-    <div id="shadow_stats" class="row d-none">
-        <div class="row"><div class="col-md-12">New Calculations</div></div>
+    <br>
+    <div class="row"><div class="col-md-12"><h6>Design Shadow Analysis</h6></div></div>
+    <div id="shadow_stats" class="row d-none">        
         <div class="col-md-6">
             <h4>
                 <span id='total_roads'></span>
@@ -56,11 +41,30 @@
         </div>
     </div>
     <br>
+    <div id="existing controls" class="row">
+        <div class="row"><div class="col-md-12"><h6>Existing Shadow Analysis&nbsp;<small class="text-muted">(<a href="#" onclick="get_existing_shadow_profile('{{op['project_data']['bounds']['bounds']}}','{{op['session_id']}}','{{op['shadow_date_time']}}')">show</a>)</small></h6></div></div>
+     
+    </div>    
+    
+    <div id="existing_buildings_shadow_stats" class="row d-none">
+        <div class="col-md-6">
+            <h4>
+                <span id='existing_buildings_total_roads'></span>
+                <small class="text-muted">Total Roads (meters)</small>
+            </h4>            
+        </div>
+        <div class="col-md-6">
+            <h4>
+                <span id='existing_buildings_shadowed_roads'></span>
+                <small class="text-muted">Shadowed Roads (meters)</small>
+            </h4>            
+        </div>
+    </div>
     <br>
     {% else %}
     <div class="row">
         <div class="col-md-12">
-            <p>{{op['message']}} </p>
+            <p>{{op['message']}}</p>
         </div>
     </div>
     {% endif %}
@@ -74,28 +78,29 @@
 {% if op['status'] == 1 %}
 <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
 
+<script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 
 <script type="text/javascript">
     const design_detail = {{op|safe}};
 
     const design_geojson = {{op["design_geojson"]["geojson"]|safe}};
 
-    var bounds = design_detail['project_data']['bounds']['bounds'];
+    const bounds = design_detail['project_data']['bounds']['bounds'];
+    const session_id = design_detail['session_id']
     var latLngs = bounds.split(',');
     var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
     var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
-    var bounds = new maplibregl.LngLatBounds(southWest, northEast);
+    var map_bounds = new maplibregl.LngLatBounds(southWest, northEast);
     // input nodes map
     var map = new maplibregl.Map({
         container: 'map', // container id  
         style:
             'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
-        bounds: bounds,
+        bounds: map_bounds,
         zoom: 10 // starting zoom
     });
-
-
     map.on('load', function () {
+
         map.addSource('buildings', {
             // GeoJSON Data source used in vector tiles, documented at
             // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
@@ -199,122 +204,6 @@
         );
     });
 
-
-    function get_building_shadow(shadow_download_url) {
-        fetch(shadow_download_url)
-            .then((response) => {
-                return response.json();
-            })
-            .then((shadow_data) => {
-                let spinner_cont = document.getElementById('spinner');
-                spinner_cont.classList.add('d-none');
-
-                let shadows_to_render = shadow_data;
-                map.getSource('building_shadows').setData(shadows_to_render);
-            }).catch((error) => {
-                console.log(error);
-            });
-    }
-    
-
-
-    function get_existing_building_shadow(shadow_download_url) {
-        
-        fetch(shadow_download_url)
-            .then((response) => {
-                return response.json();
-            })
-            .then((shadow_data) => {
-                let spinner_cont = document.getElementById('spinner');
-                spinner_cont.classList.add('d-none');                
-                let shadows_to_render = shadow_data;
-                map.getSource('existing_building_shadows').setData(shadows_to_render);
-            }).catch((error) => {
-                console.log(error);
-            });
-    }
-    
-    function get_downloaded_tree_canpoy(trees_url) {
-
-        fetch(trees_url)
-            .then((response) => {
-                return response.json();
-            })
-            .then((trees_data) => {
-                // let spinner_cont = document.getElementById('spinner');
-                // spinner_cont.classList.add('d-none');
-
-                // let trees_to_render = trees_data;
-                map.getSource('tree_canopy').setData(trees_to_render);
-                console.log(trees_data);
-            }).catch((error) => {
-
-                console.log(error);
-
-            });
-        }
-
-    function get_downloaded_roads(roads_url) {
-
-        fetch(roads_url)
-            .then((response) => {
-                return response.json();
-            })
-            .then((roads_data) => {
-                // let spinner_cont = document.getElementById('spinner');
-                // spinner_cont.classList.add('d-none');
-
-                // let roads_to_render = roads_data;                
-                map.getSource('bike_pedestrian_roads').setData(roads_data);
-            }).catch((error) => {
-                
-                console.log(error);
-                
-            });
-        }
-    function get_road_shadow_stats(roads_shadow_stats_url) {
-
-        fetch(roads_shadow_stats_url)
-            .then((response) => {
-                return response.json();
-            })
-            .then((roads_shadow_data) => {                
-                let shadow_stats_cont = document.getElementById('shadow_stats');
-                shadow_stats_cont.classList.remove('d-none');                
-                let total_roads = document.getElementById('total_roads');
-                total_roads.innerHTML = roads_shadow_data['total_roads_kms'];
-                
-                let shadowed_roads = document.getElementById('shadowed_roads');
-                shadowed_roads.innerHTML = roads_shadow_data['shadowed_kms']
-                
-            }).catch((error) => {
-                
-                console.log(error);
-                
-            });
-    }
-    
-    function get_existing_buildings_road_shadow_stats(roads_shadow_stats_url) {
-
-        fetch(roads_shadow_stats_url)
-            .then((response) => {
-                return response.json();
-            })
-            .then((roads_shadow_data) => {                
-                let shadow_stats_cont = document.getElementById('existing_buildings_shadow_stats');
-                shadow_stats_cont.classList.remove('d-none');                
-                let total_roads = document.getElementById('existing_buildings_total_roads');
-                total_roads.innerHTML = roads_shadow_data['total_roads_kms'];
-                
-                let shadowed_roads = document.getElementById('existing_buildings_shadowed_roads');
-                shadowed_roads.innerHTML = roads_shadow_data['shadowed_kms']
-                
-            }).catch((error) => {
-                
-                console.log(error);
-                
-            });
-    }
     
     document.addEventListener('DOMContentLoaded', () => {
 
@@ -367,14 +256,14 @@
             }
         }, false);
 
-        source.addEventListener('canopy_download_success', function(event) {
+        source.addEventListener('trees_download_success', function(event) {
             var data = JSON.parse(event.data);
             // do what you want with this data
-            let canopy_key = data['canopy_key'];
+            let canopy_key = data['trees_key'];
             let session_id = canopy_key.split(':')[0]
             if (session_id === room) {
                 // The message is for the current sesion, download the data...
-                let canopy_download_url = window.location.origin + '/get_downloaded_canopy?canopy_key=' + canopy_key;
+                let canopy_download_url = window.location.origin + '/get_downloaded_trees?trees_key=' + canopy_key;
                 get_downloaded_tree_canpoy(canopy_download_url);
             }
         }, false);

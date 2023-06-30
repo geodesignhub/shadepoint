@@ -33,6 +33,21 @@ app = create_app()
 def home():
 	return render_template('home.html')
 
+
+@app.route('/compute_existing_building_stats', methods = ['GET'])
+def get_existing_building_stats():
+
+	session_id = request.args.get('session_id', '0')
+	shadow_date_time = request.args.get('shadow_datetime', '0')
+	bounds = request.args.get('bounds', '0')
+
+
+	shadow_computation_helper = ShadowComputationHelper(session_id = session_id,shadow_date_time = shadow_date_time, bounds = bounds)
+	shadow_computation_helper.compute_existing_buildings_shadow()
+
+	return Response(json.dumps({}), status=200, mimetype='application/json')
+
+
 @app.route('/gdh_generated_shadow', methods = ['GET'])
 def get_diagram_shadow():
 	shadow_key = request.args.get('shadow_key', '0')	
@@ -91,6 +106,7 @@ def get_downloaded_trees():
 def get_existing_buildings_shadow_roads_stats():
 	roads_shadow_stats_key = request.args.get('roads_shadow_stats_key', '0')
 	
+	print(roads_shadow_stats_key)
 	roads_shadow_stats_exists = redis.exists(roads_shadow_stats_key)
 	
 	if roads_shadow_stats_exists: 
@@ -155,8 +171,8 @@ def generate_design_shadow():
 
 		design_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
 		
-		shadow_computation_helper = ShadowComputationHelper(session_id = str(session_id),  design_diagram_geojson = gj_serialized, shadow_date_time = shadow_date_time, bounds = project_data.bounds.bounds)
-		shadow_computation_helper.compute_buildings_shadow()
+		shadow_computation_helper = ShadowComputationHelper(session_id = str(session_id),  design_diagram_geojson = gj_serialized, shadow_date_time = shadow_date_time, bounds = project_data.bounds.bounds )
+		shadow_computation_helper.compute_gdh_buildings_shadow()
 		# worker_data = GeodesignhubDataShadowGenerationRequest(design_diagram_geojson = gj_serialized, session_id = str(session_id), request_date_time = shadow_date_time)
 
 		# result = q.enqueue(utils.compute_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = str(session_id) + ":"+ shadow_date_time)
@@ -164,7 +180,7 @@ def generate_design_shadow():
 
 		# Download Data		
 		maptiler_key = os.getenv('maptiler_key', '00000000000000')
-		success_response = DesignShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",design_geojson= design_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id))
+		success_response = DesignShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",design_geojson= design_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id), shadow_date_time =shadow_date_time)
 		
 		
 		return render_template('design_shadow.html', op = asdict(success_response))
@@ -208,8 +224,8 @@ def generate_diagram_shadow():
 			diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)			
 			maptiler_key = os.getenv('maptiler_key', '00000000000000')			
 			shadow_computation_helper = ShadowComputationHelper(session_id = str(session_id),  design_diagram_geojson = gj_serialized, shadow_date_time = shadow_date_time, bounds = project_data.bounds.bounds)
-			shadow_computation_helper.compute_buildings_shadow()
-			success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id))		
+			shadow_computation_helper.compute_gdh_buildings_shadow()
+			success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id),shadow_date_time=shadow_date_time)		
 							
 			
 			return render_template('diagram_shadow.html', op = asdict(success_response))		
