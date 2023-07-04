@@ -1,11 +1,8 @@
 {% extends "layout.html" %}
 {% block headercss %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}">
-<style>
-    #map {
-        height: 550px
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+
 {% endblock %}
 {% block body %}
 <div class="container">
@@ -21,6 +18,19 @@
             
             <br>
             <div id="map"></div>
+        </div>
+    </div>
+    <br>
+    <div class="row">
+        <div class="col-md-12">
+             <div id="listing-group" class="btn-group" role="group" aria-label="Layer selection tools">
+                <input type="checkbox" class="btn-check" id="baseline_shadow_index" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="baseline_shadow_index">Shadow Index</label>
+              
+                <input type="checkbox" class="btn-check" id="tree_canopy" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="tree_canopy">Tree Canopy</label>
+              
+              </div>
         </div>
     </div>
     <br>
@@ -99,6 +109,17 @@
         bounds: map_bounds,
         zoom: 10 // starting zoom
     });
+
+    document.getElementById('listing-group').addEventListener('change', function (e) {
+        var handler = e.target.id;
+        if (e.target.checked) {            
+            map.setLayoutProperty(handler, 'visibility', 'visible');
+        } else {
+            map.setLayoutProperty(handler, 'visibility', 'none');
+        }
+    });
+
+
     map.on('load', function () {
 
         map.addSource('buildings', {
