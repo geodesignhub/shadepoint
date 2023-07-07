@@ -180,7 +180,9 @@ def generate_design_shadow():
 
 		# Download Data		
 		maptiler_key = os.getenv('maptiler_key', '00000000000000')
-		success_response = DesignShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",design_geojson= design_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id), shadow_date_time =shadow_date_time)
+		baseline_index_wms_url = os.getenv('BASELINE_SHADOW_INDEX', '0')
+		
+		success_response = DesignShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",design_geojson= design_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id), shadow_date_time =shadow_date_time, baseline_index_wms_url = baseline_index_wms_url)
 		
 		
 		return render_template('design_shadow.html', op = asdict(success_response))
@@ -222,10 +224,12 @@ def generate_diagram_shadow():
 			_diagram_feature_collection = my_geodesignhub_downloader.download_diagram_data_from_geodesignhub()
 			gj_serialized = json.loads(geojson.dumps(_diagram_feature_collection))
 			diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)			
-			maptiler_key = os.getenv('maptiler_key', '00000000000000')			
+			maptiler_key = os.getenv('maptiler_key', '00000000000000')		
+			baseline_index_wms_url = os.getenv('BASELINE_SHADOW_INDEX', '0')	
 			shadow_computation_helper = ShadowComputationHelper(session_id = str(session_id),  design_diagram_geojson = gj_serialized, shadow_date_time = shadow_date_time, bounds = project_data.bounds.bounds)
 			shadow_computation_helper.compute_gdh_buildings_shadow()
-			success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id),shadow_date_time=shadow_date_time)		
+			
+			success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id),shadow_date_time=shadow_date_time, baseline_index_wms_url = baseline_index_wms_url)
 							
 			
 			return render_template('diagram_shadow.html', op = asdict(success_response))		

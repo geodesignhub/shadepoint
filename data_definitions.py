@@ -92,6 +92,7 @@ class DiagramShadowSuccessResponse:
     maptiler_key: str
     session_id: str
     shadow_date_time:str
+    baseline_index_wms_url:str
 
 @dataclass
 class DesignShadowSuccessResponse:
@@ -102,6 +103,7 @@ class DesignShadowSuccessResponse:
     maptiler_key: str
     session_id: str
     shadow_date_time:str
+    baseline_index_wms_url:str
 
 @dataclass
 class GeodesignhubDataShadowGenerationRequest:
