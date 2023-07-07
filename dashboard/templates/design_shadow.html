@@ -14,8 +14,12 @@
             <div id="spinner" class="spinner-border text-secondary" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
+            <div><label for="shadow_date_time">Select new (date and time):</label>
+                <input type="datetime-local" id="shadow_date_time" name="shadow_date_time">
+                <input type="submit" value="Update Shadows" onclick="return update_date_time();" />
+
+            </div>
             <h3>Shadow Analysis <small class="text-muted"></small></h3>
-            
             <br>
             <div id="map"></div>
         </div>
@@ -121,6 +125,19 @@
             map.setLayoutProperty(handler, 'visibility', 'none');
         }
     });
+    function update_date_time() {
+        let new_url = new URL(window.location.href);
+
+        let date_time = new_url.searchParams.delete('date_time');
+
+        const dateControl = document.querySelector('input[type="datetime-local"]');
+        let new_date = dateControl.value;
+        if (new_date) {
+            new_url.searchParams.append('date_time', new_date);
+            window.location.href = new_url;
+        }
+        return true;
+    }
 
 
     map.on('load', function () {

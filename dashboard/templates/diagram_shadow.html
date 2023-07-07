@@ -216,6 +216,19 @@
 
     });
 
+    function update_date_time() {
+        let new_url = new URL(window.location.href);
+
+        let date_time = new_url.searchParams.delete('date_time');
+
+        const dateControl = document.querySelector('input[type="datetime-local"]');
+        let new_date = dateControl.value;
+        if (new_date) {
+            new_url.searchParams.append('date_time', new_date);
+            window.location.href = new_url;
+        }
+        return true;
+    }
 
     function get_building_shadow(shadow_download_url) {
 
