@@ -29,7 +29,7 @@
     <div class="row">
         <div class="col-md-12">
              <div id="listing-group" class="btn-group" role="group" aria-label="Layer selection tools">
-                {% if op.baseline_index_wms_url != '0' || op.trees_wms_url != '0' %}
+                {% if op.baseline_index_wms_url != '0' or op.trees_wms_url != '0' %}
                 <h6>Analytical Layers<small class="text-muted">Pre-computed layers for the area</small></h6>
                 {% endif %}
                 {% if op.baseline_index_wms_url != '0' %}
