@@ -15,7 +15,11 @@
                 <span class="visually-hidden">Loading...</span>
             </div>
             <h3>Shadow Analysis <small class="text-muted"></small></h3>
+            <div><label for="shadow_date_time">Select new (date and time):</label>
+                <input type="datetime-local" id="shadow_date_time" name="shadow_date_time">
+                <input type="submit" value="Update Shadows" onclick="return update_date_time();" />
 
+            </div>
             <br>
             <div id="map"></div>
         </div>
@@ -29,10 +33,10 @@
                 <input type="checkbox" class="btn-check" id="baseline_shadow_index" autocomplete="off" checked>
                 <label class="btn btn-outline-primary" for="baseline_shadow_index">Shadow Index</label>
                 {%endif %}
-              
-              
-                <input type="checkbox" class="btn-check" id="tree_canopy" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="tree_canopy">Tree Canopy</label>
+                {% if op.trees_wms_url != '0' %}
+                <input type="checkbox" class="btn-check" id="trees_canopy" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="trees_canopy">Tree Canopy</label>
+                {% endif %}
               
               </div>
         </div>
@@ -85,6 +89,7 @@
     var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
     var bounds = new maplibregl.LngLatBounds(southWest, northEast);
     let baseline_shadow_index_source = '{{op["baseline_index_wms_url"]|safe}}';
+    let existing_canopy_source = '{{op["trees_wms_url"]|safe}}';
     // input nodes map
     var map = new maplibregl.Map({
         container: 'map', // container id  
@@ -103,7 +108,18 @@
         }
     });
 
+    function update_date_time() {
+        let new_url = new URL(window.location.href);
 
+        let date_time = new_url.searchParams.delete('date_time');
+        const dateControl = document.querySelector('input[type="datetime-local"]');
+        let new_date = dateControl.value;
+        if (new_date) {
+            new_url.searchParams.append('date_time', new_date);
+            window.location.href = new_url;
+        }
+        return true;
+    }
 
     map.on('load', function () {
         map.addSource('buildings', {
@@ -150,6 +166,25 @@
             );
         }
 
+        if (existing_canopy_source !=='0'){
+            map.addSource('trees_canopy_source', {
+            'type': 'raster',
+            // use the tiles option to specify a WMS tile source URL
+            // https://maplibre.org/maplibre-style-spec/sources/            
+            'tiles': ['{{op["trees_wms_url"]|safe}}'],
+            'tileSize': 256
+            });
+
+            map.addLayer(
+            {
+            'id': 'trees_canopy',
+            'type': 'raster',
+            'source': 'trees_canopy_source',
+            'paint': {}
+            }
+            );
+        }
+
         map.addLayer({
             'id': 'buildings-extrusion',
             'type': 'fill-extrusion',
@@ -172,16 +207,6 @@
             }
         });
         
-        map.addLayer({
-            'id': 'tree_canopy',
-            'type': 'fill',
-            'source': 'tree_canopy',
-            'layout': {},
-            'paint': {
-                'fill-color': '#006400',
-                'fill-opacity': 0.4
-            }
-        });
         map.addLayer({
             'id': 'building_shadows',
             'type': 'fill',
@@ -268,26 +293,6 @@
             });
     }
 
-    function get_downloaded_tree_canpoy(trees_url) {
-
-        fetch(trees_url)
-            .then((response) => {
-                return response.json();
-            })
-            .then((trees_data) => {
-                // let spinner_cont = document.getElementById('spinner');
-                // spinner_cont.classList.add('d-none');
-
-                let trees_to_render = trees_data;
-                // map.getSource('tree_canopy').setData(trees_to_render);
-                console.log(trees_data);
-            }).catch((error) => {
-
-                console.log(error);
-
-            });
-    }
-
     function get_road_shadow_stats(roads_shadow_stats_url) {
         fetch(roads_shadow_stats_url)
             .then((response) => {
@@ -315,7 +320,7 @@
         const room = diagram_detail.session_id;
         var source = new EventSource("{{ url_for('sse.stream') }}");
 
-        source.addEventListener('shadow_generation_success', function(event) {
+        source.addEventListener('gdh_shadow_generation_success', function(event) {
 
             var data = JSON.parse(event.data);
             // do what you want with this data
@@ -323,7 +328,7 @@
             let session_id = shadow_id_key.split(':')[0]
             if (session_id === room) {
                 // The message is for the current sesion, download the data...
-                let shadow_download_url = window.location.origin + '/generated_shadow?shadow_key=' + shadow_id_key;
+                let shadow_download_url = window.location.origin + '/gdh_generated_shadow?shadow_key=' + shadow_id_key;
                 get_building_shadow(shadow_download_url);
             }
         }, false);
@@ -340,18 +345,6 @@
             }
         }, false);
 
-
-        source.addEventListener('trees_download_success', function (event) {
-            var data = JSON.parse(event.data);
-            // do what you want with this data
-            let trees_key = data['trees_key'];
-            let session_id = trees_key.split(':')[0]
-            if (session_id === room) {
-                // The message is for the current sesion, download the data...
-                let trees_download_url = window.location.origin + '/get_downloaded_trees?trees_key=' + trees_key;
-                get_downloaded_trees(trees_download_url);
-            }
-        }, false);
 
         source.addEventListener('roads_shadow_complete', function (event) {
             var data = JSON.parse(event.data);

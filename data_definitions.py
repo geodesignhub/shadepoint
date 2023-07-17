@@ -93,6 +93,7 @@ class DiagramShadowSuccessResponse:
     session_id: str
     shadow_date_time:str
     baseline_index_wms_url:str
+    trees_wms_url:str
 
 @dataclass
 class DesignShadowSuccessResponse:
@@ -104,6 +105,8 @@ class DesignShadowSuccessResponse:
     session_id: str
     shadow_date_time:str
     baseline_index_wms_url:str
+    trees_wms_url:str
+
 
 @dataclass
 class GeodesignhubDataShadowGenerationRequest:
@@ -118,7 +121,6 @@ class ExistingBuildingsDataShadowGenerationRequest:
     session_id: str
     request_date_time: str
     bounds: str
-    
     
 @dataclass
 class RoadsDownloadRequest:

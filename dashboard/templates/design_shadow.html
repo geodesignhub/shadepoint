@@ -32,9 +32,10 @@
                 <input type="checkbox" class="btn-check" id="baseline_shadow_index" autocomplete="off" checked>
                 <label class="btn btn-outline-primary" for="baseline_shadow_index">Shadow Index</label>
                 {%endif %}
-              
-                <input type="checkbox" class="btn-check" id="tree_canopy" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="tree_canopy">Tree Canopy</label>
+                {% if op.trees_wms_url != '0' %}
+                <input type="checkbox" class="btn-check" id="existing_canpoy_source" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="existing_canpoy_source">Tree Canopy</label>
+                {% endif %}
               
               </div>
         </div>
@@ -54,26 +55,6 @@
                 <small class="text-muted">Shadowed Roads (meters)</small>
             </h4>            
 
-        </div>
-    </div>
-    <br>
-    <div id="existing controls" class="row">
-        <div class="row"><div class="col-md-12"><h6>Existing Shadow Analysis&nbsp;<small class="text-muted">(<a href="#" onclick="get_existing_shadow_profile('{{op['project_data']['bounds']['bounds']}}','{{op['session_id']}}','{{op['shadow_date_time']}}')">show</a>)</small></h6></div></div>
-     
-    </div>    
-    
-    <div id="existing_buildings_shadow_stats" class="row d-none">
-        <div class="col-md-6">
-            <h4>
-                <span id='existing_buildings_total_roads'></span>
-                <small class="text-muted">Total Roads (meters)</small>
-            </h4>            
-        </div>
-        <div class="col-md-6">
-            <h4>
-                <span id='existing_buildings_shadowed_roads'></span>
-                <small class="text-muted">Shadowed Roads (meters)</small>
-            </h4>            
         </div>
     </div>
     <br>
@@ -108,6 +89,7 @@
     var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
     var map_bounds = new maplibregl.LngLatBounds(southWest, northEast);
     let baseline_shadow_index_source = '{{op["baseline_index_wms_url"]|safe}}';
+    let existing_canpoy_source = '{{op["trees_wms_url"]|safe}}';
     // input nodes map
     var map = new maplibregl.Map({
         container: 'map', // container id  
@@ -160,12 +142,29 @@
             'type': 'geojson',
             'data': { "type": "FeatureCollection", "features": [] }
         });
-        map.addSource('tree_canopy', {
-            // GeoJSON Data source used in vector tiles, documented at
-            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
-            'type': 'geojson',
-            'data': { "type": "FeatureCollection", "features": [] }
-        });
+
+
+        if (existing_canpoy_source !=='0'){
+            map.addSource('existing_canpoy_source', {
+            'type': 'raster',
+            // use the tiles option to specify a WMS tile source URL
+            // https://maplibre.org/maplibre-style-spec/sources/
+            
+            'tiles': ['{{op["trees_wms_url"]|safe}}'],
+            'tileSize': 256
+            });
+            map.addLayer(
+            {
+            'id': 'trees_canopy',
+            'type': 'raster',
+            'source': 'existing_canpoy_source',
+            'paint': {}
+            },
+            'aeroway_fill'
+            );
+        }
+
+        
         map.addSource('bike_pedestrian_roads', {
             // GeoJSON Data source used in vector tiles, documented at
             // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
@@ -213,16 +212,7 @@
                 'fill-extrusion-opacity': 0.5
             }
         });
-        map.addLayer({
-            'id': 'tree_canopy',
-            'type': 'fill',
-            'source': 'tree_canopy',
-            'layout': {},
-            'paint': {
-                'fill-color': '#006400',
-                'fill-opacity': 0.4
-            }
-        });
+        
         map.addLayer({
             'id': 'building_shadows',
             'type': 'fill',
@@ -316,31 +306,6 @@
                 get_road_shadow_stats(roads_shadow_stats_url);
             }
         }, false);
-
-        source.addEventListener('trees_download_success', function(event) {
-            var data = JSON.parse(event.data);
-            // do what you want with this data
-            let canopy_key = data['trees_key'];
-            let session_id = canopy_key.split(':')[0]
-            if (session_id === room) {
-                // The message is for the current sesion, download the data...
-                let canopy_download_url = window.location.origin + '/get_downloaded_trees?trees_key=' + canopy_key;
-                get_downloaded_tree_canpoy(canopy_download_url);
-            }
-        }, false);
-
-        source.addEventListener('existing_buildings_roads_shadow_complete', function(event) {
-            var data = JSON.parse(event.data);
-            // do what you want with this data
-            let existing_buildings_roads_shadow_stats_key = data['existing_buildings_roads_shadow_stats_key'];
-            let session_id = existing_buildings_roads_shadow_stats_key.split(':')[0]
-            if (session_id === room) {
-                // The message is for the current sesion, download the data...
-                let existing_buildings_roads_shadow_stats_url = window.location.origin + '/existing_buildings_shadow_roads_stats?roads_shadow_stats_key=' + existing_buildings_roads_shadow_stats_key;
-                get_existing_buildings_road_shadow_stats(existing_buildings_roads_shadow_stats_url);
-            }
-        }, false);
-
 
 
     });

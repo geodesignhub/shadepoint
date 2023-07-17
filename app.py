@@ -33,21 +33,6 @@ app = create_app()
 def home():
 	return render_template('home.html')
 
-
-@app.route('/compute_existing_building_stats', methods = ['GET'])
-def get_existing_building_stats():
-
-	session_id = request.args.get('session_id', '0')
-	shadow_date_time = request.args.get('shadow_datetime', '0')
-	bounds = request.args.get('bounds', '0')
-
-
-	shadow_computation_helper = ShadowComputationHelper(session_id = session_id,shadow_date_time = shadow_date_time, bounds = bounds)
-	shadow_computation_helper.compute_existing_buildings_shadow()
-
-	return Response(json.dumps({}), status=200, mimetype='application/json')
-
-
 @app.route('/gdh_generated_shadow', methods = ['GET'])
 def get_diagram_shadow():
 	shadow_key = request.args.get('shadow_key', '0')	
@@ -173,17 +158,13 @@ def generate_design_shadow():
 		
 		shadow_computation_helper = ShadowComputationHelper(session_id = str(session_id),  design_diagram_geojson = gj_serialized, shadow_date_time = shadow_date_time, bounds = project_data.bounds.bounds )
 		shadow_computation_helper.compute_gdh_buildings_shadow()
-		# worker_data = GeodesignhubDataShadowGenerationRequest(design_diagram_geojson = gj_serialized, session_id = str(session_id), request_date_time = shadow_date_time)
-
-		# result = q.enqueue(utils.compute_shadow,asdict(worker_data), on_success= notify_shadow_complete, on_failure = shadow_generation_failure, job_id = str(session_id) + ":"+ shadow_date_time)
-
 
 		# Download Data		
 		maptiler_key = os.getenv('maptiler_key', '00000000000000')
-		baseline_index_wms_url = os.getenv('BASELINE_SHADOW_INDEX', '0')
+		baseline_index_wms_url = os.getenv('WMS_BASELINE_SHADOW_INDEX', '0')
+		trees_wms_url = os.getenv('WMS_EXISTING_TREES_URL', '0')
 		
-		success_response = DesignShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",design_geojson= design_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id), shadow_date_time =shadow_date_time, baseline_index_wms_url = baseline_index_wms_url)
-		
+		success_response = DesignShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",design_geojson= design_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id), shadow_date_time =shadow_date_time, baseline_index_wms_url = baseline_index_wms_url, trees_wms_url =trees_wms_url )
 		
 		return render_template('design_shadow.html', op = asdict(success_response))
 		# return Response(msg, status=400, mimetype='application/json')
@@ -225,11 +206,12 @@ def generate_diagram_shadow():
 			gj_serialized = json.loads(geojson.dumps(_diagram_feature_collection))
 			diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)			
 			maptiler_key = os.getenv('maptiler_key', '00000000000000')		
-			baseline_index_wms_url = os.getenv('BASELINE_SHADOW_INDEX', '0')	
+			baseline_index_wms_url = os.getenv('WMS_BASELINE_SHADOW_INDEX', '0')
+			trees_wms_url = os.getenv('WMS_EXISTING_TREES_URL', '0')
 			shadow_computation_helper = ShadowComputationHelper(session_id = str(session_id),  design_diagram_geojson = gj_serialized, shadow_date_time = shadow_date_time, bounds = project_data.bounds.bounds)
 			shadow_computation_helper.compute_gdh_buildings_shadow()
 			
-			success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id),shadow_date_time=shadow_date_time, baseline_index_wms_url = baseline_index_wms_url)
+			success_response = DiagramShadowSuccessResponse(status=1,message="Data from Geodesignhub retrieved",diagram_geojson= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id),shadow_date_time=shadow_date_time, baseline_index_wms_url = baseline_index_wms_url, trees_wms_url=trees_wms_url)
 							
 			
 			return render_template('diagram_shadow.html', op = asdict(success_response))		
