@@ -15,7 +15,7 @@
                 <span class="visually-hidden">Loading...</span>
             </div>
             <h3>Shadow Analysis</h3>
-            <p class="text-muted">By default the shadow is computed for August 6 at 10AM when radiation not strong</p>
+            <p class="text-muted">By default the shadow is computed for August 6 at 10AM when radiation is not strong</p>
             <br>
             <div id="map"></div>
         </div>
@@ -23,10 +23,10 @@
     <br>
     <div class="row">
         <div class="col-md-12">           
-            <div><label for="shadow_date_time">Select new (date and time):</label>
+            <div>
+                <label for="shadow_date_time">Select new (date and time):</label>
                 <input type="datetime-local" id="shadow_date_time" name="shadow_date_time">
                 <input type="submit" value="Update Shadows" onclick="return update_date_time();" />
-
             </div>
         </div>
     </div>
@@ -95,7 +95,7 @@
 <script type="text/javascript">
     const design_detail = {{op|safe}};
 
-    const design_geojson = {{op["design_geojson"]["geojson"]|safe}};
+    const design_geojson = {{op["geometry_data"]["geojson"]|safe}};
 
     const bounds = design_detail['project_data']['bounds']['bounds'];
     const session_id = design_detail['session_id']

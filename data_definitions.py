@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from typing import List
-from typing import Optional
+from typing import List, Optional, Union
 
 @dataclass
 class ErrorResponse:
@@ -83,29 +82,41 @@ class GeodesignhubProjectData:
     bounds: GeodesignhubProjectBounds
     center: GeodesignhubProjectCenter
 
-@dataclass
-class DiagramShadowSuccessResponse:
-    message: str
-    status: int
-    project_data: GeodesignhubProjectData
-    diagram_geojson: GeodesignhubDiagramGeoJSON
-    maptiler_key: str
-    session_id: str
-    shadow_date_time:str
-    baseline_index_wms_url:str
-    trees_wms_url:str
+@dataclass 
+class ToolboxDesignViewDetails:
+    api_token: str
+    cteam_id: str
+    synthesis_id: str
+    project_id: str
+
+@dataclass 
+class ToolboxDiagramViewDetails:
+    api_token: str    
+    diagram_id: str
+    project_id: str
 
 @dataclass
-class DesignShadowSuccessResponse:
+class ShadowViewSuccessResponse:
     message: str
     status: int
     project_data: GeodesignhubProjectData
-    design_geojson: GeodesignhubDiagramGeoJSON
+    geometry_data: GeodesignhubDiagramGeoJSON
     maptiler_key: str
     session_id: str
     shadow_date_time:str
     baseline_index_wms_url:str
     trees_wms_url:str
+    view_details: Union[ToolboxDesignViewDetails, ToolboxDiagramViewDetails]
+    
+@dataclass
+class FloodingViewSuccessResponse:
+    message: str
+    status: int
+    project_data: GeodesignhubProjectData
+    geometry_data: GeodesignhubDiagramGeoJSON
+    maptiler_key: str
+    flood_vulnerability_wms_url: str
+    view_details: Union[ToolboxDesignViewDetails, ToolboxDiagramViewDetails]
 
 
 @dataclass

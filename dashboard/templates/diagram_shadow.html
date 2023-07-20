@@ -15,7 +15,7 @@
                 <span class="visually-hidden">Loading...</span>
             </div>
             <h3>Shadow Analysis <small class="text-muted"></small></h3>            
-            <p class="text-muted">By default the shadow is computed for August 6 at 10AM when radiation not strong</p>
+            <p class="text-muted">By default the shadow is computed for August 6 at 10AM when radiation is not strong</p>
             <br>
             <div id="map"></div>
         </div>
@@ -93,7 +93,7 @@
 <script type="text/javascript">
     const diagram_detail = {{ op|safe }};
 
-    const diagram_geojson = {{ op["diagram_geojson"]["geojson"]|safe }};
+    const diagram_geojson = {{ op["geometry_data"]["geojson"]|safe }};
     var bounds = diagram_detail['project_data']['bounds']['bounds'];
     var center = diagram_detail['project_data']['center']['center'];
     var map_center = center.split(',');
