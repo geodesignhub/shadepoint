@@ -139,7 +139,10 @@ def generate_design_shadow():
 		else:
 			shadow_date_time = arrow.get(r_date_time).format('YYYY-MM-DDTHH:mm:ss')		
 	except KeyError as ke: 
-		shadow_date_time = arrow.now().format('YYYY-MM-DDTHH:mm:ss')
+		# shadow_date_time = arrow.now().format('YYYY-MM-DDTHH:mm:ss')
+		current_year = arrow.now().year
+		august_6_date = '{year}-08-06T10:10:00'.format(year = current_year)
+		shadow_date_time = august_6_date
 
 	if projectid and cteamid and apitoken and synthesisid:
 		
@@ -190,7 +193,10 @@ def generate_diagram_shadow():
 		else:
 			shadow_date_time = arrow.get(r_date_time).format('YYYY-MM-DDTHH:mm:ss')		
 	except KeyError as ke: 
-		shadow_date_time = arrow.now().format('YYYY-MM-DDTHH:mm:ss')
+		# shadow_date_time = arrow.now().format('YYYY-MM-DDTHH:mm:ss')
+		current_year = arrow.now().year
+		august_6_date = '{year}-08-06T10:10:00'.format(year = current_year)
+		shadow_date_time = august_6_date
 	
 	if projectid and diagramid and apitoken:		
 		session_id = uuid.uuid4()		
