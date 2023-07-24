@@ -55,10 +55,10 @@
                   <br>
                   <ul class="nav nav-pills justify-content-center">
                     <li class="nav-item">
-                      <a class="nav-link active" aria-current="page" href="/design_shadow/?apitoken={{op.view_details.api_token}}&cteamid={{op.view_details.cteam_id}}&synthesisid={{op.view_details.synthesis_id}}&projectid={{op.view_details.project_id}}">Shadow Analysis</a>
+                      <a class="nav-link {%if op.view_details.view_type=='shadow'%}active{%endif%}" aria-current="page" href="/design_shadow/?apitoken={{op.view_details.api_token}}&cteamid={{op.view_details.cteam_id}}&synthesisid={{op.view_details.synthesis_id}}&projectid={{op.view_details.project_id}}">Shadow Analysis</a>
                     </li>
                     <li class="nav-item">
-                      <a class="nav-link" href="/flooding_analysis/?apitoken={{op.view_details.api_token}}&cteamid={{op.view_details.cteam_id}}&synthesisid={{op.view_details.synthesis_id}}&projectid={{op.view_details.project_id}}">Local Flooding</a>
+                      <a class="nav-link {%if op.view_details.view_type=='flood'%}active{%endif%}" href="/design_flooding_analysis/?apitoken={{op.view_details.api_token}}&cteamid={{op.view_details.cteam_id}}&synthesisid={{op.view_details.synthesis_id}}&projectid={{op.view_details.project_id}}">Local Flooding</a>
                     </li>
                   </ul> 
                 </div>

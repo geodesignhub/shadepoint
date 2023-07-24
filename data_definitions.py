@@ -88,6 +88,7 @@ class ToolboxDesignViewDetails:
     cteam_id: str
     synthesis_id: str
     project_id: str
+    view_type:str
 
 @dataclass 
 class ToolboxDiagramViewDetails:
@@ -111,6 +112,7 @@ class ShadowViewSuccessResponse:
 @dataclass
 class FloodingViewSuccessResponse:
     message: str
+    session_id: str
     status: int
     project_data: GeodesignhubProjectData
     geometry_data: GeodesignhubDiagramGeoJSON
