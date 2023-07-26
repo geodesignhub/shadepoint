@@ -47,6 +47,7 @@ class GeodesignhubDesignFeatureProperties:
     areatype:str
     min_height: float
     max_height:float
+    tag_codes: str
 
 @dataclass
 class ExistingBuildingsFeatureProperties: 
@@ -73,6 +74,20 @@ class GeodesignhubProjectBounds:
     bounds: str
 
 @dataclass
+class GeodesignhubProjectTag:
+    id: str
+    tag: str
+    slug: str
+    code: str
+    diagrams: List[int]
+
+@dataclass
+class GeodesignhubProjectTags:
+    
+    tags: List[GeodesignhubProjectTag]
+
+
+@dataclass
 class GeodesignhubProjectCenter:    
     center: str
 
@@ -81,6 +96,7 @@ class GeodesignhubProjectData:
     systems: List[GeodesignhubSystem]
     bounds: GeodesignhubProjectBounds
     center: GeodesignhubProjectCenter
+    tags: GeodesignhubProjectTags
 
 @dataclass 
 class ToolboxDesignViewDetails:

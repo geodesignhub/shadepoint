@@ -37,8 +37,36 @@
               </div>
         </div>
     </div>
+    <br>
+    <div class="row">
+        <div class="col-md-12">
+            <div>                
+                <h6>Tags&nbsp;<small class="text-muted">Details of tactical interventions over buildings</small></h6>              
+                <table class="table table-striped">
+                    <thead>
+                      <tr>
+                        <th scope="col">Code</th>
+                        <th scope="col">Slug</th>
+                        <th scope="col">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                        {% for tag in op['project_data']['tags']['tags'] %}
+                            <tr>
+                                <th scope="row">{{tag['code']}}</th>
+                                <td><code>{{tag['slug']}}</code></td>
+                                <td><pre>{{tag['tag']}}</pre></td>
+                            </tr>
+                        {% endfor %}
+                      
+                    </tbody>
+                  </table>  
+            </div>
+        </div>
+    </div>
 
     <br>
+    
     {% else %}
     <div class="row">
         <div class="col-md-12">
@@ -60,6 +88,7 @@
     const design_detail = {{op|safe}};
 
     const design_geojson = {{op["geometry_data"]["geojson"]|safe}};
+    
 
     const bounds = design_detail['project_data']['bounds']['bounds'];
     const session_id = design_detail['session_id']
@@ -138,25 +167,25 @@
                 'fill-extrusion-opacity': 0.5
             }
         });
-        
-        // When a click event occurs on a feature in the states layer, open a popup at the
-        // location of the click, with description HTML from its properties.
-        map.on('click', 'buildings-extrusion', (e) => {
-            console.log(e.features)
-            new maplibregl.Popup()
-                .setLngLat(e.lngLat)
-                .setHTML(e.features[0].properties.tags)
-                .addTo(map);
+        const popup = new maplibregl.Popup({
+            closeButton: false,
+            closeOnClick: false
         });
 
-        // Change the cursor to a pointer when the mouse is over the states layer.
-        map.on('mouseenter', 'buildings-extrusion', () => {
+        // When a click event occurs on a feature in the states layer, open a popup at the
+        // location of the click, with description HTML from its properties.
+        map.on('mouseenter', 'buildings-extrusion', (e) => {
             map.getCanvas().style.cursor = 'pointer';
+            popup.setLngLat(e.lngLat)
+                .setHTML(e.features[0].properties.tag_codes)
+                .addTo(map);
         });
+        
 
         // Change it back to a pointer when it leaves.
         map.on('mouseleave', 'buildings-extrusion', () => {
             map.getCanvas().style.cursor = '';
+            popup.remove();
         });
         
         map.addControl(
