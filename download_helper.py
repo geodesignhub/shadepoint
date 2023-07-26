@@ -1,5 +1,5 @@
 
-from data_definitions import ErrorResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubFeatureProperties,BuildingData, GeodesignhubDataShadowGenerationRequest, GeodesignhubDesignFeatureProperties, RoadsDownloadRequest,TreesDownloadRequest, GeodesignhubProjectCenter, RoadsShadowsComputationStartRequest, BuildingsDownloadRequest, ExistingBuildingsDataShadowGenerationRequest
+from data_definitions import ErrorResponse, GeodesignhubProjectBounds, GeodesignhubSystem, GeodesignhubProjectData, GeodesignhubFeatureProperties,BuildingData, GeodesignhubDataShadowGenerationRequest, GeodesignhubDesignFeatureProperties, RoadsDownloadRequest,TreesDownloadRequest, GeodesignhubProjectCenter, RoadsShadowsComputationStartRequest, BuildingsDownloadRequest, ExistingBuildingsDataShadowGenerationRequest, GeodesignhubProjectTags 
 import utils
 import os
 from dataclasses import asdict
@@ -64,8 +64,7 @@ class GeodesignhubDataDownloader():
        
     def download_project_bounds(self) -> Optional[GeodesignhubProjectBounds]:
         
-        b = self.api_helper.get_project_bounds()
-    
+        b = self.api_helper.get_project_bounds()    
         try:
             assert b.status_code == 200
         except AssertionError as ae:
@@ -75,6 +74,17 @@ class GeodesignhubDataDownloader():
         bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())			
 
         return bounds
+    
+       
+       
+    def download_project_tags(self) -> Optional[GeodesignhubProjectTags]:        
+        t = self.api_helper.get_project_tags()    
+        try:
+            assert t.status_code == 200
+        except AssertionError as ae:
+            error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
+            return None
+        return t.json()
     
        
     def download_project_center(self) -> Optional[GeodesignhubProjectCenter]:
@@ -108,6 +118,7 @@ class GeodesignhubDataDownloader():
             _diagram_properties['height'] = _diagram_properties['max_height']
             _diagram_properties['base_height'] = _diagram_properties['min_height']
             _diagram_properties['diagram_id'] = _diagram_properties['diagramid']
+            _diagram_properties['tag_codes'] = _diagram_properties['tag_codes']
             _diagram_properties['building_id'] = str(uuid.uuid4())
             
             _feature_properties = from_dict(data_class = GeodesignhubDesignFeatureProperties, data = _diagram_properties)
@@ -194,6 +205,7 @@ class GeodesignhubDataDownloader():
         s = myAPIHelper.get_all_systems()
         b = myAPIHelper.get_project_bounds()
         c = myAPIHelper.get_project_center()
+        t = myAPIHelper.get_project_tags()
         
         # Check responses / data
         try:
@@ -215,8 +227,9 @@ class GeodesignhubDataDownloader():
             return None
 
         center = from_dict(data_class=GeodesignhubProjectCenter,data = c.json())
-        bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())			
-        project_data = GeodesignhubProjectData(systems=all_systems ,bounds=bounds, center=center)	
+        bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())	
+        tags = from_dict(data_class=GeodesignhubProjectTags, data={"tags":t.json()})		
+        project_data = GeodesignhubProjectData(systems=all_systems ,bounds=bounds, center=center, tags = tags)	
 
         return project_data
     

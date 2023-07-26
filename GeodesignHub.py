@@ -1,6 +1,6 @@
 import requests, json
 
-# Version: 1.2.11
+# Version: 1.3.2
 
 class GeodesignHubClient():
 	'''
@@ -69,6 +69,13 @@ class GeodesignHubClient():
 	def get_project_bounds(self):
 		''' Returns a string with bounding box for the project study area coordinates in a 'southwest_lng,southwest_lat,northeast_lng,northeast_lat' format. '''
 		securl = self.securl+ 'projects'+ '/' + self.project_id + '/' +'bounds' + '/'
+		headers = {'Authorization': 'Token '+ self.token}
+		r = self.session.get(securl, headers=headers)
+		return r
+
+	def get_project_tags(self):
+		'''Returns a list of tags created in the project. '''
+		securl = self.securl+ 'projects'+ '/' + self.project_id + '/' +'tags' + '/'
 		headers = {'Authorization': 'Token '+ self.token}
 		r = self.session.get(securl, headers=headers)
 		return r
@@ -175,6 +182,32 @@ class GeodesignHubClient():
 		r = self.session.post(securl, headers= headers, data = json.dumps(geoms))
 		return r
 
+	def add_project_tags(self,tag_ids):
+		''' Add tags to a project'''
+		securl = self.securl+ 'projects'+ '/' + self.project_id + '/' +'tags'+'/'		
+		headers = {'Authorization': 'Token '+ self.token, 'Content-Type': 'application/json'}
+		r = self.session.post(securl, headers= headers, data = json.dumps(tag_ids))
+		return r
+
+
+	def get_project_plugins(self):
+		''' Get plugins for a project '''
+		securl = self.securl+ 'projects'+ '/' + self.project_id + '/' +'plugins'+'/'
+		
+		headers = {'Authorization': 'Token '+ self.token, 'Content-Type': 'application/json'}
+		r = self.session.get(securl, headers= headers)
+		return r
+
+	def add_plugins_to_project(self,tag_ids):
+		''' Add tags to a project'''
+		securl = self.securl+ 'projects'+ '/' + self.project_id + '/' +'plugins'+'/'
+		
+		headers = {'Authorization': 'Token '+ self.token, 'Content-Type': 'application/json'}
+
+		r = self.session.post(securl, headers= headers, data = json.dumps(tag_ids))
+		return r
+
+
 	def post_as_impact_JSON(self, geoms, sysid:int, username:str=None):
 		''' Create a self.session object with correct headers and creds. '''
 		securl = self.securl+ 'projects'+ '/' + self.project_id + '/' +'systems'+'/'+ str(sysid) + '/i/map/json/'
@@ -214,6 +247,16 @@ class GeodesignHubClient():
 		
 		''' Create a self.session object with correct headers and creds. '''
 		securl = self.securl+ 'projects/create/'
+		
+		headers = {'Authorization': 'Token '+ self.token,'Content-Type': 'application/json'}
+		r = self.session.post(securl, headers= headers, data = json.dumps(project_create_payload))
+		return r
+
+
+	def create_new_igc_project(self, project_create_payload):
+		
+		''' Create a self.session object with correct headers and creds. '''
+		securl = self.securl+ 'projects/create-igc-project/'
 		
 		headers = {'Authorization': 'Token '+ self.token,'Content-Type': 'application/json'}
 		r = self.session.post(securl, headers= headers, data = json.dumps(project_create_payload))

@@ -1,0 +1,211 @@
+{% extends "layout.html" %}
+{% block headercss %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+
+{% endblock %}
+{% block body %}
+<div class="container">
+    <!-- Example row of columns -->
+    {% if op['status'] == 1 %}
+    <br>
+    <div class="row">
+        <div class="col-md-12">
+            <h3>Flood Vulnerability Analysis</h3>
+            <p class="text-muted">See buildings and their interventions near locations with flood vulnerability</p>
+            <br>
+            <div id="map"></div>
+        </div>
+    </div>
+    <br>
+    <div class="row">
+        <div class="col-md-12">
+            <div>
+                {% if op.flood_vulnerability_wms_url != '0' or op.trees_wms_url != '0' %}
+                <h6>Analytical Layers&nbsp;<small class="text-muted">Pre-computed layers for the area</small></h6>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+             <div id="listing-group" class="btn-group" role="group" aria-label="Layer selection tools">
+                {% if op.flood_vulnerability_wms_url != '0' %}
+                <input type="checkbox" class="btn-check" id="baseline_flood_vulnerability_index" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="baseline_flood_vulnerability_index">Flood Vulnerability</label>
+                {%endif %}
+              </div>
+        </div>
+    </div>
+    <br>
+    <div class="row">
+        <div class="col-md-12">
+            <div>                
+                <h6>Tags&nbsp;<small class="text-muted">Details of tactical interventions over buildings</small></h6>              
+                <table class="table table-striped">
+                    <thead>
+                      <tr>
+                        <th scope="col">Code</th>
+                        <th scope="col">Slug</th>
+                        <th scope="col">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                        {% for tag in op['project_data']['tags']['tags'] %}
+                            <tr>
+                                <th scope="row">{{tag['code']}}</th>
+                                <td><code>{{tag['slug']}}</code></td>
+                                <td><pre>{{tag['tag']}}</pre></td>
+                            </tr>
+                        {% endfor %}
+                      
+                    </tbody>
+                  </table>  
+            </div>
+        </div>
+    </div>
+
+    <br>
+    
+    {% else %}
+    <div class="row">
+        <div class="col-md-12">
+            <p>{{op['message']}}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <br>
+</div>
+<!-- /container -->{% endblock %}
+
+{% block footer %}
+
+{% if op['status'] == 1 %}
+<script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
+
+<script type="text/javascript">
+    const design_detail = {{op|safe}};
+
+    const design_geojson = {{op["geometry_data"]["geojson"]|safe}};
+    
+
+    const bounds = design_detail['project_data']['bounds']['bounds'];
+    const session_id = design_detail['session_id']
+    var latLngs = bounds.split(',');
+    var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
+    var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
+    var map_bounds = new maplibregl.LngLatBounds(southWest, northEast);
+    let baseline_flood_vulnerability = '{{op["flood_vulnerability_wms_url"]|safe}}';
+    
+    // input nodes map
+    var map = new maplibregl.Map({
+        container: 'map', // container id  
+        style:
+            'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
+        bounds: map_bounds,
+        zoom: 10 // starting zoom
+    });
+
+    document.getElementById('listing-group').addEventListener('change', function (e) {
+        var handler = e.target.id;
+        if (e.target.checked) {            
+            map.setLayoutProperty(handler, 'visibility', 'visible');
+        } else {
+            map.setLayoutProperty(handler, 'visibility', 'none');
+        }
+    });
+
+    map.on('load', function () {
+
+        map.addSource('buildings', {
+            // GeoJSON Data source used in vector tiles, documented at
+            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+            'type': 'geojson',
+            'data': design_geojson
+        });
+        
+
+        if (baseline_flood_vulnerability !=='0'){
+            map.addSource('baseline_flood_vulnerability', {
+            'type': 'raster',
+            // use the tiles option to specify a WMS tile source URL
+            // https://maplibre.org/maplibre-style-spec/sources/
+            
+            'tiles': ['{{op["flood_vulnerability_wms_url"]|safe}}'],
+            'tileSize': 256
+            });
+            map.addLayer(
+            {
+            'id': 'baseline_flood_vulnerability_index',
+            'type': 'raster',
+            'source': 'baseline_flood_vulnerability',
+            'paint': {}
+            },
+            'aeroway_fill'
+            );
+        }
+
+        map.addLayer({
+            'id': 'buildings-extrusion',
+            'type': 'fill-extrusion',
+            'source': 'buildings',
+            'paint': {
+                // See the MapLibre Style Specification for details on data expressions.
+                // https://maplibre.org/maplibre-gl-js-docs/style-spec/expressions/
+
+                // Get the fill-extrusion-color from the source 'color' property.
+                'fill-extrusion-color': ['get', 'color'],
+
+                // Get fill-extrusion-height from the source 'height' property.
+                'fill-extrusion-height': ['get', 'height'],
+
+                // Get fill-extrusion-base from the source 'base_height' property.
+                'fill-extrusion-base': ['get', 'base_height'],
+
+                // Make extrusions slightly opaque for see through indoor walls.
+                'fill-extrusion-opacity': 0.5
+            }
+        });
+        const popup = new maplibregl.Popup({
+            closeButton: false,
+            closeOnClick: false
+        });
+
+        // When a click event occurs on a feature in the states layer, open a popup at the
+        // location of the click, with description HTML from its properties.
+        map.on('mouseenter', 'buildings-extrusion', (e) => {
+            map.getCanvas().style.cursor = 'pointer';
+            popup.setLngLat(e.lngLat)
+                .setHTML(e.features[0].properties.tag_codes)
+                .addTo(map);
+        });
+        
+
+        // Change it back to a pointer when it leaves.
+        map.on('mouseleave', 'buildings-extrusion', () => {
+            map.getCanvas().style.cursor = '';
+            popup.remove();
+        });
+        
+        map.addControl(
+            new maplibregl.NavigationControl({
+                visualizePitch: true,
+                showZoom: true,
+                showCompass: true
+            })
+        );
+    });
+
+    
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const room = design_detail.session_id;
+        var source = new EventSource("{{ url_for('sse.stream') }}");
+
+
+    });
+</script>
+{% endif %}
+
+{% endblock %}

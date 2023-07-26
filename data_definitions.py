@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from typing import List
-from typing import Optional
+from typing import List, Optional, Union
 
 @dataclass
 class ErrorResponse:
@@ -48,6 +47,7 @@ class GeodesignhubDesignFeatureProperties:
     areatype:str
     min_height: float
     max_height:float
+    tag_codes: str
 
 @dataclass
 class ExistingBuildingsFeatureProperties: 
@@ -74,6 +74,20 @@ class GeodesignhubProjectBounds:
     bounds: str
 
 @dataclass
+class GeodesignhubProjectTag:
+    id: str
+    tag: str
+    slug: str
+    code: str
+    diagrams: List[int]
+
+@dataclass
+class GeodesignhubProjectTags:
+    
+    tags: List[GeodesignhubProjectTag]
+
+
+@dataclass
 class GeodesignhubProjectCenter:    
     center: str
 
@@ -82,30 +96,45 @@ class GeodesignhubProjectData:
     systems: List[GeodesignhubSystem]
     bounds: GeodesignhubProjectBounds
     center: GeodesignhubProjectCenter
+    tags: GeodesignhubProjectTags
+
+@dataclass 
+class ToolboxDesignViewDetails:
+    api_token: str
+    cteam_id: str
+    synthesis_id: str
+    project_id: str
+    view_type:str
+
+@dataclass 
+class ToolboxDiagramViewDetails:
+    api_token: str    
+    diagram_id: str
+    project_id: str
 
 @dataclass
-class DiagramShadowSuccessResponse:
+class ShadowViewSuccessResponse:
     message: str
     status: int
     project_data: GeodesignhubProjectData
-    diagram_geojson: GeodesignhubDiagramGeoJSON
+    geometry_data: GeodesignhubDiagramGeoJSON
     maptiler_key: str
     session_id: str
     shadow_date_time:str
     baseline_index_wms_url:str
     trees_wms_url:str
-
+    view_details: Union[ToolboxDesignViewDetails, ToolboxDiagramViewDetails]
+    
 @dataclass
-class DesignShadowSuccessResponse:
+class FloodingViewSuccessResponse:
     message: str
+    session_id: str
     status: int
     project_data: GeodesignhubProjectData
-    design_geojson: GeodesignhubDiagramGeoJSON
+    geometry_data: GeodesignhubDiagramGeoJSON
     maptiler_key: str
-    session_id: str
-    shadow_date_time:str
-    baseline_index_wms_url:str
-    trees_wms_url:str
+    flood_vulnerability_wms_url: str
+    view_details: Union[ToolboxDesignViewDetails, ToolboxDiagramViewDetails]
 
 
 @dataclass
