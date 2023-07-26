@@ -111,6 +111,7 @@ class ToolboxDiagramViewDetails:
     api_token: str    
     diagram_id: str
     project_id: str
+    view_type: str
 
 @dataclass
 class ShadowViewSuccessResponse:
