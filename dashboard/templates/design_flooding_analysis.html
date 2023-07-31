@@ -180,7 +180,11 @@
                 .setHTML(e.features[0].properties.tag_codes)
                 .addTo(map);
         });
-        
+         map.on('click', 'buildings-extrusion', (e) => {
+            map.flyTo({
+                center: e.features[0].geometry.coordinates
+            });
+        });
 
         // Change it back to a pointer when it leaves.
         map.on('mouseleave', 'buildings-extrusion', () => {
