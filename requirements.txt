@@ -18,3 +18,4 @@ pybdshadow==0.3.3
 Flask-SSE==1.0.0
 numpy==1.24.3
 pyproj==3.5.0
+Flask-Babel==3.1.0
