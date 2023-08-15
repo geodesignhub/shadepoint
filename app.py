@@ -7,7 +7,6 @@ from conn import get_redis
 from dotenv import load_dotenv, find_dotenv
 from dashboard import create_app
 import json
-from flask_babel import Babel
 from rq import Queue
 from worker import conn
 from dataclasses import asdict
@@ -26,18 +25,31 @@ if ENV_FILE:
 redis = get_redis()
 q = Queue(connection=conn)
 
+def get_locale():
+    # if the user has set up the language manually it will be stored in the session,
+    # so we use the locale from the user settings
+    try:
+        language = session['language']
+    except KeyError:
+        language = None
+    if language is not None:
+        return language
+    return request.accept_languages.best_match(app.config['LANGUAGES'].keys())
 
-app = create_app()
+app, babel = create_app()
 app.secret_key = os.getenv("SECRET_KEY", "My Secret key") 
+
+babel.init_app(app, locale_selector=get_locale)
 
 @app.route('/', methods = ['GET'])
 def home():
 	return render_template('home.html')
 
-babel = Babel(app)
-@babel.localeselector
-def get_locale():
-	return request.accept_languages.best_match(app.config['LANGUAGES'].keys())
+@app.context_processor
+def inject_conf_var():
+    return dict(
+				AVAILABLE_LANGUAGES= app.config['LANGUAGES'],
+				CURRENT_LANGUAGE= session.get('language',request.accept_languages.best_match(app.config['LANGUAGES'].keys())))
 
 @app.route('/language/<language>')
 def set_language(language=None):

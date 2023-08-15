@@ -15,14 +15,15 @@
                 <span class="visually-hidden">Loading...</span>
             </div>
             <h3>Shadow Analysis</h3>
-            <p class="text-muted">By default the shadow is computed for August 6 at 10AM when radiation is not strong</p>
+            <p class="text-muted">By default the shadow is computed for August 6 at 10AM when radiation is not strong
+            </p>
             <br>
             <div id="map"></div>
         </div>
     </div>
     <br>
     <div class="row">
-        <div class="col-md-12">           
+        <div class="col-md-12">
             <div>
                 <label for="shadow_date_time">Select new (date and time):</label>
                 <input type="datetime-local" id="shadow_date_time" name="shadow_date_time">
@@ -42,7 +43,7 @@
     </div>
     <div class="row">
         <div class="col-md-12">
-             <div id="listing-group" class="btn-group" role="group" aria-label="Layer selection tools">
+            <div id="listing-group" class="btn-group" role="group" aria-label="Layer selection tools">
                 {% if op.baseline_index_wms_url != '0' %}
                 <input type="checkbox" class="btn-check" id="baseline_shadow_index" autocomplete="off" checked>
                 <label class="btn btn-outline-primary" for="baseline_shadow_index">Shadow Index</label>
@@ -51,24 +52,28 @@
                 <input type="checkbox" class="btn-check" id="trees_canopy" autocomplete="off" checked>
                 <label class="btn btn-outline-primary" for="trees_canopy">Tree Canopy</label>
                 {% endif %}
-              
-              </div>
+
+            </div>
         </div>
     </div>
     <br>
-    <div class="row"><div class="col-md-12"><h6>Design Shadow Analysis</h6></div></div>
-    <div id="shadow_stats" class="row d-none">        
+    <div class="row">
+        <div class="col-md-12">
+            <h6>Design Shadow Analysis</h6>
+        </div>
+    </div>
+    <div id="shadow_stats" class="row d-none">
         <div class="col-md-6">
             <h4>
                 <span id='total_roads'></span>
                 <small class="text-muted">Total Roads (meters)</small>
-            </h4>            
+            </h4>
         </div>
         <div class="col-md-6">
             <h4>
                 <span id='shadowed_roads'></span>
                 <small class="text-muted">Shadowed Roads (meters)</small>
-            </h4>            
+            </h4>
 
         </div>
     </div>
@@ -81,6 +86,9 @@
     </div>
     {% endif %}
 
+    {{ gettext('I signed one lease in the last two years.')
+    }}
+    <br>
     <br>
 </div>
 <!-- /container -->{% endblock %}
@@ -93,9 +101,9 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 
 <script type="text/javascript">
-    const design_detail = {{op|safe}};
+    const design_detail = {{ op| safe}};
 
-    const design_geojson = {{op["geometry_data"]["geojson"]|safe}};
+    const design_geojson = {{ op["geometry_data"]["geojson"]| safe}};
 
     const bounds = design_detail['project_data']['bounds']['bounds'];
     const session_id = design_detail['session_id']
@@ -116,7 +124,7 @@
 
     document.getElementById('listing-group').addEventListener('change', function (e) {
         var handler = e.target.id;
-        if (e.target.checked) {            
+        if (e.target.checked) {
             map.setLayoutProperty(handler, 'visibility', 'visible');
         } else {
             map.setLayoutProperty(handler, 'visibility', 'none');
@@ -159,50 +167,50 @@
         });
 
 
-        if (existing_canpoy_source !=='0'){
+        if (existing_canpoy_source !== '0') {
             map.addSource('existing_canpoy_source', {
-            'type': 'raster',
-            // use the tiles option to specify a WMS tile source URL
-            // https://maplibre.org/maplibre-style-spec/sources/
-            
-            'tiles': ['{{op["trees_wms_url"]|safe}}'],
-            'tileSize': 256
+                'type': 'raster',
+                // use the tiles option to specify a WMS tile source URL
+                // https://maplibre.org/maplibre-style-spec/sources/
+
+                'tiles': ['{{op["trees_wms_url"]|safe}}'],
+                'tileSize': 256
             });
             map.addLayer(
-            {
-            'id': 'trees_canopy',
-            'type': 'raster',
-            'source': 'existing_canpoy_source',
-            'paint': {}
-            },
-            'aeroway_fill'
+                {
+                    'id': 'trees_canopy',
+                    'type': 'raster',
+                    'source': 'existing_canpoy_source',
+                    'paint': {}
+                },
+                'aeroway_fill'
             );
         }
 
-        
+
         map.addSource('bike_pedestrian_roads', {
             // GeoJSON Data source used in vector tiles, documented at
             // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
             'type': 'geojson',
-            'data':{"type": "FeatureCollection","features": []}
+            'data': { "type": "FeatureCollection", "features": [] }
         });
-        if (baseline_shadow_index_source !=='0'){
+        if (baseline_shadow_index_source !== '0') {
             map.addSource('baseline_shadow_index_source', {
-            'type': 'raster',
-            // use the tiles option to specify a WMS tile source URL
-            // https://maplibre.org/maplibre-style-spec/sources/
-            
-            'tiles': ['{{op["baseline_index_wms_url"]|safe}}'],
-            'tileSize': 256
+                'type': 'raster',
+                // use the tiles option to specify a WMS tile source URL
+                // https://maplibre.org/maplibre-style-spec/sources/
+
+                'tiles': ['{{op["baseline_index_wms_url"]|safe}}'],
+                'tileSize': 256
             });
             map.addLayer(
-            {
-            'id': 'baseline_shadow_index',
-            'type': 'raster',
-            'source': 'baseline_shadow_index_source',
-            'paint': {}
-            },
-            'aeroway_fill'
+                {
+                    'id': 'baseline_shadow_index',
+                    'type': 'raster',
+                    'source': 'baseline_shadow_index_source',
+                    'paint': {}
+                },
+                'aeroway_fill'
             );
         }
 
@@ -227,7 +235,7 @@
                 'fill-extrusion-opacity': 0.5
             }
         });
-        
+
         map.addLayer({
             'id': 'building_shadows',
             'type': 'fill',
@@ -270,7 +278,7 @@
         );
     });
 
-    
+
     document.addEventListener('DOMContentLoaded', () => {
 
         const room = design_detail.session_id;
@@ -297,8 +305,8 @@
                 get_existing_building_shadow(shadow_download_url);
             }
         }, false);
-        
-        source.addEventListener('roads_download_success', function(event) {
+
+        source.addEventListener('roads_download_success', function (event) {
             var data = JSON.parse(event.data);
             // do what you want with this data
             let roads_key = data['roads_key'];
@@ -309,8 +317,8 @@
                 get_downloaded_roads(roads_download_url);
             }
         }, false);
-        
-        source.addEventListener('roads_shadow_complete', function(event) {
+
+        source.addEventListener('roads_shadow_complete', function (event) {
             var data = JSON.parse(event.data);
             // do what you want with this data
             let roads_shadow_stats_key = data['roads_shadow_stats_key'];
