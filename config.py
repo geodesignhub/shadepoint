@@ -8,6 +8,12 @@ class Config(object):
     serviceurl= os.environ.get("SERVICE_URL", "https://www.geodesignhub.com/api/v1/"),
     REDIS_URL= os.environ.get("REDIS_URL", 'redis://localhost:6379')
     ROADS_URL = os.environ.get("ROADS_URL", None)
+    LANGUAGES = {
+    'en': 'English',
+    'he': 'עִברִית',
+    'ar': 'عربي'
+
+  }
 
 apisettings = {
   "serviceurl": os.environ.get("SERVICE_URL", "https://www.geodesignhub.com/api/v1/")

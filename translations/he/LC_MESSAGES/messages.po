@@ -1,0 +1,105 @@
+# Hebrew translations for PROJECT.
+# Copyright (C) 2023 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2023-08-16 15:47+0100\n"
+"PO-Revision-Date: 2023-08-16 15:49+0100\n"
+"Last-Translator: \n"
+"Language-Team: he <LL@li.org>\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Generated-By: Babel 2.12.1\n"
+"X-Generator: Poedit 3.3.2\n"
+
+#: dashboard/templates/design_flooding_analysis.html:14
+msgid "Flood Vulnerability Analysis"
+msgstr "ניתוח פגיעות הצפה"
+
+#: dashboard/templates/design_flooding_analysis.html:15
+msgid ""
+"See buildings and their interventions near locations with flood vulnerability"
+msgstr "ראה מבנים והתערבויות שלהם בקרבת מקומות עם פגיעות להצפות"
+
+#: dashboard/templates/design_flooding_analysis.html:25
+#: dashboard/templates/design_shadow.html:39
+msgid "Analytical Layers"
+msgstr "שכבות אנליטיות"
+
+#: dashboard/templates/design_flooding_analysis.html:25
+#: dashboard/templates/design_shadow.html:39
+msgid "Pre-computed layers for the area"
+msgstr "שכבות מחושבות מראש לאזור"
+
+#: dashboard/templates/design_flooding_analysis.html:35
+msgid "Flood Vulnerability"
+msgstr "פגיעות בהצפה"
+
+#: dashboard/templates/design_flooding_analysis.html:44
+msgid "Tags"
+msgstr "תגים"
+
+#: dashboard/templates/design_flooding_analysis.html:44
+msgid "Details of tactical interventions over buildings"
+msgstr "פרטים על התערבויות טקטיות מעל מבנים"
+
+#: dashboard/templates/design_shadow.html:17 dashboard/templates/layout.html:75
+msgid "Shadow Analysis"
+msgstr "ניתוח צללים"
+
+#: dashboard/templates/design_shadow.html:18
+msgid ""
+"By default the shadow is computed for August 6 at 10AM when radiation is not "
+"strong"
+msgstr "כברירת מחדל, הצל מחושב ל-6 באוגוסט בשעה 10:00 כאשר הקרינה אינה חזקה"
+
+#: dashboard/templates/design_shadow.html:28
+msgid "Select new (date and time)"
+msgstr "בחר חדש (תאריך ושעה)"
+
+#: dashboard/templates/design_shadow.html:49
+msgid "Shadow Index"
+msgstr "אינדקס הצללים"
+
+#: dashboard/templates/design_shadow.html:53
+msgid "Tree Canopy"
+msgstr "חופת עץ"
+
+#: dashboard/templates/design_shadow.html:62
+msgid "Design Shadow Analysis"
+msgstr "ניתוח צללים בעיצוב"
+
+#: dashboard/templates/design_shadow.html:69
+msgid "Total Roads (meters)"
+msgstr "סך הכבישים (מטרים)"
+
+#: dashboard/templates/design_shadow.html:75
+msgid "Shadowed Roads (meters)"
+msgstr "דרכים מוצלות (מטרים)"
+
+#: dashboard/templates/layout.html:30
+msgid "This is a plugin that uses"
+msgstr "זהו תוסף שמשתמש"
+
+#: dashboard/templates/layout.html:31
+msgid ""
+"and advanced machine learning and natural language processing algorithms to "
+"showcase key components of your design based on the diagram description"
+msgstr ""
+"ואלגוריתמים מתקדמים של למידת מכונה ואלגוריתמים לעיבוד שפה טבעית כדי להציג "
+"רכיבים מרכזיים של העיצוב שלך בהתבסס על תיאור הדיאגרמה"
+
+#: dashboard/templates/layout.html:58
+msgid "Digital Climate Services"
+msgstr "שירותי אקלים דיגיטליים"
+
+#: dashboard/templates/layout.html:79
+msgid "Local Flooding"
+msgstr "הצפה מקומית"

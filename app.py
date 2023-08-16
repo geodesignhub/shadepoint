@@ -2,36 +2,59 @@
 
 from flask import render_template
 from flask import request, Response
-from dataclasses import asdict
-from data_definitions import ErrorResponse, GeodesignhubDiagramGeoJSON, ShadowViewSuccessResponse, RoadsShadowOverlap, ToolboxDesignViewDetails, ToolboxDiagramViewDetails, FloodingViewSuccessResponse
-import arrow
-import uuid
-from download_helper import GeodesignhubDataDownloader, ShadowComputationHelper
-import json
+from flask import session, redirect
 from conn import get_redis
-import os
-import geojson
 from dotenv import load_dotenv, find_dotenv
 from dashboard import create_app
-
+import json
 from rq import Queue
 from worker import conn
+from dataclasses import asdict
+from data_definitions import ErrorResponse, GeodesignhubDiagramGeoJSON, ShadowViewSuccessResponse, RoadsShadowOverlap, ToolboxDesignViewDetails, ToolboxDiagramViewDetails, FloodingViewSuccessResponse
+import os
+from download_helper import GeodesignhubDataDownloader, ShadowComputationHelper
+import arrow
+import uuid
+import geojson
 
 load_dotenv(find_dotenv())
-
 ENV_FILE = find_dotenv()
 if ENV_FILE:
     load_dotenv(ENV_FILE)
-
+base_dir = os.path.abspath(os.path.dirname(__file__))
 redis = get_redis()
 q = Queue(connection=conn)
 
-app = create_app()
+def get_locale():
+    # if the user has set up the language manually it will be stored in the session,
+    # so we use the locale from the user settings
+    try:
+        language = session['language']
+    except KeyError:
+        language = None
+    if language is not None:
+        return language
+    return request.accept_languages.best_match(app.config['LANGUAGES'].keys())
 
+app, babel = create_app()
+app.secret_key = os.getenv("SECRET_KEY", "My Secret key") 
+app.config["BABEL_TRANSLATION_DIRECTORIES"] = os.path.join(base_dir, "translations")
+babel.init_app(app, locale_selector=get_locale)
 
 @app.route('/', methods = ['GET'])
 def home():
 	return render_template('home.html')
+
+@app.context_processor
+def inject_conf_var():
+    return dict(
+				AVAILABLE_LANGUAGES= app.config['LANGUAGES'],
+				CURRENT_LANGUAGE= session.get('language',request.accept_languages.best_match(app.config['LANGUAGES'].keys())))
+
+@app.route('/language/<language>')
+def set_language(language=None):
+    session['language'] = language
+    return redirect(request.referrer)
 
 @app.route('/gdh_generated_shadow', methods = ['GET'])
 def get_diagram_shadow():
@@ -48,7 +71,6 @@ def get_diagram_shadow():
 @app.route('/existing_buildings_generated_shadow', methods = ['GET'])
 def get_existing_buildings_shadow():
 	shadow_key = request.args.get('shadow_key', '0')	
-	
 	shadow_exists = redis.exists(shadow_key)
 	if shadow_exists: 
 		s = redis.get(shadow_key)	
@@ -91,7 +113,6 @@ def get_downloaded_trees():
 def get_existing_buildings_shadow_roads_stats():
 	roads_shadow_stats_key = request.args.get('roads_shadow_stats_key', '0')
 	
-	print(roads_shadow_stats_key)
 	roads_shadow_stats_exists = redis.exists(roads_shadow_stats_key)
 	
 	if roads_shadow_stats_exists: 
@@ -258,8 +279,7 @@ def generate_diagram_shadow():
 			shadow_computation_helper = ShadowComputationHelper(session_id = str(session_id),  design_diagram_geojson = gj_serialized, shadow_date_time = shadow_date_time, bounds = project_data.bounds.bounds)
 			shadow_computation_helper.compute_gdh_buildings_shadow()
 			
-			success_response = ShadowViewSuccessResponse(status=1,message="Data from Geodesignhub retrieved",geometry_data= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id),shadow_date_time=shadow_date_time, baseline_index_wms_url = baseline_index_wms_url, trees_wms_url=trees_wms_url, view_details = diagram_view_details)
-							
+			success_response = ShadowViewSuccessResponse(status=1,message="Data from Geodesignhub retrieved",geometry_data= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id),shadow_date_time=shadow_date_time, baseline_index_wms_url = baseline_index_wms_url, trees_wms_url=trees_wms_url, view_details = diagram_view_details)							
 			
 			return render_template('diagram_shadow.html', op = asdict(success_response))		
 	else:	
