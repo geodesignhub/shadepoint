@@ -21,7 +21,7 @@ load_dotenv(find_dotenv())
 ENV_FILE = find_dotenv()
 if ENV_FILE:
     load_dotenv(ENV_FILE)
-
+base_dir = os.path.abspath(os.path.dirname(__file__))
 redis = get_redis()
 q = Queue(connection=conn)
 
@@ -38,7 +38,7 @@ def get_locale():
 
 app, babel = create_app()
 app.secret_key = os.getenv("SECRET_KEY", "My Secret key") 
-
+app.config["BABEL_TRANSLATION_DIRECTORIES"] = os.path.join(base_dir, "translations")
 babel.init_app(app, locale_selector=get_locale)
 
 @app.route('/', methods = ['GET'])
@@ -71,7 +71,6 @@ def get_diagram_shadow():
 @app.route('/existing_buildings_generated_shadow', methods = ['GET'])
 def get_existing_buildings_shadow():
 	shadow_key = request.args.get('shadow_key', '0')	
-	
 	shadow_exists = redis.exists(shadow_key)
 	if shadow_exists: 
 		s = redis.get(shadow_key)	

@@ -14,8 +14,8 @@
             <div id="spinner" class="spinner-border text-secondary" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <h3>Shadow Analysis</h3>
-            <p class="text-muted">By default the shadow is computed for August 6 at 10AM when radiation is not strong
+            <h3>{{ gettext('Shadow Analysis') }}</h3>
+            <p class="text-muted">{{ gettext('By default the shadow is computed for August 6 at 10AM when radiation is not strong') }}
             </p>
             <br>
             <div id="map"></div>
@@ -25,7 +25,7 @@
     <div class="row">
         <div class="col-md-12">
             <div>
-                <label for="shadow_date_time">Select new (date and time):</label>
+                <label for="shadow_date_time">{{ gettext('Select new (date and time)') }}:</label>
                 <input type="datetime-local" id="shadow_date_time" name="shadow_date_time">
                 <input type="submit" value="Update Shadows" onclick="return update_date_time();" />
             </div>
@@ -36,7 +36,7 @@
         <div class="col-md-12">
             <div>
                 {% if op.baseline_index_wms_url != '0' or op.trees_wms_url != '0' %}
-                <h6>Analytical Layers&nbsp;<small class="text-muted">Pre-computed layers for the area</small></h6>
+                <h6>{{ gettext('Analytical Layers') }}&nbsp;<small class="text-muted">{{ gettext('Pre-computed layers for the area') }}</small></h6>
                 {% endif %}
             </div>
         </div>
@@ -46,11 +46,11 @@
             <div id="listing-group" class="btn-group" role="group" aria-label="Layer selection tools">
                 {% if op.baseline_index_wms_url != '0' %}
                 <input type="checkbox" class="btn-check" id="baseline_shadow_index" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="baseline_shadow_index">Shadow Index</label>
+                <label class="btn btn-outline-primary" for="baseline_shadow_index">{{ gettext('Shadow Index') }}</label>
                 {%endif %}
                 {% if op.trees_wms_url != '0' %}
                 <input type="checkbox" class="btn-check" id="trees_canopy" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="trees_canopy">Tree Canopy</label>
+                <label class="btn btn-outline-primary" for="trees_canopy">{{ gettext('Tree Canopy') }}</label>
                 {% endif %}
 
             </div>
@@ -59,20 +59,20 @@
     <br>
     <div class="row">
         <div class="col-md-12">
-            <h6>Design Shadow Analysis</h6>
+            <h6>{{ gettext('Design Shadow Analysis') }}</h6>
         </div>
     </div>
     <div id="shadow_stats" class="row d-none">
         <div class="col-md-6">
             <h4>
                 <span id='total_roads'></span>
-                <small class="text-muted">Total Roads (meters)</small>
+                <small class="text-muted">{{ gettext('Total Roads (meters)') }}</small>
             </h4>
         </div>
         <div class="col-md-6">
             <h4>
                 <span id='shadowed_roads'></span>
-                <small class="text-muted">Shadowed Roads (meters)</small>
+                <small class="text-muted">{{ gettext('Shadowed Roads (meters)') }}</small>
             </h4>
 
         </div>
@@ -86,8 +86,8 @@
     </div>
     {% endif %}
 
-    {{ gettext('I signed one lease in the last two years.')
-    }}
+    
+    
     <br>
     <br>
 </div>
@@ -101,9 +101,9 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 
 <script type="text/javascript">
-    const design_detail = {{ op| safe}};
+    const design_detail = {{ op|safe}};
 
-    const design_geojson = {{ op["geometry_data"]["geojson"]| safe}};
+    const design_geojson = {{ op["geometry_data"]["geojson"]|safe }};
 
     const bounds = design_detail['project_data']['bounds']['bounds'];
     const session_id = design_detail['session_id']

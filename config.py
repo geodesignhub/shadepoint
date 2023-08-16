@@ -10,8 +10,8 @@ class Config(object):
     ROADS_URL = os.environ.get("ROADS_URL", None)
     LANGUAGES = {
     'en': 'English',
-    'he': 'Hebrew',
-    'ar': 'Arabic'
+    'he': 'עִברִית',
+    'ar': 'عربي'
 
   }
 

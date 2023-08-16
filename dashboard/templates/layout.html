@@ -9,10 +9,13 @@
   <link rel="icon" href="{{ url_for('static', filename='favicon.ico')}}">
 
   <title>Climate Indicators Dashboard</title>
-  <link rel="canonical" href="https://getbootstrap.com/docs/4.0/examples/jumbotron/">
 
   <!-- Bootstrap core CSS -->
+  {% if CURRENT_LANGUAGE == 'en' %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+  {% else %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.rtl.min.css') }}">
+  {% endif %}
   <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/flatty.css') }}">
   <link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
@@ -27,26 +30,25 @@
         <div class="row">
           <div class="col-sm-8 col-md-7 py-4">
             <h4 class="text-white">Climate Indicators Dashboard</h4>
-            <p class="text-white">This is a plugin that uses <a href="https://www.geodesignhub.com/api/"
-                target="_blank">Geodesignhub API</a> and advanced machine learning and natural language processing
-              algorithms to showcase key components of your design based on the diagram description.</p>
+            <p class="text-white">{{ gettext('This is a plugin that uses') }} <a href="https://www.geodesignhub.com/api/"
+                target="_blank">Geodesignhub API</a> {{ gettext('and advanced machine learning and natural language processing algorithms to showcase key components of your design based on the diagram description') }}.</p>
           </div>
           <div class="col-sm-4 offset-md-1 py-4">
             <h4 class="text-white">Support</h4>
             <ul class="list-unstyled">
-              <li><a href="https://github.com/geodesignhub/DesignShowcase" class="text-white">See on Github</a></li>
+              <li><a href="https://github.com/geodesignhub/DesignShowcase" class="text-white">Github</a></li>
               {% for language in AVAILABLE_LANGUAGES.items() %}
-              {% if CURRENT_LANGUAGE == language[0] %}
-              <li>
-                <span class="text-light">{{ language[1] }}</span>
-              </li>
-              {% else %}
-              <li>
-                <span class="">
-                  <a href="{{ url_for('set_language', language=language[0]) }}">{{ language[1] }}</a>
-                </span>
-              </li>
-              {% endif %}
+                {% if CURRENT_LANGUAGE == language[0] %}
+                  <li>
+                    <span class="text-light">{{ language[1] }}</span>
+                  </li>
+                {% else %}
+                    <li>
+                      <span class="">
+                        <a href="{{ url_for('set_language', language=language[0]) }}">{{ language[1] }}</a>
+                      </span>
+                    </li>
+                {% endif %}
               {% endfor %}
             </ul>
           </div>
@@ -56,7 +58,7 @@
     <div class="navbar navbar-dark bg-dark shadow-sm">
       <div class="container">
         <a href="#" class="navbar-brand d-flex align-items-center">
-          <strong>Digital Climate Services</strong>
+          <strong>{{ gettext('Digital Climate Services') }}</strong>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarHeader"
           aria-controls="navbarHeader" aria-expanded="false" aria-label="Toggle navigation">
@@ -73,13 +75,11 @@
       <ul class="nav nav-pills justify-content-center">
         <li class="nav-item">
           <a class="nav-link {%if op.view_details.view_type=='shadow'%}active{%endif%}" aria-current="page"
-            href="/design_shadow/?apitoken={{op.view_details.api_token}}&cteamid={{op.view_details.cteam_id}}&synthesisid={{op.view_details.synthesis_id}}&projectid={{op.view_details.project_id}}">Shadow
-            Analysis</a>
+            href="/design_shadow/?apitoken={{op.view_details.api_token}}&cteamid={{op.view_details.cteam_id}}&synthesisid={{op.view_details.synthesis_id}}&projectid={{op.view_details.project_id}}">{{ gettext('Shadow Analysis') }}</a>
         </li>
         <li class="nav-item">
           <a class="nav-link {%if op.view_details.view_type=='flood'%}active{%endif%}"
-            href="/design_flooding_analysis/?apitoken={{op.view_details.api_token}}&cteamid={{op.view_details.cteam_id}}&synthesisid={{op.view_details.synthesis_id}}&projectid={{op.view_details.project_id}}">Local
-            Flooding</a>
+            href="/design_flooding_analysis/?apitoken={{op.view_details.api_token}}&cteamid={{op.view_details.cteam_id}}&synthesisid={{op.view_details.synthesis_id}}&projectid={{op.view_details.project_id}}">{{ gettext('Local Flooding') }}</a>
         </li>
       </ul>
     </div>
