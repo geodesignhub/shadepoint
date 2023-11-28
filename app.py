@@ -10,7 +10,15 @@ import json
 from rq import Queue
 from worker import conn
 from dataclasses import asdict
-from data_definitions import ErrorResponse, GeodesignhubDiagramGeoJSON, ShadowViewSuccessResponse, RoadsShadowOverlap, ToolboxDesignViewDetails, ToolboxDiagramViewDetails, FloodingViewSuccessResponse
+from data_definitions import (
+    ErrorResponse,
+    GeodesignhubDiagramGeoJSON,
+    ShadowViewSuccessResponse,
+    RoadsShadowOverlap,
+    ToolboxDesignViewDetails,
+    ToolboxDiagramViewDetails,
+    FloodingViewSuccessResponse,
+)
 import os
 from download_helper import GeodesignhubDataDownloader, ShadowComputationHelper
 import arrow
@@ -25,268 +33,409 @@ base_dir = os.path.abspath(os.path.dirname(__file__))
 redis = get_redis()
 q = Queue(connection=conn)
 
+
 def get_locale():
     # if the user has set up the language manually it will be stored in the session,
     # so we use the locale from the user settings
     try:
-        language = session['language']
+        language = session["language"]
     except KeyError:
         language = None
     if language is not None:
         return language
-    return request.accept_languages.best_match(app.config['LANGUAGES'].keys())
+    return request.accept_languages.best_match(app.config["LANGUAGES"].keys())
+
 
 app, babel = create_app()
-app.secret_key = os.getenv("SECRET_KEY", "My Secret key") 
+app.secret_key = os.getenv("SECRET_KEY", "My Secret key")
 app.config["BABEL_TRANSLATION_DIRECTORIES"] = os.path.join(base_dir, "translations")
 babel.init_app(app, locale_selector=get_locale)
 
-@app.route('/', methods = ['GET'])
+
+@app.route("/", methods=["GET"])
 def home():
-	return render_template('home.html')
+    return render_template("home.html")
+
 
 @app.context_processor
 def inject_conf_var():
     return dict(
-				AVAILABLE_LANGUAGES= app.config['LANGUAGES'],
-				CURRENT_LANGUAGE= session.get('language',request.accept_languages.best_match(app.config['LANGUAGES'].keys())))
+        AVAILABLE_LANGUAGES=app.config["LANGUAGES"],
+        CURRENT_LANGUAGE=session.get(
+            "language",
+            request.accept_languages.best_match(app.config["LANGUAGES"].keys()),
+        ),
+    )
 
-@app.route('/language/<language>')
+
+@app.route("/language/<language>")
 def set_language(language=None):
-    session['language'] = language
+    session["language"] = language
     return redirect(request.referrer)
 
-@app.route('/gdh_generated_shadow', methods = ['GET'])
+
+@app.route("/gdh_generated_shadow", methods=["GET"])
 def get_diagram_shadow():
-	shadow_key = request.args.get('shadow_key', '0')	
-	
-	shadow_exists = redis.exists(shadow_key)	
-	if shadow_exists: 
-		s = redis.get(shadow_key)	
-		shadow = json.loads(s)
-	else: 
-		shadow = {"type":"FeatureCollection", "features":[]}	
-	return Response(shadow, status=200, mimetype='application/json')
+    shadow_key = request.args.get("shadow_key", "0")
 
-@app.route('/existing_buildings_generated_shadow', methods = ['GET'])
+    shadow_exists = redis.exists(shadow_key)
+    if shadow_exists:
+        s = redis.get(shadow_key)
+        shadow = json.loads(s)
+    else:
+        shadow = {"type": "FeatureCollection", "features": []}
+    return Response(shadow, status=200, mimetype="application/json")
+
+
+@app.route("/existing_buildings_generated_shadow", methods=["GET"])
 def get_existing_buildings_shadow():
-	shadow_key = request.args.get('shadow_key', '0')	
-	shadow_exists = redis.exists(shadow_key)
-	if shadow_exists: 
-		s = redis.get(shadow_key)	
-		shadow = json.loads(s)
-	else: 
-		shadow = {"type":"FeatureCollection", "features":[]}
-	return Response(json.dumps(shadow), status=200, mimetype='application/json')
+    shadow_key = request.args.get("shadow_key", "0")
+    shadow_exists = redis.exists(shadow_key)
+    if shadow_exists:
+        s = redis.get(shadow_key)
+        shadow = json.loads(s)
+    else:
+        shadow = {"type": "FeatureCollection", "features": []}
+    return Response(json.dumps(shadow), status=200, mimetype="application/json")
 
 
-@app.route('/get_downloaded_roads', methods = ['GET'])
+@app.route("/get_downloaded_roads", methods=["GET"])
 def get_downloaded_roads():
-	roads_key = request.args.get('roads_key', '0')	
-	roads_session_exists = redis.exists(roads_key)
-	if roads_session_exists: 
-		roads_data_key = redis.get(roads_key)	
-		r_raw = redis.get(roads_data_key)			
-		roads = json.loads(r_raw.decode('utf-8'))
-	else: 
-		roads = {"type":"FeatureCollection", "features":[]}
-		
-	rds = json.dumps(roads)
-	return Response(rds, status=200, mimetype='application/json')
-	
-@app.route('/get_downloaded_trees', methods = ['GET'])
+    roads_key = request.args.get("roads_key", "0")
+    roads_session_exists = redis.exists(roads_key)
+    if roads_session_exists:
+        roads_data_key = redis.get(roads_key)
+        r_raw = redis.get(roads_data_key)
+        roads = json.loads(r_raw.decode("utf-8"))
+    else:
+        roads = {"type": "FeatureCollection", "features": []}
+
+    rds = json.dumps(roads)
+    return Response(rds, status=200, mimetype="application/json")
+
+
+@app.route("/get_downloaded_trees", methods=["GET"])
 def get_downloaded_trees():
-	trees_key = request.args.get('trees_key', '0')	
-	trees_session_exists = redis.exists(trees_key)
-	if trees_session_exists: 
-		trees_data_key = redis.get(trees_key)	
-		r_raw = redis.get(trees_data_key)			
-		trees = json.loads(r_raw.decode('utf-8'))
-	else: 
-		trees = {"type":"FeatureCollection", "features":[]}
-		
-	trs = json.dumps(trees)
-	
-	return Response(trs, status=200, mimetype='application/json')
-	
-@app.route('/existing_buildings_shadow_roads_stats', methods = ['GET'])
+    trees_key = request.args.get("trees_key", "0")
+    trees_session_exists = redis.exists(trees_key)
+    if trees_session_exists:
+        trees_data_key = redis.get(trees_key)
+        r_raw = redis.get(trees_data_key)
+        trees = json.loads(r_raw.decode("utf-8"))
+    else:
+        trees = {"type": "FeatureCollection", "features": []}
+
+    trs = json.dumps(trees)
+
+    return Response(trs, status=200, mimetype="application/json")
+
+
+@app.route("/existing_buildings_shadow_roads_stats", methods=["GET"])
 def get_existing_buildings_shadow_roads_stats():
-	roads_shadow_stats_key = request.args.get('roads_shadow_stats_key', '0')
-	
-	roads_shadow_stats_exists = redis.exists(roads_shadow_stats_key)
-	
-	if roads_shadow_stats_exists: 
-		s = redis.get(roads_shadow_stats_key)	
-		shadow_stats = json.loads(s)
-	else: 
-		default_shadow =  RoadsShadowOverlap(total_roads_kms=0.0, shadowed_kms=0.0, job_id = '0000')
-		shadow_stats = asdict(default_shadow)
-	
-	return Response(json.dumps(shadow_stats), status=200, mimetype='application/json')
-	
+    roads_shadow_stats_key = request.args.get("roads_shadow_stats_key", "0")
 
-@app.route('/get_shadow_roads_stats', methods = ['GET'])
+    roads_shadow_stats_exists = redis.exists(roads_shadow_stats_key)
+
+    if roads_shadow_stats_exists:
+        s = redis.get(roads_shadow_stats_key)
+        shadow_stats = json.loads(s)
+    else:
+        default_shadow = RoadsShadowOverlap(
+            total_roads_kms=0.0, shadowed_kms=0.0, job_id="0000"
+        )
+        shadow_stats = asdict(default_shadow)
+
+    return Response(json.dumps(shadow_stats), status=200, mimetype="application/json")
+
+
+@app.route("/get_shadow_roads_stats", methods=["GET"])
 def generate_shadow_road_stats():
-	roads_shadow_stats_key = request.args.get('roads_shadow_stats_key', '0')
-	
-	
-	roads_shadow_stats_exists = redis.exists(roads_shadow_stats_key)
-	
-	if roads_shadow_stats_exists: 
-		s = redis.get(roads_shadow_stats_key)	
-		shadow_stats = json.loads(s)
-	else: 
-		default_shadow = RoadsShadowOverlap(total_roads_kms=0.0, shadowed_kms=0.0, job_id = '0000')
-		shadow_stats = asdict(default_shadow)
-	
-	return Response(json.dumps(shadow_stats), status=200, mimetype='application/json')
-	
+    roads_shadow_stats_key = request.args.get("roads_shadow_stats_key", "0")
 
-@app.route('/design_flooding_analysis/', methods = ['GET'])
-def generate_design_flooding_analysis():	
-	try:
-		projectid = request.args.get('projectid')
-		apitoken = request.args.get('apitoken')
-		synthesisid = request.args.get('synthesisid')
-		cteamid = request.args.get('cteamid')
+    roads_shadow_stats_exists = redis.exists(roads_shadow_stats_key)
 
-	except KeyError as e:
-		error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Design Team ID / Design ID or API Token ID. One or more of these were not found in your request.",code=400)
-		return Response(asdict(error_msg), status=400, mimetype='application/json')
-	design_view_details = ToolboxDesignViewDetails(project_id=projectid, cteam_id=cteamid, synthesis_id=synthesisid, api_token=apitoken, view_type='flood')
+    if roads_shadow_stats_exists:
+        s = redis.get(roads_shadow_stats_key)
+        shadow_stats = json.loads(s)
+    else:
+        default_shadow = RoadsShadowOverlap(
+            total_roads_kms=0.0, shadowed_kms=0.0, job_id="0000"
+        )
+        shadow_stats = asdict(default_shadow)
+
+    return Response(json.dumps(shadow_stats), status=200, mimetype="application/json")
 
 
-	if projectid and cteamid and apitoken and synthesisid:
-		session_id = uuid.uuid4()	
-		my_geodesignhub_downloader = GeodesignhubDataDownloader(session_id = session_id, project_id= projectid, synthesis_id=synthesisid, cteam_id= cteamid, apitoken=apitoken)
+@app.route("/design_flooding_analysis/", methods=["GET"])
+def generate_design_flooding_analysis():
+    try:
+        projectid = request.args.get("projectid")
+        apitoken = request.args.get("apitoken")
+        synthesisid = request.args.get("synthesisid")
+        cteamid = request.args.get("cteamid")
 
-		project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
-		if not project_data:
-			error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
-			return Response(asdict(error_msg), status=400, mimetype='application/json')
+    except KeyError as e:
+        error_msg = ErrorResponse(
+            status=0,
+            message="Could not parse Project ID, Design Team ID / Design ID or API Token ID. One or more of these were not found in your request.",
+            code=400,
+        )
+        return Response(asdict(error_msg), status=400, mimetype="application/json")
+    design_view_details = ToolboxDesignViewDetails(
+        project_id=projectid,
+        cteam_id=cteamid,
+        synthesis_id=synthesisid,
+        api_token=apitoken,
+        view_type="flood",
+    )
 
-		_design_feature_collection = my_geodesignhub_downloader.download_design_data_from_geodesignhub()
-		gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
+    if projectid and cteamid and apitoken and synthesisid:
+        session_id = uuid.uuid4()
+        my_geodesignhub_downloader = GeodesignhubDataDownloader(
+            session_id=session_id,
+            project_id=projectid,
+            synthesis_id=synthesisid,
+            cteam_id=cteamid,
+            apitoken=apitoken,
+        )
 
-		design_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
-		
-		maptiler_key = os.getenv('maptiler_key', '00000000000000')
-		flood_vulnerability_wms_url = os.getenv('WMS_BASELINE_FLOOD_VULNERABILITY', '0')
+        project_data = (
+            my_geodesignhub_downloader.download_project_data_from_geodesignhub()
+        )
+        if not project_data:
+            error_msg = ErrorResponse(
+                status=0,
+                message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
+                code=400,
+            )
+            return Response(asdict(error_msg), status=400, mimetype="application/json")
 
-		success_response = FloodingViewSuccessResponse(status=1,message="Data from Geodesignhub retrieved",geometry_data= design_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id),flood_vulnerability_wms_url = flood_vulnerability_wms_url, view_details = design_view_details)
-								
-		return render_template('design_flooding_analysis.html', op = asdict(success_response))		
-	else:	
-		msg = ErrorResponse(status=0, message="Could download data from Geodesignhub, please check your project ID and API token.",code=400)
-		return Response(msg, status=400, mimetype='application/json')
+        _design_feature_collection = (
+            my_geodesignhub_downloader.download_design_data_from_geodesignhub()
+        )
+        gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
+
+        design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
+
+        maptiler_key = os.getenv("maptiler_key", "00000000000000")
+        flood_vulnerability_wms_url = os.getenv("WMS_BASELINE_FLOOD_VULNERABILITY", "0")
+
+        success_response = FloodingViewSuccessResponse(
+            status=1,
+            message="Data from Geodesignhub retrieved",
+            geometry_data=design_geojson,
+            project_data=project_data,
+            maptiler_key=maptiler_key,
+            session_id=str(session_id),
+            flood_vulnerability_wms_url=flood_vulnerability_wms_url,
+            view_details=design_view_details,
+        )
+
+        return render_template(
+            "design_flooding_analysis.html", op=asdict(success_response)
+        )
+    else:
+        msg = ErrorResponse(
+            status=0,
+            message="Could download data from Geodesignhub, please check your project ID and API token.",
+            code=400,
+        )
+        return Response(msg, status=400, mimetype="application/json")
 
 
-@app.route('/design_shadow/', methods = ['GET'])
-def generate_design_shadow():	
-	try:
-		projectid = request.args.get('projectid')
-		apitoken = request.args.get('apitoken')
-		synthesisid = request.args.get('synthesisid')
-		cteamid = request.args.get('cteamid')
+@app.route("/design_shadow/", methods=["GET"])
+def generate_design_shadow():
+    try:
+        projectid = request.args.get("projectid")
+        apitoken = request.args.get("apitoken")
+        synthesisid = request.args.get("synthesisid")
+        cteamid = request.args.get("cteamid")
 
-	except KeyError as e:
-		error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Design Team ID / Design ID or API Token ID. One or more of these were not found in your request.",code=400)
-		return Response(asdict(error_msg), status=400, mimetype='application/json')
-	design_view_details = ToolboxDesignViewDetails(project_id=projectid, cteam_id=cteamid, synthesis_id=synthesisid, api_token=apitoken,view_type='shadow')
-	try:
-		r_date_time = request.args.get('date_time', None)
-		if not r_date_time:
-			raise KeyError
-		else:
-			shadow_date_time = arrow.get(r_date_time).format('YYYY-MM-DDTHH:mm:ss')		
-	except KeyError as ke: 
-		# shadow_date_time = arrow.now().format('YYYY-MM-DDTHH:mm:ss')
-		current_year = arrow.now().year
-		august_6_date = '{year}-08-06T10:10:00'.format(year = current_year)
-		shadow_date_time = august_6_date
+    except KeyError as e:
+        error_msg = ErrorResponse(
+            status=0,
+            message="Could not parse Project ID, Design Team ID / Design ID or API Token ID. One or more of these were not found in your request.",
+            code=400,
+        )
+        return Response(asdict(error_msg), status=400, mimetype="application/json")
+    design_view_details = ToolboxDesignViewDetails(
+        project_id=projectid,
+        cteam_id=cteamid,
+        synthesis_id=synthesisid,
+        api_token=apitoken,
+        view_type="shadow",
+    )
+    try:
+        r_date_time = request.args.get("date_time", None)
+        if not r_date_time:
+            raise KeyError
+        else:
+            shadow_date_time = arrow.get(r_date_time).format("YYYY-MM-DDTHH:mm:ss")
+    except KeyError as ke:
+        # shadow_date_time = arrow.now().format('YYYY-MM-DDTHH:mm:ss')
+        current_year = arrow.now().year
+        august_6_date = "{year}-08-06T10:10:00".format(year=current_year)
+        shadow_date_time = august_6_date
 
-	if projectid and cteamid and apitoken and synthesisid:
-		
-		session_id = uuid.uuid4()	
-		my_geodesignhub_downloader = GeodesignhubDataDownloader(session_id = session_id, project_id= projectid, synthesis_id=synthesisid, cteam_id= cteamid, apitoken=apitoken)
+    if projectid and cteamid and apitoken and synthesisid:
+        session_id = uuid.uuid4()
+        my_geodesignhub_downloader = GeodesignhubDataDownloader(
+            session_id=session_id,
+            project_id=projectid,
+            synthesis_id=synthesisid,
+            cteam_id=cteamid,
+            apitoken=apitoken,
+        )
 
-		project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
-		if not project_data:
-			error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
-			return Response(asdict(error_msg), status=400, mimetype='application/json')
+        project_data = (
+            my_geodesignhub_downloader.download_project_data_from_geodesignhub()
+        )
+        if not project_data:
+            error_msg = ErrorResponse(
+                status=0,
+                message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
+                code=400,
+            )
+            return Response(asdict(error_msg), status=400, mimetype="application/json")
 
-		_design_feature_collection = my_geodesignhub_downloader.download_design_data_from_geodesignhub()
-		gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
+        _design_feature_collection = (
+            my_geodesignhub_downloader.download_design_data_from_geodesignhub()
+        )
+        gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
 
-		design_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)
-		
-		shadow_computation_helper = ShadowComputationHelper(session_id = str(session_id),  design_diagram_geojson = gj_serialized, shadow_date_time = shadow_date_time, bounds = project_data.bounds.bounds )
-		shadow_computation_helper.compute_gdh_buildings_shadow()
+        design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
 
-		# Download Data		
-		maptiler_key = os.getenv('maptiler_key', '00000000000000')
-		baseline_index_wms_url = os.getenv('WMS_BASELINE_SHADOW_INDEX', '0')
-		trees_wms_url = os.getenv('WMS_EXISTING_TREES_URL', '0')
-		
-		success_response = ShadowViewSuccessResponse(status=1,message="Data from Geodesignhub retrieved",geometry_data= design_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id), shadow_date_time =shadow_date_time, baseline_index_wms_url = baseline_index_wms_url, trees_wms_url =trees_wms_url, view_details = design_view_details)
-		
-		return render_template('design_shadow.html', op = asdict(success_response))
-		# return Response(msg, status=400, mimetype='application/json')
-	else:	
-		msg = ErrorResponse(status=0, message="Could download data from Geodesignhub, please check your project ID and API token.",code=400)
-		return Response(msg, status=400, mimetype='application/json')
+        shadow_computation_helper = ShadowComputationHelper(
+            session_id=str(session_id),
+            design_diagram_geojson=gj_serialized,
+            shadow_date_time=shadow_date_time,
+            bounds=project_data.bounds.bounds,
+        )
+        shadow_computation_helper.compute_gdh_buildings_shadow()
 
-@app.route('/diagram_shadow/', methods = ['GET'])
+        # Download Data
+        maptiler_key = os.getenv("maptiler_key", "00000000000000")
+        baseline_index_wms_url = os.getenv("WMS_BASELINE_SHADOW_INDEX", "0")
+        trees_wms_url = os.getenv("WMS_EXISTING_TREES_URL", "0")
+
+        success_response = ShadowViewSuccessResponse(
+            status=1,
+            message="Data from Geodesignhub retrieved",
+            geometry_data=design_geojson,
+            project_data=project_data,
+            maptiler_key=maptiler_key,
+            session_id=str(session_id),
+            shadow_date_time=shadow_date_time,
+            baseline_index_wms_url=baseline_index_wms_url,
+            trees_wms_url=trees_wms_url,
+            view_details=design_view_details,
+        )
+
+        return render_template("design_shadow.html", op=asdict(success_response))
+        # return Response(msg, status=400, mimetype='application/json')
+    else:
+        msg = ErrorResponse(
+            status=0,
+            message="Could download data from Geodesignhub, please check your project ID and API token.",
+            code=400,
+        )
+        return Response(msg, status=400, mimetype="application/json")
+
+
+@app.route("/diagram_shadow/", methods=["GET"])
 def generate_diagram_shadow():
-	''' This is the root of the webservice, upon successful authentication a text will be displayed in the browser '''
-	try:
-		projectid = request.args.get('projectid')
-		apitoken = request.args.get('apitoken')
-		diagramid = request.args.get('diagramid')
+    """This is the root of the webservice, upon successful authentication a text will be displayed in the browser"""
+    try:
+        projectid = request.args.get("projectid")
+        apitoken = request.args.get("apitoken")
+        diagramid = request.args.get("diagramid")
 
-	except KeyError as e:
-		error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
-		return Response(asdict(error_msg), status=400, mimetype='application/json')	
-	diagram_view_details = ToolboxDiagramViewDetails(api_token=apitoken, project_id=projectid, diagram_id=diagramid,view_type='shadow')
-	try:
-		r_date_time = request.args.get('date_time', None)		
-		if not r_date_time:
-			raise KeyError
-		else:
-			shadow_date_time = arrow.get(r_date_time).format('YYYY-MM-DDTHH:mm:ss')		
-	except KeyError as ke: 
-		# shadow_date_time = arrow.now().format('YYYY-MM-DDTHH:mm:ss')
-		current_year = arrow.now().year
-		august_6_date = '{year}-08-06T10:10:00'.format(year = current_year)
-		shadow_date_time = august_6_date
-	
-	if projectid and diagramid and apitoken:		
-		session_id = uuid.uuid4()		
-		# Initialize the API
-		## Download data from GDH
-		my_geodesignhub_downloader = GeodesignhubDataDownloader(session_id = session_id, project_id= projectid, diagram_id=diagramid, apitoken=apitoken)
-		project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
-		if not project_data:
-			error_msg = ErrorResponse(status=0, message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",code=400)
-			return Response(asdict(error_msg), status=400, mimetype='application/json')
-		else:
-			_diagram_feature_collection = my_geodesignhub_downloader.download_diagram_data_from_geodesignhub()
-			gj_serialized = json.loads(geojson.dumps(_diagram_feature_collection))
-			diagram_geojson = GeodesignhubDiagramGeoJSON(geojson = gj_serialized)			
-			maptiler_key = os.getenv('maptiler_key', '00000000000000')		
-			baseline_index_wms_url = os.getenv('WMS_BASELINE_SHADOW_INDEX', '0')
-			trees_wms_url = os.getenv('WMS_EXISTING_TREES_URL', '0')
-			shadow_computation_helper = ShadowComputationHelper(session_id = str(session_id),  design_diagram_geojson = gj_serialized, shadow_date_time = shadow_date_time, bounds = project_data.bounds.bounds)
-			shadow_computation_helper.compute_gdh_buildings_shadow()
-			
-			success_response = ShadowViewSuccessResponse(status=1,message="Data from Geodesignhub retrieved",geometry_data= diagram_geojson, project_data = project_data, maptiler_key=maptiler_key, session_id = str(session_id),shadow_date_time=shadow_date_time, baseline_index_wms_url = baseline_index_wms_url, trees_wms_url=trees_wms_url, view_details = diagram_view_details)							
-			
-			return render_template('diagram_shadow.html', op = asdict(success_response))		
-	else:	
-		msg = ErrorResponse(status=0, message="Could download data from Geodesignhub, please check your project ID and API token.",code=400)
-		return Response(msg, status=400, mimetype='application/json')
+    except KeyError as e:
+        error_msg = ErrorResponse(
+            status=0,
+            message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
+            code=400,
+        )
+        return Response(asdict(error_msg), status=400, mimetype="application/json")
+    diagram_view_details = ToolboxDiagramViewDetails(
+        api_token=apitoken,
+        project_id=projectid,
+        diagram_id=diagramid,
+        view_type="shadow",
+    )
+    try:
+        r_date_time = request.args.get("date_time", None)
+        if not r_date_time:
+            raise KeyError
+        else:
+            shadow_date_time = arrow.get(r_date_time).format("YYYY-MM-DDTHH:mm:ss")
+    except KeyError as ke:
+        # shadow_date_time = arrow.now().format('YYYY-MM-DDTHH:mm:ss')
+        current_year = arrow.now().year
+        august_6_date = "{year}-08-06T10:10:00".format(year=current_year)
+        shadow_date_time = august_6_date
 
-if __name__ == '__main__':
-	app.debug = True
-	port = int(os.environ.get("PORT", 5001))
-	app.run(port =port)
+    if projectid and diagramid and apitoken:
+        session_id = uuid.uuid4()
+        # Initialize the API
+        ## Download data from GDH
+        my_geodesignhub_downloader = GeodesignhubDataDownloader(
+            session_id=session_id,
+            project_id=projectid,
+            diagram_id=diagramid,
+            apitoken=apitoken,
+        )
+        project_data = (
+            my_geodesignhub_downloader.download_project_data_from_geodesignhub()
+        )
+        if not project_data:
+            error_msg = ErrorResponse(
+                status=0,
+                message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
+                code=400,
+            )
+            return Response(asdict(error_msg), status=400, mimetype="application/json")
+        else:
+            _diagram_feature_collection = (
+                my_geodesignhub_downloader.download_diagram_data_from_geodesignhub()
+            )
+            gj_serialized = json.loads(geojson.dumps(_diagram_feature_collection))
+            diagram_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
+            maptiler_key = os.getenv("maptiler_key", "00000000000000")
+            baseline_index_wms_url = os.getenv("WMS_BASELINE_SHADOW_INDEX", "0")
+            trees_wms_url = os.getenv("WMS_EXISTING_TREES_URL", "0")
+            shadow_computation_helper = ShadowComputationHelper(
+                session_id=str(session_id),
+                design_diagram_geojson=gj_serialized,
+                shadow_date_time=shadow_date_time,
+                bounds=project_data.bounds.bounds,
+            )
+            shadow_computation_helper.compute_gdh_buildings_shadow()
+
+            success_response = ShadowViewSuccessResponse(
+                status=1,
+                message="Data from Geodesignhub retrieved",
+                geometry_data=diagram_geojson,
+                project_data=project_data,
+                maptiler_key=maptiler_key,
+                session_id=str(session_id),
+                shadow_date_time=shadow_date_time,
+                baseline_index_wms_url=baseline_index_wms_url,
+                trees_wms_url=trees_wms_url,
+                view_details=diagram_view_details,
+            )
+
+            return render_template("diagram_shadow.html", op=asdict(success_response))
+    else:
+        msg = ErrorResponse(
+            status=0,
+            message="Could download data from Geodesignhub, please check your project ID and API token.",
+            code=400,
+        )
+        return Response(msg, status=400, mimetype="application/json")
+
+
+if __name__ == "__main__":
+    app.debug = True
+    port = int(os.environ.get("PORT", 5001))
+    app.run(port=port)
