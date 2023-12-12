@@ -80,7 +80,7 @@ class GeodesignhubDataDownloader:
             token=self.apitoken,
         )
 
-    def download_project_systems(self) -> Optional[List[GeodesignhubSystem]]:
+    def download_project_systems(self) -> Optional[ErrorResponse, List[GeodesignhubSystem]]:
         s = self.api_helper.get_all_systems()
         # Check responses / data
         try:
@@ -92,7 +92,7 @@ class GeodesignhubDataDownloader:
                 code=400,
             )
 
-            return None
+            return error_msg
 
         systems = s.json()
         all_systems: List[GeodesignhubSystem] = []
@@ -102,64 +102,64 @@ class GeodesignhubDataDownloader:
 
         return all_systems
 
-    def download_project_bounds(self) -> Optional[GeodesignhubProjectBounds]:
+    def download_project_bounds(self) -> Optional[ErrorResponse,GeodesignhubProjectBounds]:
         b = self.api_helper.get_project_bounds()
         try:
             assert b.status_code == 200
-        except AssertionError as ae:
+        except AssertionError:
             error_msg = ErrorResponse(
                 status=0,
                 message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
                 code=400,
             )
-            return None
+            return error_msg
 
         bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())
 
         return bounds
 
-    def download_project_tags(self) -> Optional[GeodesignhubProjectTags]:
+    def download_project_tags(self) -> Optional[ErrorResponse,GeodesignhubProjectTags]:
         t = self.api_helper.get_project_tags()
         try:
             assert t.status_code == 200
-        except AssertionError as ae:
+        except AssertionError:
             error_msg = ErrorResponse(
                 status=0,
                 message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
                 code=400,
             )
-            return None
+            return error_msg
         return t.json()
 
-    def download_project_center(self) -> Optional[GeodesignhubProjectCenter]:
+    def download_project_center(self) -> Optional[ErrorResponse,GeodesignhubProjectCenter]:
         c = self.api_helper.get_project_center()
         try:
             assert c.status_code == 200
-        except AssertionError as ae:
+        except AssertionError:
             error_msg = ErrorResponse(
                 status=0,
                 message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
                 code=400,
             )
 
-            return None
+            return error_msg
         center = from_dict(data_class=GeodesignhubProjectCenter, data=c.json())
         return center
 
-    def download_design_data_from_geodesignhub(self) -> Optional[FeatureCollection]:
+    def download_design_data_from_geodesignhub(self) -> Optional[ErrorResponse,FeatureCollection]:
         r = self.api_helper.get_single_synthesis(
             teamid=int(self.cteam_id), synthesisid=self.synthesis_id
         )
 
         try:
             assert r.status_code == 200
-        except AssertionError as ae:
+        except AssertionError:
             error_msg = ErrorResponse(
                 status=0,
                 message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
                 code=400,
             )
-            return None
+            return error_msg
 
         _design_details_raw = r.json()
         _all_features: List[Feature] = []
@@ -218,17 +218,17 @@ class GeodesignhubDataDownloader:
         return _diagram_feature_collection
 
     def download_diagram_data_from_geodesignhub(self) -> Optional[FeatureCollection]:
-        myAPIHelper = GeodesignHub.GeodesignHubClient(
+        my_api_helper = GeodesignHub.GeodesignHubClient(
             url=config.apisettings["serviceurl"],
             project_id=self.project_id,
             token=self.apitoken,
         )
         # Download Data
-        d = myAPIHelper.get_single_diagram(diagid=self.diagram_id)
+        d = my_api_helper.get_single_diagram(diagid=self.diagram_id)
 
         try:
             assert d.status_code == 200
-        except AssertionError as ae:
+        except AssertionError:
             error_msg = ErrorResponse(
                 status=0,
                 message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
@@ -288,17 +288,17 @@ class GeodesignhubDataDownloader:
 
     def download_project_data_from_geodesignhub(
         self,
-    ) -> Optional[GeodesignhubProjectData]:
-        myAPIHelper = GeodesignHub.GeodesignHubClient(
+    ) -> Optional[ErrorResponse, GeodesignhubProjectData]:
+        my_api_helper = GeodesignHub.GeodesignHubClient(
             url=config.apisettings["serviceurl"],
             project_id=self.project_id,
             token=self.apitoken,
         )
         # Download Data
-        s = myAPIHelper.get_all_systems()
-        b = myAPIHelper.get_project_bounds()
-        c = myAPIHelper.get_project_center()
-        t = myAPIHelper.get_project_tags()
+        s = my_api_helper.get_all_systems()
+        b = my_api_helper.get_project_bounds()
+        c = my_api_helper.get_project_center()
+        t = my_api_helper.get_project_tags()
 
         # Check responses / data
         try:
@@ -309,7 +309,7 @@ class GeodesignhubDataDownloader:
                 message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
                 code=400,
             )
-            return None
+            return ErrorResponse
 
         systems = s.json()
         all_systems: List[GeodesignhubSystem] = []
@@ -325,7 +325,7 @@ class GeodesignhubDataDownloader:
                 message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
                 code=400,
             )
-            return None
+            return ErrorResponse
 
         center = from_dict(data_class=GeodesignhubProjectCenter, data=c.json())
         bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())
@@ -356,7 +356,7 @@ class ShadowComputationHelper:
         try:
             assert r_url is not None
 
-        except AssertionError as ae:
+        except AssertionError:
             print("A Roads GeoJSON as a URL is expected")
         else:
             # first download the trees and then compute design shadow

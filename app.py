@@ -33,7 +33,7 @@ base_dir = os.path.abspath(os.path.dirname(__file__))
 redis = get_redis()
 q = Queue(connection=conn)
 
-
+MIMETYPE = "application/json"
 def get_locale():
     # if the user has set up the language manually it will be stored in the session,
     # so we use the locale from the user settings
@@ -84,7 +84,7 @@ def get_diagram_shadow():
         shadow = json.loads(s)
     else:
         shadow = {"type": "FeatureCollection", "features": []}
-    return Response(shadow, status=200, mimetype="application/json")
+    return Response(shadow, status=200, mimetype=MIMETYPE)
 
 
 @app.route("/existing_buildings_generated_shadow", methods=["GET"])
@@ -96,7 +96,7 @@ def get_existing_buildings_shadow():
         shadow = json.loads(s)
     else:
         shadow = {"type": "FeatureCollection", "features": []}
-    return Response(json.dumps(shadow), status=200, mimetype="application/json")
+    return Response(json.dumps(shadow), status=200, mimetype=MIMETYPE)
 
 
 @app.route("/get_downloaded_roads", methods=["GET"])
@@ -111,7 +111,7 @@ def get_downloaded_roads():
         roads = {"type": "FeatureCollection", "features": []}
 
     rds = json.dumps(roads)
-    return Response(rds, status=200, mimetype="application/json")
+    return Response(rds, status=200, mimetype=MIMETYPE)
 
 
 @app.route("/get_downloaded_trees", methods=["GET"])
@@ -127,7 +127,7 @@ def get_downloaded_trees():
 
     trs = json.dumps(trees)
 
-    return Response(trs, status=200, mimetype="application/json")
+    return Response(trs, status=200, mimetype=MIMETYPE)
 
 
 @app.route("/existing_buildings_shadow_roads_stats", methods=["GET"])
@@ -145,7 +145,7 @@ def get_existing_buildings_shadow_roads_stats():
         )
         shadow_stats = asdict(default_shadow)
 
-    return Response(json.dumps(shadow_stats), status=200, mimetype="application/json")
+    return Response(json.dumps(shadow_stats), status=200, mimetype=MIMETYPE)
 
 
 @app.route("/get_shadow_roads_stats", methods=["GET"])
@@ -163,7 +163,7 @@ def generate_shadow_road_stats():
         )
         shadow_stats = asdict(default_shadow)
 
-    return Response(json.dumps(shadow_stats), status=200, mimetype="application/json")
+    return Response(json.dumps(shadow_stats), status=200, mimetype=MIMETYPE)
 
 
 @app.route("/design_flooding_analysis/", methods=["GET"])
@@ -174,13 +174,13 @@ def generate_design_flooding_analysis():
         synthesisid = request.args.get("synthesisid")
         cteamid = request.args.get("cteamid")
 
-    except KeyError as e:
+    except KeyError:
         error_msg = ErrorResponse(
             status=0,
             message="Could not parse Project ID, Design Team ID / Design ID or API Token ID. One or more of these were not found in your request.",
             code=400,
         )
-        return Response(asdict(error_msg), status=400, mimetype="application/json")
+        return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
     design_view_details = ToolboxDesignViewDetails(
         project_id=projectid,
         cteam_id=cteamid,
@@ -240,7 +240,7 @@ def generate_design_flooding_analysis():
             message="Could download data from Geodesignhub, please check your project ID and API token.",
             code=400,
         )
-        return Response(msg, status=400, mimetype="application/json")
+        return Response(msg, status=400, mimetype=MIMETYPE)
 
 
 @app.route("/design_shadow/", methods=["GET"])
@@ -251,13 +251,13 @@ def generate_design_shadow():
         synthesisid = request.args.get("synthesisid")
         cteamid = request.args.get("cteamid")
 
-    except KeyError as e:
+    except KeyError:
         error_msg = ErrorResponse(
             status=0,
             message="Could not parse Project ID, Design Team ID / Design ID or API Token ID. One or more of these were not found in your request.",
             code=400,
         )
-        return Response(asdict(error_msg), status=400, mimetype="application/json")
+        return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
     design_view_details = ToolboxDesignViewDetails(
         project_id=projectid,
         cteam_id=cteamid,
@@ -271,8 +271,7 @@ def generate_design_shadow():
             raise KeyError
         else:
             shadow_date_time = arrow.get(r_date_time).format("YYYY-MM-DDTHH:mm:ss")
-    except KeyError as ke:
-        # shadow_date_time = arrow.now().format('YYYY-MM-DDTHH:mm:ss')
+    except KeyError:
         current_year = arrow.now().year
         august_6_date = "{year}-08-06T10:10:00".format(year=current_year)
         shadow_date_time = august_6_date
@@ -332,14 +331,13 @@ def generate_design_shadow():
         )
 
         return render_template("design_shadow.html", op=asdict(success_response))
-        # return Response(msg, status=400, mimetype='application/json')
     else:
         msg = ErrorResponse(
             status=0,
             message="Could download data from Geodesignhub, please check your project ID and API token.",
             code=400,
         )
-        return Response(msg, status=400, mimetype="application/json")
+        return Response(msg, status=400, mimetype=MIMETYPE)
 
 
 @app.route("/diagram_shadow/", methods=["GET"])
@@ -350,7 +348,7 @@ def generate_diagram_shadow():
         apitoken = request.args.get("apitoken")
         diagramid = request.args.get("diagramid")
 
-    except KeyError as e:
+    except KeyError:
         error_msg = ErrorResponse(
             status=0,
             message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
@@ -369,8 +367,7 @@ def generate_diagram_shadow():
             raise KeyError
         else:
             shadow_date_time = arrow.get(r_date_time).format("YYYY-MM-DDTHH:mm:ss")
-    except KeyError as ke:
-        # shadow_date_time = arrow.now().format('YYYY-MM-DDTHH:mm:ss')
+    except KeyError:
         current_year = arrow.now().year
         august_6_date = "{year}-08-06T10:10:00".format(year=current_year)
         shadow_date_time = august_6_date
@@ -432,7 +429,7 @@ def generate_diagram_shadow():
             message="Could download data from Geodesignhub, please check your project ID and API token.",
             code=400,
         )
-        return Response(msg, status=400, mimetype="application/json")
+        return Response(msg, status=400, mimetype=MIMETYPE)
 
 
 if __name__ == "__main__":
