@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 from flask import render_template
 from flask import request, Response
 from flask import session, redirect
@@ -276,68 +275,61 @@ def generate_design_shadow():
         august_6_date = "{year}-08-06T10:10:00".format(year=current_year)
         shadow_date_time = august_6_date
 
-    if projectid and cteamid and apitoken and synthesisid:
-        session_id = uuid.uuid4()
-        my_geodesignhub_downloader = GeodesignhubDataDownloader(
-            session_id=session_id,
-            project_id=projectid,
-            synthesis_id=synthesisid,
-            cteam_id=cteamid,
-            apitoken=apitoken,
-        )
 
-        project_data = (
-            my_geodesignhub_downloader.download_project_data_from_geodesignhub()
-        )
-        if not project_data:
-            error_msg = ErrorResponse(
-                status=0,
-                message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
-                code=400,
-            )
-            return Response(asdict(error_msg), status=400, mimetype="application/json")
+    session_id = uuid.uuid4()
+    my_geodesignhub_downloader = GeodesignhubDataDownloader(
+        session_id=session_id,
+        project_id=projectid,
+        synthesis_id=synthesisid,
+        cteam_id=cteamid,
+        apitoken=apitoken,
+    )
 
-        _design_feature_collection = (
-            my_geodesignhub_downloader.download_design_data_from_geodesignhub()
-        )
-        gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
-
-        design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
-
-        shadow_computation_helper = ShadowComputationHelper(
-            session_id=str(session_id),
-            design_diagram_geojson=gj_serialized,
-            shadow_date_time=shadow_date_time,
-            bounds=project_data.bounds.bounds,
-        )
-        shadow_computation_helper.compute_gdh_buildings_shadow()
-
-        # Download Data
-        maptiler_key = os.getenv("maptiler_key", "00000000000000")
-        baseline_index_wms_url = os.getenv("WMS_BASELINE_SHADOW_INDEX", "0")
-        trees_wms_url = os.getenv("WMS_EXISTING_TREES_URL", "0")
-
-        success_response = ShadowViewSuccessResponse(
-            status=1,
-            message="Data from Geodesignhub retrieved",
-            geometry_data=design_geojson,
-            project_data=project_data,
-            maptiler_key=maptiler_key,
-            session_id=str(session_id),
-            shadow_date_time=shadow_date_time,
-            baseline_index_wms_url=baseline_index_wms_url,
-            trees_wms_url=trees_wms_url,
-            view_details=design_view_details,
-        )
-
-        return render_template("design_shadow.html", op=asdict(success_response))
-    else:
-        msg = ErrorResponse(
+    project_data = (
+        my_geodesignhub_downloader.download_project_data_from_geodesignhub()
+    )
+    if not project_data:
+        error_msg = ErrorResponse(
             status=0,
-            message="Could download data from Geodesignhub, please check your project ID and API token.",
+            message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
             code=400,
         )
-        return Response(msg, status=400, mimetype=MIMETYPE)
+        return Response(asdict(error_msg), status=400, mimetype="application/json")
+
+    _design_feature_collection = (
+        my_geodesignhub_downloader.download_design_data_from_geodesignhub()
+    )
+    gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
+
+    design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
+
+    shadow_computation_helper = ShadowComputationHelper(
+        session_id=str(session_id),
+        design_diagram_geojson=gj_serialized,
+        shadow_date_time=shadow_date_time,
+        bounds=project_data.bounds.bounds,
+    )
+    shadow_computation_helper.compute_gdh_buildings_shadow()
+
+    # Download Data
+    maptiler_key = os.getenv("maptiler_key", "00000000000000")
+    baseline_index_wms_url = os.getenv("WMS_BASELINE_SHADOW_INDEX", "0")
+    trees_wms_url = os.getenv("WMS_EXISTING_TREES_URL", "0")
+
+    success_response = ShadowViewSuccessResponse(
+        status=1,
+        message="Data from Geodesignhub retrieved",
+        geometry_data=design_geojson,
+        project_data=project_data,
+        maptiler_key=maptiler_key,
+        session_id=str(session_id),
+        shadow_date_time=shadow_date_time,
+        baseline_index_wms_url=baseline_index_wms_url,
+        trees_wms_url=trees_wms_url,
+        view_details=design_view_details,
+    )
+
+    return render_template("design_shadow.html", op=asdict(success_response))
 
 
 @app.route("/diagram_shadow/", methods=["GET"])

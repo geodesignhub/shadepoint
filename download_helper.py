@@ -217,7 +217,7 @@ class GeodesignhubDataDownloader:
         _diagram_feature_collection = FeatureCollection(features=_all_features)
         return _diagram_feature_collection
 
-    def download_diagram_data_from_geodesignhub(self) -> Optional[FeatureCollection]:
+    def download_diagram_data_from_geodesignhub(self) -> Optional[ErrorResponse, FeatureCollection]:
         my_api_helper = GeodesignHub.GeodesignHubClient(
             url=config.apisettings["serviceurl"],
             project_id=self.project_id,
@@ -234,7 +234,7 @@ class GeodesignhubDataDownloader:
                 message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
                 code=400,
             )
-            return None
+            return error_msg
 
         _diagram_details_raw = d.json()
         # Populate Default building data if not available
@@ -309,7 +309,7 @@ class GeodesignhubDataDownloader:
                 message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
                 code=400,
             )
-            return ErrorResponse
+            return error_msg
 
         systems = s.json()
         all_systems: List[GeodesignhubSystem] = []
@@ -325,7 +325,7 @@ class GeodesignhubDataDownloader:
                 message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
                 code=400,
             )
-            return ErrorResponse
+            return error_msg
 
         center = from_dict(data_class=GeodesignhubProjectCenter, data=c.json())
         bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())
