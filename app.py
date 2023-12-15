@@ -23,6 +23,7 @@ from download_helper import GeodesignhubDataDownloader, ShadowComputationHelper
 import arrow
 import uuid
 import geojson
+from config import wms_url_generator
 
 load_dotenv(find_dotenv())
 ENV_FILE = find_dotenv()
@@ -180,6 +181,7 @@ def generate_design_flooding_analysis():
             code=400,
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
+    my_url_generator = wms_url_generator(project_id = projectid)
     design_view_details = ToolboxDesignViewDetails(
         project_id=projectid,
         cteam_id=cteamid,
@@ -198,48 +200,42 @@ def generate_design_flooding_analysis():
             apitoken=apitoken,
         )
 
-        project_data = (
-            my_geodesignhub_downloader.download_project_data_from_geodesignhub()
-        )
-        if not project_data:
-            error_msg = ErrorResponse(
-                status=0,
-                message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
-                code=400,
-            )
-            return Response(asdict(error_msg), status=400, mimetype="application/json")
-
-        _design_feature_collection = (
-            my_geodesignhub_downloader.download_design_data_from_geodesignhub()
-        )
-        gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
-
-        design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
-
-        maptiler_key = os.getenv("maptiler_key", "00000000000000")
-        flood_vulnerability_wms_url = os.getenv("WMS_BASELINE_FLOOD_VULNERABILITY", "0")
-
-        success_response = FloodingViewSuccessResponse(
-            status=1,
-            message="Data from Geodesignhub retrieved",
-            geometry_data=design_geojson,
-            project_data=project_data,
-            maptiler_key=maptiler_key,
-            session_id=str(session_id),
-            flood_vulnerability_wms_url=flood_vulnerability_wms_url,
-            view_details=design_view_details,
-        )
-
-        return render_template(
-            "design_flooding_analysis.html", op=asdict(success_response)
-        )
-    else:
-        msg = ErrorResponse(
+    project_data = (
+        my_geodesignhub_downloader.download_project_data_from_geodesignhub()
+    )
+    if not project_data:
+        error_msg = ErrorResponse(
             status=0,
-            message="Could download data from Geodesignhub, please check your project ID and API token.",
+            message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
             code=400,
         )
-        return Response(msg, status=400, mimetype=MIMETYPE)
+        return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
+
+    _design_feature_collection = (
+        my_geodesignhub_downloader.download_design_data_from_geodesignhub()
+    )
+    gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
+
+    design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
+
+    maptiler_key = os.getenv("maptiler_key", "00000000000000")
+    
+    flood_vulnerability_wms_url = my_url_generator.get_baseline_index_wms_url()
+    
+    success_response = FloodingViewSuccessResponse(
+        status=1,
+        message="Data from Geodesignhub retrieved",
+        geometry_data=design_geojson,
+        project_data=project_data,
+        maptiler_key=maptiler_key,
+        session_id=str(session_id),
+        flood_vulnerability_wms_url=flood_vulnerability_wms_url,
+        view_details=design_view_details,
+    )
+
+    return render_template(
+        "design_flooding_analysis.html", op=asdict(success_response)
+    )
 
 
 @app.route("/design_shadow/", methods=["GET"])
@@ -257,6 +253,7 @@ def generate_design_shadow():
             code=400,
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
+    my_url_generator = wms_url_generator(project_id = projectid)
     design_view_details = ToolboxDesignViewDetails(
         project_id=projectid,
         cteam_id=cteamid,
@@ -294,7 +291,7 @@ def generate_design_shadow():
             message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
             code=400,
         )
-        return Response(asdict(error_msg), status=400, mimetype="application/json")
+        return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
 
     _design_feature_collection = (
         my_geodesignhub_downloader.download_design_data_from_geodesignhub()
@@ -313,9 +310,8 @@ def generate_design_shadow():
 
     # Download Data
     maptiler_key = os.getenv("maptiler_key", "00000000000000")
-    baseline_index_wms_url = os.getenv("WMS_BASELINE_SHADOW_INDEX", "0")
-    trees_wms_url = os.getenv("WMS_EXISTING_TREES_URL", "0")
-
+    baseline_index_wms_url = my_url_generator.get_baseline_index_wms_url()
+    trees_wms_url = my_url_generator.get_trees_wms_url()
     success_response = ShadowViewSuccessResponse(
         status=1,
         message="Data from Geodesignhub retrieved",
@@ -346,7 +342,8 @@ def generate_diagram_shadow():
             message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
             code=400,
         )
-        return Response(asdict(error_msg), status=400, mimetype="application/json")
+        return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
+    my_url_generator = wms_url_generator(project_id = projectid)
     diagram_view_details = ToolboxDiagramViewDetails(
         api_token=apitoken,
         project_id=projectid,
@@ -383,7 +380,7 @@ def generate_diagram_shadow():
                 message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
                 code=400,
             )
-            return Response(asdict(error_msg), status=400, mimetype="application/json")
+            return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
         else:
             _diagram_feature_collection = (
                 my_geodesignhub_downloader.download_diagram_data_from_geodesignhub()
@@ -391,8 +388,8 @@ def generate_diagram_shadow():
             gj_serialized = json.loads(geojson.dumps(_diagram_feature_collection))
             diagram_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
             maptiler_key = os.getenv("maptiler_key", "00000000000000")
-            baseline_index_wms_url = os.getenv("WMS_BASELINE_SHADOW_INDEX", "0")
-            trees_wms_url = os.getenv("WMS_EXISTING_TREES_URL", "0")
+            baseline_index_wms_url = my_url_generator.get_baseline_index_wms_url()
+            trees_wms_url = my_url_generator.get_trees_wms_url()
             shadow_computation_helper = ShadowComputationHelper(
                 session_id=str(session_id),
                 design_diagram_geojson=gj_serialized,
