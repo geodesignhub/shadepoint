@@ -14,12 +14,13 @@ from data_definitions import (
     BuildingsDownloadRequest,
     ExistingBuildingsDataShadowGenerationRequest,
     GeodesignhubProjectTags,
+    GeodesignhubSystemDetail
 )
 import utils
 import os
 from dataclasses import asdict
 from dacite import from_dict
-from typing import List, Optional
+from typing import List, Optional, Union
 from geojson import Feature, FeatureCollection, Polygon, LineString
 import GeodesignHub, config
 from conn import get_redis
@@ -80,7 +81,7 @@ class GeodesignhubDataDownloader:
             token=self.apitoken,
         )
 
-    def download_project_systems(self) -> Optional[ErrorResponse, List[GeodesignhubSystem]]:
+    def download_project_systems(self) -> Union[ErrorResponse, List[GeodesignhubSystem]]:
         s = self.api_helper.get_all_systems()
         # Check responses / data
         try:
@@ -102,7 +103,7 @@ class GeodesignhubDataDownloader:
 
         return all_systems
 
-    def download_project_bounds(self) -> Optional[ErrorResponse,GeodesignhubProjectBounds]:
+    def download_project_bounds(self) -> Union[ErrorResponse,GeodesignhubProjectBounds]:
         b = self.api_helper.get_project_bounds()
         try:
             assert b.status_code == 200
@@ -118,7 +119,7 @@ class GeodesignhubDataDownloader:
 
         return bounds
 
-    def download_project_tags(self) -> Optional[ErrorResponse,GeodesignhubProjectTags]:
+    def download_project_tags(self) -> Union[ErrorResponse,GeodesignhubProjectTags]:
         t = self.api_helper.get_project_tags()
         try:
             assert t.status_code == 200
@@ -131,7 +132,7 @@ class GeodesignhubDataDownloader:
             return error_msg
         return t.json()
 
-    def download_project_center(self) -> Optional[ErrorResponse,GeodesignhubProjectCenter]:
+    def download_project_center(self) -> Union[ErrorResponse,GeodesignhubProjectCenter]:
         c = self.api_helper.get_project_center()
         try:
             assert c.status_code == 200
@@ -146,7 +147,7 @@ class GeodesignhubDataDownloader:
         center = from_dict(data_class=GeodesignhubProjectCenter, data=c.json())
         return center
 
-    def download_design_data_from_geodesignhub(self) -> Optional[ErrorResponse,FeatureCollection]:
+    def download_design_data_from_geodesignhub(self) -> Union[ErrorResponse,FeatureCollection]:
         r = self.api_helper.get_single_synthesis(
             teamid=int(self.cteam_id), synthesisid=self.synthesis_id
         )
@@ -217,7 +218,7 @@ class GeodesignhubDataDownloader:
         _diagram_feature_collection = FeatureCollection(features=_all_features)
         return _diagram_feature_collection
 
-    def download_diagram_data_from_geodesignhub(self) -> Optional[ErrorResponse, FeatureCollection]:
+    def download_diagram_data_from_geodesignhub(self) -> Union[ErrorResponse, FeatureCollection]:
         my_api_helper = GeodesignHub.GeodesignHubClient(
             url=config.apisettings["serviceurl"],
             project_id=self.project_id,
@@ -288,7 +289,7 @@ class GeodesignhubDataDownloader:
 
     def download_project_data_from_geodesignhub(
         self,
-    ) -> Optional[ErrorResponse, GeodesignhubProjectData]:
+    ) -> Union[ErrorResponse, GeodesignhubProjectData]:
         my_api_helper = GeodesignHub.GeodesignHubClient(
             url=config.apisettings["serviceurl"],
             project_id=self.project_id,
@@ -313,8 +314,13 @@ class GeodesignhubDataDownloader:
 
         systems = s.json()
         all_systems: List[GeodesignhubSystem] = []
+        all_system_details: List[GeodesignhubSystemDetail] = []
         for s in systems:
             current_system = from_dict(data_class=GeodesignhubSystem, data=s)
+            sd = my_api_helper.get_single_system(system_id=current_system.id)
+            sd_raw = sd.json()
+            current_system_details = from_dict(data_class=GeodesignhubSystemDetail, data=sd_raw)
+            all_system_details.append(current_system_details)
             all_systems.append(current_system)
 
         try:
@@ -326,12 +332,13 @@ class GeodesignhubDataDownloader:
                 code=400,
             )
             return error_msg
+        
 
         center = from_dict(data_class=GeodesignhubProjectCenter, data=c.json())
         bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())
         tags = from_dict(data_class=GeodesignhubProjectTags, data={"tags": t.json()})
         project_data = GeodesignhubProjectData(
-            systems=all_systems, bounds=bounds, center=center, tags=tags
+            systems=all_systems, system_details = all_system_details, bounds=bounds, center=center, tags=tags
         )
 
         return project_data

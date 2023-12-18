@@ -25,7 +25,7 @@ class wms_url_generator():
     def get_trees_wms_url(self):
         project_specific_url = "WMS_{project_id}_EXISTING_TREES_URL".format(project_id = self.project_id)
         if environ.get(project_specific_url) is not None:
-            trees_wms_url = environ.get(project_specific_url)
+            trees_wms_url = environ.get(project_specific_url)            
         else:
             trees_wms_url = environ.get("WMS_EXISTING_TREES_URL", "0")
         

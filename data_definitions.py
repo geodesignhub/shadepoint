@@ -67,6 +67,21 @@ class GeodesignhubSystem:
     id:int
     sysname: str
     syscolor:str
+    
+@dataclass
+class GeodesignhubSystemDetail:
+  id: int
+  sysname:str
+  syscolor:str
+  systag:str
+  syscost:int
+  sysbudget: int
+  current_ha: float
+  target_ha: float
+
+@dataclass
+class AllSystemDetails: 
+    systems: List[GeodesignhubSystemDetail]
 
 @dataclass
 class GeodesignhubProjectBounds:
@@ -94,6 +109,7 @@ class GeodesignhubProjectCenter:
 @dataclass
 class GeodesignhubProjectData:
     systems: List[GeodesignhubSystem]
+    system_details: List[GeodesignhubSystemDetail]
     bounds: GeodesignhubProjectBounds
     center: GeodesignhubProjectCenter
     tags: GeodesignhubProjectTags
