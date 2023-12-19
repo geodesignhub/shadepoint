@@ -448,8 +448,6 @@ def compute_road_shadow_overlap(
     for shadow_feature in shadows["features"]:
         s: Polygon = shape(shadow_feature["geometry"])
         poly_area, poly_perimeter = geod.geometry_area_perimeter(s)
-        print("----")
-        print(poly_area))
         total_shadow_area += poly_area
         all_shadows.append(s)
 
