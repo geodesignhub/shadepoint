@@ -78,6 +78,7 @@ class GeodesignhubSystemDetail:
   sysbudget: int
   current_ha: float
   target_ha: float
+  verbose_description: str
 
 @dataclass
 class AllSystemDetails: 
@@ -209,4 +210,5 @@ class RoadsShadowOverlap:
     total_roads_kms: float
     shadowed_kms: float
     job_id: str
+    total_shadow_area:float
     

@@ -93,7 +93,7 @@ function get_road_shadow_stats(roads_shadow_stats_url) {
         .then((response) => {
             return response.json();
         })
-        .then((roads_shadow_data) => {                
+        .then((roads_shadow_data) => {  
             let shadow_stats_cont = document.getElementById('shadow_stats');
             shadow_stats_cont.classList.remove('d-none');                
             let total_roads = document.getElementById('total_roads');
@@ -101,6 +101,8 @@ function get_road_shadow_stats(roads_shadow_stats_url) {
             
             let shadowed_roads = document.getElementById('shadowed_roads');
             shadowed_roads.innerHTML = roads_shadow_data['shadowed_kms']
+            let total_building_shadow_cont = document.getElementById('building_shadows');
+            total_building_shadow_cont.innerHTML = roads_shadow_data['total_shadow_area'];
             
         }).catch((error) => {
             

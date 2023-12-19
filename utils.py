@@ -435,18 +435,22 @@ def compute_road_shadow_overlap(
 
     for line_feature in roads["features"]:
         if line_feature["geometry"]["type"] == "LineString":
-            l = LineString(line_feature["geometry"]["coordinates"])
+            line = LineString(line_feature["geometry"]["coordinates"])
         elif line_feature["geometry"]["type"] == "MultiLineString":
-            l = MultiLineString(line_feature["geometry"]["coordinates"])
-        all_roads.append(l)
-        segment_length = geod.geometry_length(l)
+            line = MultiLineString(line_feature["geometry"]["coordinates"])
+        all_roads.append(line)
+        segment_length = geod.geometry_length(line)
         print(
             "Segment Length {segment_length:.3f}".format(segment_length=segment_length)
         )
         total_length += segment_length
-
+    total_shadow_area = 0 
     for shadow_feature in shadows["features"]:
         s: Polygon = shape(shadow_feature["geometry"])
+        poly_area, poly_perimeter = geod.geometry_area_perimeter(s)
+        print("----")
+        print(poly_area))
+        total_shadow_area += poly_area
         all_shadows.append(s)
 
     roads_tree = STRtree(all_roads)
@@ -475,6 +479,7 @@ def compute_road_shadow_overlap(
         total_roads_kms=round(total_length, 2),
         shadowed_kms=round(shadowed_kms, 2),
         job_id=job_id,
+        total_shadow_area = total_shadow_area
     )
 
     r.set(job_id, json.dumps(asdict(road_shadow_overlap)))
