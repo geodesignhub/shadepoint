@@ -42,7 +42,7 @@ class wms_url_generator():
         return baseline_index_url
 
 
-    def get_baseline_flood_vulnerability(self):
+    def get_baseline_flood_vulnerability_url(self):
         projct_specific_flood_vulnerability_wms_url = "WMS_{project_id}_BASELINE_FLOOD_VULNERABILITY".format(project_id = self.project_id)
         if environ.get(projct_specific_flood_vulnerability_wms_url) is not None:
             flood_vulnerability_url = environ.get(projct_specific_flood_vulnerability_wms_url)

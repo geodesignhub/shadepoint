@@ -220,7 +220,7 @@ def generate_design_flooding_analysis():
 
     maptiler_key = os.getenv("maptiler_key", "00000000000000")
     
-    flood_vulnerability_wms_url = my_url_generator.get_baseline_index_wms_url()
+    flood_vulnerability_wms_url = my_url_generator.get_baseline_flood_vulnerability_url()
     
     success_response = FloodingViewSuccessResponse(
         status=1,
