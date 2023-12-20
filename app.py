@@ -305,6 +305,7 @@ def generate_design_shadow():
         design_diagram_geojson=gj_serialized,
         shadow_date_time=shadow_date_time,
         bounds=project_data.bounds.bounds,
+        project_id = projectid
     )
     shadow_computation_helper.compute_gdh_buildings_shadow()
 
@@ -395,6 +396,7 @@ def generate_diagram_shadow():
                 design_diagram_geojson=gj_serialized,
                 shadow_date_time=shadow_date_time,
                 bounds=project_data.bounds.bounds,
+                project_id = projectid
             )
             shadow_computation_helper.compute_gdh_buildings_shadow()
 

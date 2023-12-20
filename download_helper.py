@@ -43,6 +43,7 @@ import uuid
 from rq import Queue
 from rq.job import Dependency
 from worker import conn
+from config import wms_url_generator
 
 load_dotenv(find_dotenv())
 
@@ -350,16 +351,21 @@ class ShadowComputationHelper:
         session_id: str,
         shadow_date_time: str,
         bounds: str,
+        project_id: str,
         design_diagram_geojson=None,
+        
     ):
         self.gdh_geojson = design_diagram_geojson
         self.session_id = session_id
         self.shadow_date_time = shadow_date_time
         self.bounds = bounds
+        self.project_id = project_id
 
     def compute_gdh_buildings_shadow(self):
         """This method computes the shadow for existing or GDH buidlings"""
-        r_url = os.getenv("ROADS_URL", None)
+        my_url_generator = wms_url_generator(project_id = self.projectid)
+        r_url = my_url_generator.get_roads_url()
+        
         try:
             assert r_url is not None
 

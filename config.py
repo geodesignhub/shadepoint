@@ -51,3 +51,17 @@ class wms_url_generator():
         
         return flood_vulnerability_url
 
+
+    def get_roads_url(self):
+        """ 
+        This is the raw / GeoJSON url for roads
+        """ 
+        project_specific_url = "{project_id}_ROADS_URL".format(project_id = self.project_id)
+        if environ.get(project_specific_url) is not None:
+            trees_wms_url = environ.get(project_specific_url)            
+        else:
+            trees_wms_url = environ.get("ROADS_URL", "0")
+        
+        return trees_wms_url
+
+    
