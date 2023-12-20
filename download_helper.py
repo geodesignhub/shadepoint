@@ -363,7 +363,7 @@ class ShadowComputationHelper:
 
     def compute_gdh_buildings_shadow(self):
         """This method computes the shadow for existing or GDH buidlings"""
-        my_url_generator = wms_url_generator(project_id = self.projectid)
+        my_url_generator = wms_url_generator(project_id = self.project_id)
         r_url = my_url_generator.get_roads_url()
         
         try:
