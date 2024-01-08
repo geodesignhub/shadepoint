@@ -21,6 +21,7 @@ import pybdshadow
 from shapely.geometry import Polygon, LineString, MultiLineString
 from shapely.geometry import shape
 from shapely.geometry.polygon import Polygon
+from shapely.geometry.polygon import orient
 import json
 import uuid
 from typing import List
@@ -31,6 +32,7 @@ from conn import get_redis
 from shapely import STRtree
 import os
 import hashlib
+
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
@@ -411,6 +413,11 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
     time.sleep(7)
     print("Job Completed")
 
+def compute_polygon_area(polygon:Polygon):
+    geod = Geod(ellps="WGS84")
+    poly_area_m2, poly_perimeter = geod.geometry_area_perimeter(polygon)
+    poly_area_hectares = poly_area_m2 / 10000  # convert from m^2 to hectares
+    return poly_area_hectares
 
 def compute_road_shadow_overlap(
     roads_shadows_data: ShadowsRoadsIntersectionRequest,
@@ -434,6 +441,7 @@ def compute_road_shadow_overlap(
     shadowed_kms = 0
 
     for line_feature in roads["features"]:
+        
         if line_feature["geometry"]["type"] == "LineString":
             line = LineString(line_feature["geometry"]["coordinates"])
         elif line_feature["geometry"]["type"] == "MultiLineString":
@@ -447,8 +455,22 @@ def compute_road_shadow_overlap(
     total_shadow_area = 0 
     for shadow_feature in shadows["features"]:
         s: Polygon = shape(shadow_feature["geometry"])
-        poly_area, poly_perimeter = geod.geometry_area_perimeter(s)
+        
+        poly_area = 0
+        if s.geom_type == 'MultiPolygon':
+            # do multipolygon things.
+            all_polygons = list(s.geoms)            
+            for p in all_polygons:
+                oriented = orient(p)
+                a = compute_polygon_area(oriented)
+                poly_area += a
+        elif s.geom_type == 'Polygon':
+            poly_area = compute_polygon_area(s)
+        else:
+            raise IOError('Shape is not a polygon.')
+        print("Shadow Area {poly_area:.3f}".format(poly_area=poly_area))
         total_shadow_area += poly_area
+
         all_shadows.append(s)
 
     roads_tree = STRtree(all_roads)
@@ -472,12 +494,12 @@ def compute_road_shadow_overlap(
 
             intersections.append(intersection)
             shadowed_kms += intersection_length
-
+    total_shadow_area_rounded = round(total_shadow_area, 2)
     road_shadow_overlap = RoadsShadowOverlap(
         total_roads_kms=round(total_length, 2),
         shadowed_kms=round(shadowed_kms, 2),
         job_id=job_id,
-        total_shadow_area = total_shadow_area
+        total_shadow_area = total_shadow_area_rounded
     )
 
     r.set(job_id, json.dumps(asdict(road_shadow_overlap)))
