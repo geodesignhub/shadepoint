@@ -34,6 +34,10 @@ class RoadsShadowsComputationStartRequest:
     session_id: str
     request_date_time: str
 
+@dataclass
+class VolumeInformation:
+    min_height: float
+    max_height:float 
 
 @dataclass
 class GeodesignhubDesignFeatureProperties:
@@ -45,8 +49,7 @@ class GeodesignhubDesignFeatureProperties:
     diagram_id:int
     building_id: str
     areatype:str
-    min_height: float
-    max_height:float
+    volume_information:VolumeInformation
     tag_codes: str
 
 @dataclass

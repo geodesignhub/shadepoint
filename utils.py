@@ -375,6 +375,7 @@ def compute_existing_buildings_shadow_with_tree_canopy(geojson_session_date_time
 
 
 def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
+    
     _diagramid_building_date_time = from_dict(
         data_class=GeodesignhubDataShadowGenerationRequest,
         data=geojson_session_date_time,
@@ -383,7 +384,8 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
     gdh_design_diagram_buildings = gpd.GeoDataFrame.from_features(
         _diagramid_building_date_time.buildings["features"]
     )
-    _pd_date_time = pd.to_datetime(_date_time).tz_convert("UTC")
+    
+    _pd_date_time = pd.to_datetime(_date_time).tz_convert("UTC")    
     shadows = pybdshadow.bdshadow_sunlight(gdh_design_diagram_buildings, _pd_date_time)
 
     # # Merge the canopy with the shadow

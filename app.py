@@ -298,8 +298,7 @@ def generate_design_shadow():
     )
     gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
 
-    design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
-
+    design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)    
     shadow_computation_helper = ShadowComputationHelper(
         session_id=str(session_id),
         design_diagram_geojson=gj_serialized,

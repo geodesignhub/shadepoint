@@ -17,11 +17,13 @@ from data_definitions import (
     GeodesignhubSystemDetail
 )
 import utils
-import os
+from shapely.geometry.base import BaseGeometry
+from shapely.geometry import mapping, shape
+import json
 from dataclasses import asdict
 from dacite import from_dict
 from typing import List, Optional, Union
-from geojson import Feature, FeatureCollection, Polygon, LineString
+from geojson import Feature, FeatureCollection, Polygon, LineString, Point
 import GeodesignHub, config
 from conn import get_redis
 from dotenv import load_dotenv, find_dotenv
@@ -40,6 +42,7 @@ from notifications_helper import (
 )
 from uuid import uuid4
 import uuid
+from json import encoder
 from rq import Queue
 from rq.job import Dependency
 from worker import conn
@@ -53,6 +56,23 @@ if ENV_FILE:
 
 redis = get_redis()
 q = Queue(connection=conn)
+
+
+    
+class ShapelyEncoder(json.JSONEncoder):
+
+    ''' Encodes JSON strings into shapes processed by SHapely'''
+
+    def default(self, obj):
+        if isinstance(obj, BaseGeometry):
+            return mapping(obj)
+        return json.JSONEncoder.default(self, obj)
+
+
+def export_to_json(data):
+    ''' Export a shapely output to JSON'''
+    encoder.FLOAT_REPR = lambda o: format(o, '.6f')
+    return json.loads(json.dumps(data, sort_keys=True, cls=ShapelyEncoder))
 
 
 class GeodesignhubDataDownloader:
@@ -164,13 +184,14 @@ class GeodesignhubDataDownloader:
             return error_msg
 
         _design_details_raw = r.json()
+        
         _all_features: List[Feature] = []
         # Populate Default building data if not available
         for _single_diagram_feature in _design_details_raw["features"]:
             _diagram_properties = _single_diagram_feature["properties"]
             _project_or_policy = _diagram_properties["areatype"]
-            _diagram_properties["height"] = _diagram_properties["max_height"]
-            _diagram_properties["base_height"] = _diagram_properties["min_height"]
+            _diagram_properties["height"] = _diagram_properties['volume_information']["max_height"]
+            _diagram_properties["base_height"] = _diagram_properties['volume_information']["min_height"]
             _diagram_properties["diagram_id"] = _diagram_properties["diagramid"]
             _diagram_properties["tag_codes"] = _diagram_properties["tag_codes"]
             _diagram_properties["building_id"] = str(uuid.uuid4())
@@ -204,6 +225,16 @@ class GeodesignhubDataDownloader:
                     _geometry = LineString(
                         coordinates=_single_diagram_feature["geometry"]["coordinates"]
                     )
+                elif _single_diagram_feature["geometry"]["type"] == "Point":
+                    point = shape(_single_diagram_feature["geometry"])
+                    buffered_point = point.buffer(0.0001)
+                    buffered_polygon = export_to_json(buffered_point)
+                    print()
+                    _geometry = Polygon(
+                        coordinates=buffered_polygon["coordinates"]
+                    )
+                    # Buffer the point 
+
                 else:
                     error_msg = ErrorResponse(
                         status=0,
@@ -217,6 +248,7 @@ class GeodesignhubDataDownloader:
                 _all_features.append(_feature)
 
         _diagram_feature_collection = FeatureCollection(features=_all_features)
+        
         return _diagram_feature_collection
 
     def download_diagram_data_from_geodesignhub(self) -> Union[ErrorResponse, FeatureCollection]:
@@ -242,8 +274,8 @@ class GeodesignhubDataDownloader:
         # Populate Default building data if not available
         if not bool(_diagram_details_raw["building_data"]):
             _default_building_data = {
-                "storeys_above_ground": 10,
-                "storeys_below_ground": 0,
+                "meters_above_ground": 10,
+                "meters_below_ground": 0,
             }
         else:
             _default_building_data = _diagram_details_raw["building_data"]
@@ -254,8 +286,8 @@ class GeodesignhubDataDownloader:
         for f in _diagram_details_feature_collection["features"]:
             _f_props = f["properties"]
             _building_data = BuildingData(
-                height=_default_building_data["storeys_above_ground"] * 4.5,
-                base_height=_default_building_data["storeys_below_ground"] * 4.5,
+                height=_default_building_data["meters_above_ground"],
+                base_height=_default_building_data["meters_below_ground"]
             )
 
             _diagram_details_raw["height"] = asdict(_building_data)["height"]
