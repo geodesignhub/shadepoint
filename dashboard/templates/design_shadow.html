@@ -125,8 +125,9 @@
 
 {% if op['status'] == 1 %}
 <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
-
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/three.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/GLTFLoader.js') }}"></script>
 
 <script type="text/javascript">
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -178,7 +179,6 @@
 
 
     map.on('load', function () {
-
         map.addSource('buildings', {
             // GeoJSON Data source used in vector tiles, documented at
             // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
@@ -197,8 +197,6 @@
             'type': 'geojson',
             'data': { "type": "FeatureCollection", "features": [] }
         });
-
-
         if (existing_canpoy_source !== '0') {
             map.addSource('existing_canpoy_source', {
                 'type': 'raster',
@@ -218,8 +216,6 @@
                 'aeroway_fill'
             );
         }
-
-
         map.addSource('bike_pedestrian_roads', {
             // GeoJSON Data source used in vector tiles, documented at
             // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
@@ -245,7 +241,6 @@
                 'aeroway_fill'
             );
         }
-
         map.addLayer({
             'id': 'buildings-extrusion',
             'type': 'fill-extrusion',
@@ -267,7 +262,6 @@
                 'fill-extrusion-opacity': 0.5
             }
         });
-
         map.addLayer({
             'id': 'building_shadows',
             'type': 'fill',
@@ -311,9 +305,96 @@
         );
     });
 
+    async function process_trees() {
+            /*
+            * Helper function used to get threejs-scene-coordinates from mercator coordinates.
+            * This is just a quick and dirty solution - it won't work if points are far away from each other
+            * because a meter near the north-pole covers more mercator-units
+            * than a meter near the equator.
+            */
+            function calculateDistanceMercatorToMeters(from, to) {
+                const mercatorPerMeter = from.meterInMercatorCoordinateUnits();
+                // mercator x: 0=west, 1=east
+                const dEast = to.x - from.x;
+                const dEastMeter = dEast / mercatorPerMeter;
+                // mercator y: 0=north, 1=south
+                const dNorth = from.y - to.y;
+                const dNorthMeter = dNorth / mercatorPerMeter;
+                return {dEastMeter, dNorthMeter};
+            }
+
+            async function loadModel() {
+                const loader = new THREE.GLTFLoader();
+                const gltf = await loader.loadAsync(
+                'assets/low_poly_tree.glb');
+                const model = gltf.scene;
+                return model;
+            }
+            
+            const sceneOrigin = new maplibregl.LngLat(148.9819, -35.39847);
+            
+            const three_d_tree_layer = {
+                id: '3d-model',
+                type: 'custom',
+                renderingMode: '3d',
+                onAdd(map, gl) {
+                    this.camera = new THREE.Camera();
+                    this.scene = new THREE.Scene();
+                    this.scene.rotateX(Math.PI / 2);
+                    this.scene.scale.multiply(new THREE.Vector3(1, 1, -1));
+                    const light = new THREE.DirectionalLight(0xffffff);
+                    light.position.set(50, 70, -30).normalize();
+                    this.scene.add(light);
+
+                    const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(sceneOrigin);
+                    for (var x = 0; x < trees_geojson.features.length; x++){
+                        const curmodel = model.clone();
+                        const feature_location = trees_geojson.features[x].geometry.coordinates;
+                        const model_location = new maplibregl.LngLat(parseFloat(trees_geojson.features[x].geometry.coordinates[0]),parseFloat(trees_geojson.features[x].geometry.coordinates[1]));
+                        const model_mercator = maplibregl.MercatorCoordinate.fromLngLat(model_location);
+                        const {dEastMeter: model1east, dNorthMeter: model1north} = calculateDistanceMercatorToMeters(sceneOriginMercator, model_mercator);
+                        curmodel.position.set(model1east, 0, model1north);
+                        this.scene.add(curmodel);
+                    }
+                    this.renderer = new THREE.WebGLRenderer({
+                        canvas: map.getCanvas(),
+                        context: gl,
+                        antialias: true
+                    });
+                    this.renderer.autoClear = false;
+                },
+
+                render(gl, mercatorMatrix) {
+
+                    const offsetFromCenterElevation = map.queryTerrainElevation(sceneOrigin) || 0;
+                    const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(sceneOrigin, offsetFromCenterElevation);
+
+                    const sceneTransform = {
+                        translateX: sceneOriginMercator.x,
+                        translateY: sceneOriginMercator.y,
+                        translateZ: sceneOriginMercator.z,
+                        scale: sceneOriginMercator.meterInMercatorCoordinateUnits()
+                    };
+
+                    const m = new THREE.Matrix4().fromArray(mercatorMatrix);
+                    const l = new THREE.Matrix4()
+                        .makeTranslation(sceneTransform.translateX, sceneTransform.translateY, sceneTransform.translateZ)
+                        .scale(new THREE.Vector3(sceneTransform.scale, -sceneTransform.scale, sceneTransform.scale));
+
+                    this.camera.projectionMatrix = m.multiply(l);
+                    this.renderer.resetState();
+                    this.renderer.render(this.scene, this.camera);
+                    map.triggerRepaint();
+                }
+            };
+            map.addLayer(three_d_tree_layer);
+        }
+    
+    const results = await Promise.all([map.once('load'), loadModel()]);
+    const model = results[1];
+    process_trees();
 
     document.addEventListener('DOMContentLoaded', () => {
-
         const room = design_detail.session_id;
         var source = new EventSource("{{ url_for('sse.stream') }}");
         source.addEventListener('gdh_shadow_generation_success', function (event) {
@@ -350,7 +431,6 @@
                 get_downloaded_roads(roads_download_url);
             }
         }, false);
-
         source.addEventListener('roads_shadow_complete', function (event) {
             var data = JSON.parse(event.data);
             // do what you want with this data
@@ -362,7 +442,6 @@
                 get_road_shadow_stats(roads_shadow_stats_url);
             }
         }, false);
-
 
     });
 </script>
