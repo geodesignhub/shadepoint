@@ -312,6 +312,10 @@
             * because a meter near the north-pole covers more mercator-units
             * than a meter near the equator.
             */
+                
+            const results = await Promise.all([map.once('load'), loadModel()]);
+            const model = results[1];
+            
             function calculateDistanceMercatorToMeters(from, to) {
                 const mercatorPerMeter = from.meterInMercatorCoordinateUnits();
                 // mercator x: 0=west, 1=east
@@ -390,10 +394,6 @@
             map.addLayer(three_d_tree_layer);
         }
     
-    const results = await Promise.all([map.once('load'), loadModel()]);
-    const model = results[1];
-    process_trees();
-
     document.addEventListener('DOMContentLoaded', () => {
         const room = design_detail.session_id;
         var source = new EventSource("{{ url_for('sse.stream') }}");

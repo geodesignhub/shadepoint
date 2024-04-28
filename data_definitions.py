@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import List, Union
-
+from geojson import FeatureCollection
 @dataclass
 class ErrorResponse:
     # A class to hold error resposnes
@@ -40,6 +40,11 @@ class VolumeInformation:
     max_height:float 
 
 @dataclass
+class TreeFeatureProperties:
+    author:str
+    description: str    
+    
+@dataclass
 class GeodesignhubDesignFeatureProperties:
     author:str
     description: str    
@@ -61,7 +66,7 @@ class ExistingBuildingsFeatureProperties:
 @dataclass
 class GeodesignhubDiagramGeoJSON: 
     # Source: https://www.geodesignhub.com/api/#diagrams-api-diagram-detail-get
-    geojson: dict
+    geojson: FeatureCollection
     
 
 @dataclass
@@ -139,6 +144,7 @@ class ShadowViewSuccessResponse:
     status: int
     project_data: GeodesignhubProjectData
     geometry_data: GeodesignhubDiagramGeoJSON
+    trees_feature_collection: GeodesignhubDiagramGeoJSON
     maptiler_key: str
     session_id: str
     shadow_date_time:str

@@ -293,12 +293,21 @@ def generate_design_shadow():
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
 
-    _design_feature_collection = (
+    _unprocessed_design_geojson = (
         my_geodesignhub_downloader.download_design_data_from_geodesignhub()
+    )
+    
+    _design_feature_collection = (
+        my_geodesignhub_downloader.process_design_data_from_geodesignhub(unprocessed_design_geojson =_unprocessed_design_geojson)
     )
     gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
 
     design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)    
+    
+    _design_trees_feature_collection = my_geodesignhub_downloader.filter_design_tree_points(unprocessed_design_geojson = _unprocessed_design_geojson)
+    
+    trees_feature_collection = GeodesignhubDiagramGeoJSON(geojson=_design_trees_feature_collection)
+    print(_design_trees_feature_collection)
     shadow_computation_helper = ShadowComputationHelper(
         session_id=str(session_id),
         design_diagram_geojson=gj_serialized,
@@ -316,6 +325,7 @@ def generate_design_shadow():
         status=1,
         message="Data from Geodesignhub retrieved",
         geometry_data=design_geojson,
+        trees_feature_collection = trees_feature_collection, 
         project_data=project_data,
         maptiler_key=maptiler_key,
         session_id=str(session_id),
@@ -324,7 +334,6 @@ def generate_design_shadow():
         trees_wms_url=trees_wms_url,
         view_details=design_view_details,
     )
-
     return render_template("design_shadow.html", op=asdict(success_response))
 
 

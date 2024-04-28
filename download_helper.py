@@ -14,7 +14,8 @@ from data_definitions import (
     BuildingsDownloadRequest,
     ExistingBuildingsDataShadowGenerationRequest,
     GeodesignhubProjectTags,
-    GeodesignhubSystemDetail
+    GeodesignhubSystemDetail,
+    TreeFeatureProperties
 )
 import utils
 from shapely.geometry.base import BaseGeometry
@@ -184,10 +185,14 @@ class GeodesignhubDataDownloader:
             return error_msg
 
         _design_details_raw = r.json()
+
+        return _design_details_raw
+    
+    def process_design_data_from_geodesignhub(self, unprocessed_design_geojson) -> Union[ErrorResponse,FeatureCollection]:
         
         _all_features: List[Feature] = []
         # Populate Default building data if not available
-        for _single_diagram_feature in _design_details_raw["features"]:
+        for _single_diagram_feature in unprocessed_design_geojson["features"]:
             _diagram_properties = _single_diagram_feature["properties"]
             _project_or_policy = _diagram_properties["areatype"]
             _diagram_properties["height"] = _diagram_properties['volume_information']["max_height"]
@@ -229,7 +234,6 @@ class GeodesignhubDataDownloader:
                     point = shape(_single_diagram_feature["geometry"])
                     buffered_point = point.buffer(0.0001)
                     buffered_polygon = export_to_json(buffered_point)
-                    print()
                     _geometry = Polygon(
                         coordinates=buffered_polygon["coordinates"]
                     )
@@ -319,6 +323,31 @@ class GeodesignhubDataDownloader:
         _diagram_feature_collection = FeatureCollection(features=_all_features)
 
         return _diagram_feature_collection
+
+    def filter_design_tree_points(self, unprocessed_design_geojson: FeatureCollection) -> FeatureCollection:
+        # This method filters the tree points out of a design Geojson
+
+        _all_tree_features: List[Feature] = []
+        # Populate Default building data if not available
+        for f in unprocessed_design_geojson['features']:            
+            if (f['geometry']['type'] in ['Point']):      
+                _geometry = Point(
+                        coordinates=f["geometry"]["coordinates"]
+                    )
+                _diagram_properties = f["properties"]                
+                _tree_feature_properties = TreeFeatureProperties(author=_diagram_properties['author'],description= _diagram_properties['description'])
+                # _feature_properties = from_dict(
+                #     data_class=GeodesignhubDesignFeatureProperties, data=_diagram_properties
+                # )
+                _feature = Feature(
+                    geometry=_geometry, properties=asdict(_tree_feature_properties)
+                )
+                _all_tree_features.append(_feature)
+        
+        _trees_feature_collection = FeatureCollection(features=_all_tree_features)
+        
+        return _trees_feature_collection
+            
 
     def download_project_data_from_geodesignhub(
         self,
