@@ -137,7 +137,7 @@
     const design_detail = {{ op|safe}};
 
     const design_geojson = {{ op["geometry_data"]["geojson"]|safe }};
-
+    const trees_geojson = {{ op["trees_feature_collection"]["geojson"]|safe }};
     const bounds = design_detail['project_data']['bounds']['bounds'];
     const session_id = design_detail['session_id']
     var latLngs = bounds.split(',');
@@ -313,8 +313,8 @@
             * than a meter near the equator.
             */
                 
-            const results = await Promise.all([map.once('load'), loadModel()]);
-            const model = results[1];
+            const results = await Promise.all([loadModel()]);
+            const model = results[0];
             
             function calculateDistanceMercatorToMeters(from, to) {
                 const mercatorPerMeter = from.meterInMercatorCoordinateUnits();
@@ -327,16 +327,18 @@
                 return {dEastMeter, dNorthMeter};
             }
 
+            
             async function loadModel() {
                 const loader = new THREE.GLTFLoader();
                 const gltf = await loader.loadAsync(
-                'assets/low_poly_tree.glb');
+                "{{ url_for('static', filename='assets/low_poly_tree.glb') }}");
                 const model = gltf.scene;
                 return model;
             }
+            const project_center = design_detail['project_data']['center']['center'].split(',');            
+            const sceneOrigin = new maplibregl.LngLat(parseFloat(project_center[0]), parseFloat(project_center[1]));
             
-            const sceneOrigin = new maplibregl.LngLat(148.9819, -35.39847);
-            
+            const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(sceneOrigin);
             const three_d_tree_layer = {
                 id: '3d-model',
                 type: 'custom',
@@ -350,14 +352,15 @@
                     light.position.set(50, 70, -30).normalize();
                     this.scene.add(light);
 
-                    const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(sceneOrigin);
                     for (var x = 0; x < trees_geojson.features.length; x++){
                         const curmodel = model.clone();
-                        const feature_location = trees_geojson.features[x].geometry.coordinates;
-                        const model_location = new maplibregl.LngLat(parseFloat(trees_geojson.features[x].geometry.coordinates[0]),parseFloat(trees_geojson.features[x].geometry.coordinates[1]));
-                        const model_mercator = maplibregl.MercatorCoordinate.fromLngLat(model_location);
+                        const tree_coordinates = trees_geojson.features[x].geometry.coordinates;
+                        const tree_location = new maplibregl.LngLat(parseFloat(tree_coordinates[0]),parseFloat(tree_coordinates[1]));
+                        const model_mercator = maplibregl.MercatorCoordinate.fromLngLat(tree_location);
                         const {dEastMeter: model1east, dNorthMeter: model1north} = calculateDistanceMercatorToMeters(sceneOriginMercator, model_mercator);
-                        curmodel.position.set(model1east, 0, model1north);
+                        console.log(tree_location);
+                        console.log(model1east, model1north);
+                        curmodel.position.set(model1east-8.75, 0, model1north+0.75);
                         this.scene.add(curmodel);
                     }
                     this.renderer = new THREE.WebGLRenderer({
@@ -442,6 +445,7 @@
                 get_road_shadow_stats(roads_shadow_stats_url);
             }
         }, false);
+        process_trees();
 
     });
 </script>

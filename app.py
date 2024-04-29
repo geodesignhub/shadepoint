@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from networkx import center
 from flask import render_template
 from flask import request, Response
 from flask import session, redirect
@@ -305,9 +306,9 @@ def generate_design_shadow():
     design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)    
     
     _design_trees_feature_collection = my_geodesignhub_downloader.filter_design_tree_points(unprocessed_design_geojson = _unprocessed_design_geojson)
+    tree_fc_serialized = json.loads(geojson.dumps(_design_trees_feature_collection))
+    trees_feature_collection = GeodesignhubDiagramGeoJSON(geojson=tree_fc_serialized)
     
-    trees_feature_collection = GeodesignhubDiagramGeoJSON(geojson=_design_trees_feature_collection)
-    print(_design_trees_feature_collection)
     shadow_computation_helper = ShadowComputationHelper(
         session_id=str(session_id),
         design_diagram_geojson=gj_serialized,

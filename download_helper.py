@@ -192,15 +192,13 @@ class GeodesignhubDataDownloader:
         
         _all_features: List[Feature] = []
         # Populate Default building data if not available
-        for _single_diagram_feature in unprocessed_design_geojson["features"]:
-            _diagram_properties = _single_diagram_feature["properties"]
+        for _single_diagram_feature in unprocessed_design_geojson["features"]:            
+            _diagram_properties = _single_diagram_feature["properties"]            
             _project_or_policy = _diagram_properties["areatype"]
             _diagram_properties["height"] = _diagram_properties['volume_information']["max_height"]
             _diagram_properties["base_height"] = _diagram_properties['volume_information']["min_height"]
-            _diagram_properties["diagram_id"] = _diagram_properties["diagramid"]
-            _diagram_properties["tag_codes"] = _diagram_properties["tag_codes"]
+            _diagram_properties["diagram_id"] = _diagram_properties["diagramid"]            
             _diagram_properties["building_id"] = str(uuid.uuid4())
-
             _feature_properties = from_dict(
                 data_class=GeodesignhubDesignFeatureProperties, data=_diagram_properties
             )
@@ -232,7 +230,7 @@ class GeodesignhubDataDownloader:
                     )
                 elif _single_diagram_feature["geometry"]["type"] == "Point":
                     point = shape(_single_diagram_feature["geometry"])
-                    buffered_point = point.buffer(0.0001)
+                    buffered_point = point.buffer(0.00005)
                     buffered_polygon = export_to_json(buffered_point)
                     _geometry = Polygon(
                         coordinates=buffered_polygon["coordinates"]
