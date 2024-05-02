@@ -18,6 +18,8 @@ from data_definitions import (
     ToolboxDesignViewDetails,
     ToolboxDiagramViewDetails,
     FloodingViewSuccessResponse,
+    DrawViewSuccessResponse,
+    ToolboxDrawDiagramViewDetails
 )
 import os
 from download_helper import GeodesignhubDataDownloader, ShadowComputationHelper
@@ -430,6 +432,60 @@ def generate_diagram_shadow():
             code=400,
         )
         return Response(msg, status=400, mimetype=MIMETYPE)
+
+@app.route("/draw_points/", methods=["GET"])
+def draw_points_view():
+    try:
+        projectid = request.args.get("projectid")
+        apitoken = request.args.get("apitoken")
+        diagramid = request.args.get("diagramid")
+
+    except KeyError:
+        error_msg = ErrorResponse(
+            status=0,
+            message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
+            code=400,
+        )
+        return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
+    my_url_generator = wms_url_generator(project_id = projectid)
+    draw_view_details = ToolboxDrawDiagramViewDetails(
+        api_token=apitoken,
+        project_id=projectid,
+        view_type="draw",
+    )
+
+    session_id = uuid.uuid4()        
+    my_geodesignhub_downloader = GeodesignhubDataDownloader(
+        session_id=session_id,
+        project_id=projectid,
+        diagram_id=diagramid,
+        apitoken=apitoken,
+    )
+    maptiler_key = os.getenv("maptiler_key", "00000000000000")
+    project_data = (
+        my_geodesignhub_downloader.download_project_data_from_geodesignhub()
+    )
+    if not project_data:
+        error_msg = ErrorResponse(
+            status=0,
+            message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
+            code=400,
+        )
+        return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
+
+    trees_wms_url = my_url_generator.get_trees_wms_url()
+    
+    success_response = DrawViewSuccessResponse(
+        status=1,
+        message="Data from Geodesignhub retrieved",
+        project_data=project_data,
+        maptiler_key=maptiler_key,
+        session_id=str(session_id),
+        trees_wms_url=trees_wms_url,
+        view_details=draw_view_details,
+    )
+
+    return render_template("draw_diagram.html", op=asdict(success_response))
 
 
 if __name__ == "__main__":

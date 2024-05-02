@@ -126,8 +126,8 @@
 {% if op['status'] == 1 %}
 <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
-<script src="{{ url_for('static', filename='js/three.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/GLTFLoader.js') }}"></script>
+<script src="{{ url_for('static', filename='js/threejs/three.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/threejs/GLTFLoader.js') }}"></script>
 
 <script type="text/javascript">
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
