@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-from networkx import center
+from distutils.command import upload
 from flask import render_template
 from flask import request, Response
-from flask import session, redirect
+from flask import session, redirect, url_for
 from conn import get_redis
 from dotenv import load_dotenv, find_dotenv
 from dashboard import create_app
@@ -19,7 +19,8 @@ from data_definitions import (
     ToolboxDiagramViewDetails,
     FloodingViewSuccessResponse,
     DrawViewSuccessResponse,
-    ToolboxDrawDiagramViewDetails
+    ToolboxDrawDiagramViewDetails,
+    DiagramUploadDetails
 )
 import os
 from download_helper import GeodesignhubDataDownloader, ShadowComputationHelper
@@ -136,7 +137,6 @@ def get_downloaded_trees():
 @app.route("/existing_buildings_shadow_roads_stats", methods=["GET"])
 def get_existing_buildings_shadow_roads_stats():
     roads_shadow_stats_key = request.args.get("roads_shadow_stats_key", "0")
-
     roads_shadow_stats_exists = redis.exists(roads_shadow_stats_key)
 
     if roads_shadow_stats_exists:
@@ -240,6 +240,40 @@ def generate_design_flooding_analysis():
         "design_flooding_analysis.html", op=asdict(success_response)
     )
 
+@app.route("/add_diagram/", methods=["POST"])
+def add_diagram():
+    try:
+        project_id = request.args.get("projectid")
+        apitoken = request.args.get("apitoken")
+    except KeyError:
+        error_msg = ErrorResponse(
+            status=0,
+            message="Could not parse Project ID, Design Team ID / Design ID or API Token ID. One or more of these were not found in your request.",
+            code=400,
+        )
+        return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
+    
+    point_feature_collection = request.form.get('point_feature_collection')
+    system_id = request.form.get('system_id')
+    
+    session_id = uuid.uuid4()
+    
+    my_geodesignhub_downloader = GeodesignhubDataDownloader(
+        session_id=session_id,
+        project_id=project_id,
+        apitoken = apitoken
+    )
+    diagram_details = DiagramUploadDetails(geometry = point_feature_collection, project_or_policy="project",feature_type="polygon", description="", funding_type="pu", sys_id= system_id)
+
+    upload_response = my_geodesignhub_downloader.upload_diagram(diagram_upload_details=diagram_details)
+   
+    
+    return redirect(url_for('diagram_upload_result',messages=asdict(upload_response)),code=307)
+
+@app.route('diagram_upload_result', methods=['GET'])
+def redirect_upload_diagram():
+    messages = request.args['messages']
+    return render_template("add_diagram/diagram_add_status.html", messages=json.loads(messages))
 
 @app.route("/design_shadow/", methods=["GET"])
 def generate_design_shadow():
@@ -433,8 +467,8 @@ def generate_diagram_shadow():
         )
         return Response(msg, status=400, mimetype=MIMETYPE)
 
-@app.route("/draw_points/", methods=["GET"])
-def draw_points_view():
+@app.route("/draw_trees/", methods=["GET"])
+def draw_trees_view():
     try:
         projectid = request.args.get("projectid")
         apitoken = request.args.get("apitoken")
@@ -485,7 +519,7 @@ def draw_points_view():
         view_details=draw_view_details,
     )
 
-    return render_template("draw_diagram.html", op=asdict(success_response))
+    return render_template("add_diagram/draw_trees.html", op=asdict(success_response))
 
 
 if __name__ == "__main__":

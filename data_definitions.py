@@ -12,6 +12,14 @@ class ErrorResponse:
 
 
 @dataclass
+class UploadSuccessResponse:
+    # A class to hold error resposnes
+    message: str
+    code: int
+    status: int
+
+
+@dataclass
 class BuildingData:
     height: float
     base_height: float
@@ -120,6 +128,15 @@ class GeodesignhubProjectTag:
     code: str
     diagrams: List[int]
 
+
+@dataclass
+class DiagramUploadDetails: 
+    geometry: FeatureCollection
+    project_or_policy: str
+    feature_type: str
+    description: str
+    funding_type: str
+    sys_id: str
 
 @dataclass
 class GeodesignhubProjectTags:

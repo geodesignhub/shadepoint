@@ -15,7 +15,9 @@ from data_definitions import (
     ExistingBuildingsDataShadowGenerationRequest,
     GeodesignhubProjectTags,
     GeodesignhubSystemDetail,
-    TreeFeatureProperties
+    TreeFeatureProperties,
+    DiagramUploadDetails,
+    UploadSuccessResponse
 )
 import utils
 from shapely.geometry.base import BaseGeometry
@@ -59,10 +61,8 @@ redis = get_redis()
 q = Queue(connection=conn)
 
 
-    
 class ShapelyEncoder(json.JSONEncoder):
-
-    ''' Encodes JSON strings into shapes processed by SHapely'''
+    """Encodes JSON strings into shapes processed by SHapely"""
 
     def default(self, obj):
         if isinstance(obj, BaseGeometry):
@@ -71,8 +71,8 @@ class ShapelyEncoder(json.JSONEncoder):
 
 
 def export_to_json(data):
-    ''' Export a shapely output to JSON'''
-    encoder.FLOAT_REPR = lambda o: format(o, '.6f')
+    """Export a shapely output to JSON"""
+    encoder.FLOAT_REPR = lambda o: format(o, ".6f")
     return json.loads(json.dumps(data, sort_keys=True, cls=ShapelyEncoder))
 
 
@@ -103,7 +103,9 @@ class GeodesignhubDataDownloader:
             token=self.apitoken,
         )
 
-    def download_project_systems(self) -> Union[ErrorResponse, List[GeodesignhubSystem]]:
+    def download_project_systems(
+        self,
+    ) -> Union[ErrorResponse, List[GeodesignhubSystem]]:
         s = self.api_helper.get_all_systems()
         # Check responses / data
         try:
@@ -125,7 +127,9 @@ class GeodesignhubDataDownloader:
 
         return all_systems
 
-    def download_project_bounds(self) -> Union[ErrorResponse,GeodesignhubProjectBounds]:
+    def download_project_bounds(
+        self,
+    ) -> Union[ErrorResponse, GeodesignhubProjectBounds]:
         b = self.api_helper.get_project_bounds()
         try:
             assert b.status_code == 200
@@ -141,7 +145,7 @@ class GeodesignhubDataDownloader:
 
         return bounds
 
-    def download_project_tags(self) -> Union[ErrorResponse,GeodesignhubProjectTags]:
+    def download_project_tags(self) -> Union[ErrorResponse, GeodesignhubProjectTags]:
         t = self.api_helper.get_project_tags()
         try:
             assert t.status_code == 200
@@ -154,7 +158,34 @@ class GeodesignhubDataDownloader:
             return error_msg
         return t.json()
 
-    def download_project_center(self) -> Union[ErrorResponse,GeodesignhubProjectCenter]:
+    def upload_diagram(
+        self, diagram_upload_details: DiagramUploadDetails
+    ) -> Union[ErrorResponse, UploadSuccessResponse]:
+
+        upload_job = self.api_helper.post_as_diagram(
+            geoms=diagram_upload_details.geojson,
+            projectorpolicy=diagram_upload_details.project_or_policy,
+            featuretype=diagram_upload_details.feature_type,
+            description=diagram_upload_details.description,
+            sysid=diagram_upload_details.sys_id,
+            fundingtype=diagram_upload_details.funding_type
+        )
+
+        job_result = upload_job.json()
+
+        if job_result.status == 201:
+            upload_result = UploadSuccessResponse(message = "Successfully uploaded diagram", code = 201, status = 1)
+
+        else: 
+            upload_result = ErrorResponse(message = "Error in uploading diagram", code = 400, status = )
+        
+        return upload_result
+
+
+
+    def download_project_center(
+        self,
+    ) -> Union[ErrorResponse, GeodesignhubProjectCenter]:
         c = self.api_helper.get_project_center()
         try:
             assert c.status_code == 200
@@ -169,7 +200,9 @@ class GeodesignhubDataDownloader:
         center = from_dict(data_class=GeodesignhubProjectCenter, data=c.json())
         return center
 
-    def download_design_data_from_geodesignhub(self) -> Union[ErrorResponse,FeatureCollection]:
+    def download_design_data_from_geodesignhub(
+        self,
+    ) -> Union[ErrorResponse, FeatureCollection]:
         r = self.api_helper.get_single_synthesis(
             teamid=int(self.cteam_id), synthesisid=self.synthesis_id
         )
@@ -187,17 +220,23 @@ class GeodesignhubDataDownloader:
         _design_details_raw = r.json()
 
         return _design_details_raw
-    
-    def process_design_data_from_geodesignhub(self, unprocessed_design_geojson) -> Union[ErrorResponse,FeatureCollection]:
-        
+
+    def process_design_data_from_geodesignhub(
+        self, unprocessed_design_geojson
+    ) -> Union[ErrorResponse, FeatureCollection]:
+
         _all_features: List[Feature] = []
         # Populate Default building data if not available
-        for _single_diagram_feature in unprocessed_design_geojson["features"]:            
-            _diagram_properties = _single_diagram_feature["properties"]            
+        for _single_diagram_feature in unprocessed_design_geojson["features"]:
+            _diagram_properties = _single_diagram_feature["properties"]
             _project_or_policy = _diagram_properties["areatype"]
-            _diagram_properties["height"] = _diagram_properties['volume_information']["max_height"]
-            _diagram_properties["base_height"] = _diagram_properties['volume_information']["min_height"]
-            _diagram_properties["diagram_id"] = _diagram_properties["diagramid"]            
+            _diagram_properties["height"] = _diagram_properties["volume_information"][
+                "max_height"
+            ]
+            _diagram_properties["base_height"] = _diagram_properties[
+                "volume_information"
+            ]["min_height"]
+            _diagram_properties["diagram_id"] = _diagram_properties["diagramid"]
             _diagram_properties["building_id"] = str(uuid.uuid4())
             _feature_properties = from_dict(
                 data_class=GeodesignhubDesignFeatureProperties, data=_diagram_properties
@@ -232,10 +271,8 @@ class GeodesignhubDataDownloader:
                     point = shape(_single_diagram_feature["geometry"])
                     buffered_point = point.buffer(0.00005)
                     buffered_polygon = export_to_json(buffered_point)
-                    _geometry = Polygon(
-                        coordinates=buffered_polygon["coordinates"]
-                    )
-                    # Buffer the point 
+                    _geometry = Polygon(coordinates=buffered_polygon["coordinates"])
+                    # Buffer the point
 
                 else:
                     error_msg = ErrorResponse(
@@ -250,10 +287,12 @@ class GeodesignhubDataDownloader:
                 _all_features.append(_feature)
 
         _diagram_feature_collection = FeatureCollection(features=_all_features)
-        
+
         return _diagram_feature_collection
 
-    def download_diagram_data_from_geodesignhub(self) -> Union[ErrorResponse, FeatureCollection]:
+    def download_diagram_data_from_geodesignhub(
+        self,
+    ) -> Union[ErrorResponse, FeatureCollection]:
         my_api_helper = GeodesignHub.GeodesignHubClient(
             url=config.apisettings["serviceurl"],
             project_id=self.project_id,
@@ -289,7 +328,7 @@ class GeodesignhubDataDownloader:
             _f_props = f["properties"]
             _building_data = BuildingData(
                 height=_default_building_data["meters_above_ground"],
-                base_height=_default_building_data["meters_below_ground"]
+                base_height=_default_building_data["meters_below_ground"],
             )
 
             _diagram_details_raw["height"] = asdict(_building_data)["height"]
@@ -322,18 +361,21 @@ class GeodesignhubDataDownloader:
 
         return _diagram_feature_collection
 
-    def filter_design_tree_points(self, unprocessed_design_geojson: FeatureCollection) -> FeatureCollection:
+    def filter_design_tree_points(
+        self, unprocessed_design_geojson: FeatureCollection
+    ) -> FeatureCollection:
         # This method filters the tree points out of a design Geojson
 
         _all_tree_features: List[Feature] = []
         # Populate Default building data if not available
-        for f in unprocessed_design_geojson['features']:            
-            if (f['geometry']['type'] in ['Point']):      
-                _geometry = Point(
-                        coordinates=f["geometry"]["coordinates"]
-                    )
-                _diagram_properties = f["properties"]                
-                _tree_feature_properties = TreeFeatureProperties(author=_diagram_properties['author'],description= _diagram_properties['description'])
+        for f in unprocessed_design_geojson["features"]:
+            if f["geometry"]["type"] in ["Point"]:
+                _geometry = Point(coordinates=f["geometry"]["coordinates"])
+                _diagram_properties = f["properties"]
+                _tree_feature_properties = TreeFeatureProperties(
+                    author=_diagram_properties["author"],
+                    description=_diagram_properties["description"],
+                )
                 # _feature_properties = from_dict(
                 #     data_class=GeodesignhubDesignFeatureProperties, data=_diagram_properties
                 # )
@@ -341,11 +383,10 @@ class GeodesignhubDataDownloader:
                     geometry=_geometry, properties=asdict(_tree_feature_properties)
                 )
                 _all_tree_features.append(_feature)
-        
+
         _trees_feature_collection = FeatureCollection(features=_all_tree_features)
-        
+
         return _trees_feature_collection
-            
 
     def download_project_data_from_geodesignhub(
         self,
@@ -379,7 +420,9 @@ class GeodesignhubDataDownloader:
             current_system = from_dict(data_class=GeodesignhubSystem, data=s)
             sd = my_api_helper.get_single_system(system_id=current_system.id)
             sd_raw = sd.json()
-            current_system_details = from_dict(data_class=GeodesignhubSystemDetail, data=sd_raw)
+            current_system_details = from_dict(
+                data_class=GeodesignhubSystemDetail, data=sd_raw
+            )
             all_system_details.append(current_system_details)
             all_systems.append(current_system)
 
@@ -392,13 +435,16 @@ class GeodesignhubDataDownloader:
                 code=400,
             )
             return error_msg
-        
 
         center = from_dict(data_class=GeodesignhubProjectCenter, data=c.json())
         bounds = from_dict(data_class=GeodesignhubProjectBounds, data=b.json())
         tags = from_dict(data_class=GeodesignhubProjectTags, data={"tags": t.json()})
         project_data = GeodesignhubProjectData(
-            systems=all_systems, system_details = all_system_details, bounds=bounds, center=center, tags=tags
+            systems=all_systems,
+            system_details=all_system_details,
+            bounds=bounds,
+            center=center,
+            tags=tags,
         )
 
         return project_data
@@ -412,7 +458,6 @@ class ShadowComputationHelper:
         bounds: str,
         project_id: str,
         design_diagram_geojson=None,
-        
     ):
         self.gdh_geojson = design_diagram_geojson
         self.session_id = session_id
@@ -422,9 +467,9 @@ class ShadowComputationHelper:
 
     def compute_gdh_buildings_shadow(self):
         """This method computes the shadow for existing or GDH buidlings"""
-        my_url_generator = wms_url_generator(project_id = self.project_id)
+        my_url_generator = wms_url_generator(project_id=self.project_id)
         r_url = my_url_generator.get_roads_url()
-        
+
         try:
             assert r_url is not None
 

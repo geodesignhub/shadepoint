@@ -1,0 +1,32 @@
+{% extends "../layout.html" %}
+{% block headercss %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+
+{% endblock %}
+{% block body %}
+<div class="container">
+    <!-- Example row of columns -->
+    {% if messages['status'] == 1 %}
+    <br>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-success" role="alert">
+                <p>{{op['message']}} </p>
+            </div>
+        </div>
+    </div>
+    
+    {% else %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-warning" role="alert">
+                <p>{{messages['message']}} </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+<!-- /container -->{% endblock %}
+

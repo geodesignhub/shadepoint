@@ -8,7 +8,7 @@
   <meta name="author" content="">
   <link rel="icon" href="{{ url_for('static', filename='favicon.ico')}}">
 
-  <title>Climate Indicators Dashboard</title>
+  <title>Local Climate Dashboard</title>
 
   <!-- Bootstrap core CSS -->
   {% if CURRENT_LANGUAGE == 'en' %}
@@ -30,9 +30,9 @@
       <div class="container">
         <div class="row">
           <div class="col-sm-8 col-md-7 py-4">
-            <h4 class="text-white">Climate Indicators Dashboard</h4>
+            <h4 class="text-white">Local Climate Indicators</h4>
             <p class="text-white">{{ gettext('This is a plugin that uses') }} <a href="https://www.geodesignhub.com/api/"
-                target="_blank">Geodesignhub API</a> {{ gettext('and advanced machine learning and natural language processing algorithms to showcase key components of your design based on the diagram description') }}.</p>
+                target="_blank">Geodesignhub API</a> {{ gettext('and algorithms to showcase shadow analysis and local flooding for the key components of your design') }}.</p>
           </div>
           <div class="col-sm-4 offset-md-1 py-4">
             <h4 class="text-white">Support</h4>
@@ -59,7 +59,7 @@
     <div class="navbar navbar-dark bg-dark shadow-sm">
       <div class="container">
         <a href="#" class="navbar-brand d-flex align-items-center">
-          <strong>{{ gettext('Digital Climate Services') }}</strong>
+          <strong>{{ gettext('Local Climate Services') }}</strong>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarHeader"
           aria-controls="navbarHeader" aria-expanded="false" aria-label="Toggle navigation">
@@ -90,7 +90,7 @@
       <footer class="pt-4 my-md-5 pt-md-5 border-top">
         <div class="row">
           <div class="col-12 col-md">
-            <p>&copy 2022 Digital Climate Services</p>
+            <p>&copy 2022 Local Climate Services</p>
 
           </div>
         </div>
