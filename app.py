@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from ast import Sub
 from distutils.command import upload
 from flask import render_template
 from flask import request, Response
@@ -20,14 +21,23 @@ from data_definitions import (
     FloodingViewSuccessResponse,
     DrawViewSuccessResponse,
     ToolboxDrawDiagramViewDetails,
-    DiagramUploadDetails
+    DiagramUploadDetails,
 )
+from flask import Flask, render_template, redirect, url_for
+from flask_bootstrap import Bootstrap5
+
+from flask_wtf import FlaskForm, CSRFProtect
+from wtforms import StringField, SubmitField, HiddenField
+from wtforms.validators import DataRequired, Length
+from wtforms.validators import DataRequired
 import os
 from download_helper import GeodesignhubDataDownloader, ShadowComputationHelper
 import arrow
 import uuid
 import geojson
 from config import wms_url_generator
+from flask_wtf.csrf import CSRFProtect
+
 
 load_dotenv(find_dotenv())
 ENV_FILE = find_dotenv()
@@ -38,6 +48,8 @@ redis = get_redis()
 q = Queue(connection=conn)
 
 MIMETYPE = "application/json"
+
+
 def get_locale():
     # if the user has set up the language manually it will be stored in the session,
     # so we use the locale from the user settings
@@ -54,6 +66,9 @@ app, babel = create_app()
 app.secret_key = os.getenv("SECRET_KEY", "My Secret key")
 app.config["BABEL_TRANSLATION_DIRECTORIES"] = os.path.join(base_dir, "translations")
 babel.init_app(app, locale_selector=get_locale)
+
+csrf = CSRFProtect(app)
+bootstrap = Bootstrap5(app)
 
 
 @app.route("/", methods=["GET"])
@@ -184,7 +199,7 @@ def generate_design_flooding_analysis():
             code=400,
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
-    my_url_generator = wms_url_generator(project_id = projectid)
+    my_url_generator = wms_url_generator(project_id=projectid)
     design_view_details = ToolboxDesignViewDetails(
         project_id=projectid,
         cteam_id=cteamid,
@@ -203,9 +218,7 @@ def generate_design_flooding_analysis():
             apitoken=apitoken,
         )
 
-    project_data = (
-        my_geodesignhub_downloader.download_project_data_from_geodesignhub()
-    )
+    project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
     if not project_data:
         error_msg = ErrorResponse(
             status=0,
@@ -222,9 +235,11 @@ def generate_design_flooding_analysis():
     design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
 
     maptiler_key = os.getenv("maptiler_key", "00000000000000")
-    
-    flood_vulnerability_wms_url = my_url_generator.get_baseline_flood_vulnerability_url()
-    
+
+    flood_vulnerability_wms_url = (
+        my_url_generator.get_baseline_flood_vulnerability_url()
+    )
+
     success_response = FloodingViewSuccessResponse(
         status=1,
         message="Data from Geodesignhub retrieved",
@@ -236,44 +251,37 @@ def generate_design_flooding_analysis():
         view_details=design_view_details,
     )
 
-    return render_template(
-        "design_flooding_analysis.html", op=asdict(success_response)
-    )
+    return render_template("design_flooding_analysis.html", op=asdict(success_response))
 
-@app.route("/add_diagram/", methods=["POST"])
-def add_diagram():
-    try:
-        project_id = request.args.get("projectid")
-        apitoken = request.args.get("apitoken")
-    except KeyError:
-        error_msg = ErrorResponse(
-            status=0,
-            message="Could not parse Project ID, Design Team ID / Design ID or API Token ID. One or more of these were not found in your request.",
-            code=400,
-        )
-        return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
-    
-    point_feature_collection = request.form.get('point_feature_collection')
-    system_id = request.form.get('system_id')
-    
-    session_id = uuid.uuid4()
-    
-    my_geodesignhub_downloader = GeodesignhubDataDownloader(
-        session_id=session_id,
-        project_id=project_id,
-        apitoken = apitoken
-    )
-    diagram_details = DiagramUploadDetails(geometry = point_feature_collection, project_or_policy="project",feature_type="polygon", description="", funding_type="pu", sys_id= system_id)
 
-    upload_response = my_geodesignhub_downloader.upload_diagram(diagram_upload_details=diagram_details)
-   
-    
-    return redirect(url_for('diagram_upload_result',messages=asdict(upload_response)),code=307)
+class DiagramUploadForm(FlaskForm):
+    diagram_name = StringField(label=("Name your diagram"), validators=[DataRequired()])
+    drawn_geojson = HiddenField()
+    project_id = HiddenField()
+    apitoken = HiddenField()
+    gi_system_id = HiddenField()
+    submit = SubmitField()
 
-@app.route('diagram_upload_result', methods=['GET'])
+
+@app.route("/diagram_upload_result/", methods=["GET"])
 def redirect_upload_diagram():
-    messages = request.args['messages']
-    return render_template("add_diagram/diagram_add_status.html", messages=json.loads(messages))
+
+    status = int(request.args.get("status"))
+    apitoken = request.args["apitoken"]
+    project_id = request.args["project_id"]
+    message = (
+        "Diagram successfully created"
+        if status
+        else "Error in creating a diagram, please contact your administrator"
+    )
+    return render_template(
+        "add_diagram/diagram_add_status.html",
+        op=status,
+        message=message,
+        apitoken=apitoken,
+        project_id=project_id,
+    )
+
 
 @app.route("/design_shadow/", methods=["GET"])
 def generate_design_shadow():
@@ -290,7 +298,7 @@ def generate_design_shadow():
             code=400,
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
-    my_url_generator = wms_url_generator(project_id = projectid)
+    my_url_generator = wms_url_generator(project_id=projectid)
     design_view_details = ToolboxDesignViewDetails(
         project_id=projectid,
         cteam_id=cteamid,
@@ -309,7 +317,6 @@ def generate_design_shadow():
         august_6_date = "{year}-08-06T10:10:00".format(year=current_year)
         shadow_date_time = august_6_date
 
-
     session_id = uuid.uuid4()
     my_geodesignhub_downloader = GeodesignhubDataDownloader(
         session_id=session_id,
@@ -319,9 +326,7 @@ def generate_design_shadow():
         apitoken=apitoken,
     )
 
-    project_data = (
-        my_geodesignhub_downloader.download_project_data_from_geodesignhub()
-    )
+    project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
     if not project_data:
         error_msg = ErrorResponse(
             status=0,
@@ -333,24 +338,30 @@ def generate_design_shadow():
     _unprocessed_design_geojson = (
         my_geodesignhub_downloader.download_design_data_from_geodesignhub()
     )
-    
+
     _design_feature_collection = (
-        my_geodesignhub_downloader.process_design_data_from_geodesignhub(unprocessed_design_geojson =_unprocessed_design_geojson)
+        my_geodesignhub_downloader.process_design_data_from_geodesignhub(
+            unprocessed_design_geojson=_unprocessed_design_geojson
+        )
     )
     gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
 
-    design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)    
-    
-    _design_trees_feature_collection = my_geodesignhub_downloader.filter_design_tree_points(unprocessed_design_geojson = _unprocessed_design_geojson)
+    design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
+
+    _design_trees_feature_collection = (
+        my_geodesignhub_downloader.filter_design_tree_points(
+            unprocessed_design_geojson=_unprocessed_design_geojson
+        )
+    )
     tree_fc_serialized = json.loads(geojson.dumps(_design_trees_feature_collection))
     trees_feature_collection = GeodesignhubDiagramGeoJSON(geojson=tree_fc_serialized)
-    
+
     shadow_computation_helper = ShadowComputationHelper(
         session_id=str(session_id),
         design_diagram_geojson=gj_serialized,
         shadow_date_time=shadow_date_time,
         bounds=project_data.bounds.bounds,
-        project_id = projectid
+        project_id=projectid,
     )
     shadow_computation_helper.compute_gdh_buildings_shadow()
 
@@ -362,7 +373,7 @@ def generate_design_shadow():
         status=1,
         message="Data from Geodesignhub retrieved",
         geometry_data=design_geojson,
-        trees_feature_collection = trees_feature_collection, 
+        trees_feature_collection=trees_feature_collection,
         project_data=project_data,
         maptiler_key=maptiler_key,
         session_id=str(session_id),
@@ -389,7 +400,7 @@ def generate_diagram_shadow():
             code=400,
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
-    my_url_generator = wms_url_generator(project_id = projectid)
+    my_url_generator = wms_url_generator(project_id=projectid)
     diagram_view_details = ToolboxDiagramViewDetails(
         api_token=apitoken,
         project_id=projectid,
@@ -441,7 +452,7 @@ def generate_diagram_shadow():
                 design_diagram_geojson=gj_serialized,
                 shadow_date_time=shadow_date_time,
                 bounds=project_data.bounds.bounds,
-                project_id = projectid
+                project_id=projectid,
             )
             shadow_computation_helper.compute_gdh_buildings_shadow()
 
@@ -467,13 +478,12 @@ def generate_diagram_shadow():
         )
         return Response(msg, status=400, mimetype=MIMETYPE)
 
-@app.route("/draw_trees/", methods=["GET"])
+
+@app.route("/draw_trees/", methods=["GET", "POST"])
 def draw_trees_view():
     try:
         projectid = request.args.get("projectid")
         apitoken = request.args.get("apitoken")
-        diagramid = request.args.get("diagramid")
-
     except KeyError:
         error_msg = ErrorResponse(
             status=0,
@@ -481,24 +491,23 @@ def draw_trees_view():
             code=400,
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
-    my_url_generator = wms_url_generator(project_id = projectid)
+  
+    session_id = uuid.uuid4()
+    maptiler_key = os.getenv("maptiler_key", "00000000000000")
+  
+    my_geodesignhub_downloader = GeodesignhubDataDownloader(
+        session_id=session_id,
+        project_id=projectid,
+        apitoken=apitoken,
+    )
+    my_url_generator = wms_url_generator(project_id=projectid)
     draw_view_details = ToolboxDrawDiagramViewDetails(
         api_token=apitoken,
         project_id=projectid,
         view_type="draw",
     )
-
-    session_id = uuid.uuid4()        
-    my_geodesignhub_downloader = GeodesignhubDataDownloader(
-        session_id=session_id,
-        project_id=projectid,
-        diagram_id=diagramid,
-        apitoken=apitoken,
-    )
-    maptiler_key = os.getenv("maptiler_key", "00000000000000")
-    project_data = (
-        my_geodesignhub_downloader.download_project_data_from_geodesignhub()
-    )
+    trees_wms_url = my_url_generator.get_trees_wms_url()
+    project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
     if not project_data:
         error_msg = ErrorResponse(
             status=0,
@@ -506,9 +515,50 @@ def draw_trees_view():
             code=400,
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
+    gi_system_id = my_geodesignhub_downloader.filter_to_get_gi_system(geodesignhub_project_data=project_data)
+    diagram_upload_form = DiagramUploadForm(
+        project_id=projectid, apitoken=apitoken, gi_system_id=gi_system_id
+    )
+    session_id = uuid.uuid4()
+    if diagram_upload_form.validate_on_submit():
+        diagram_upload_form_data = diagram_upload_form.data
 
-    trees_wms_url = my_url_generator.get_trees_wms_url()
-    
+        point_feature_list = diagram_upload_form_data["drawn_geojson"]
+        gi_system_id = diagram_upload_form_data["gi_system_id"]
+        diagram_name = diagram_upload_form_data["diagram_name"]
+        project_id = diagram_upload_form_data["project_id"]
+        apitoken = diagram_upload_form_data["apitoken"]
+
+        my_geodesignhub_downloader = GeodesignhubDataDownloader(
+            session_id=session_id, project_id=project_id, apitoken=apitoken
+        )
+        _design_trees_feature_collection = (
+            my_geodesignhub_downloader.generate_tree_point_feature_collection(
+                point_feature_list=json.loads(point_feature_list)
+            )
+        )
+        diagram_details = DiagramUploadDetails(
+            geometry=geojson.dumps(_design_trees_feature_collection),
+            project_or_policy="project",
+            feature_type="polygon",
+            description=diagram_name,
+            funding_type="pu",
+            sys_id=gi_system_id,
+        )
+        upload_response = my_geodesignhub_downloader.upload_diagram(
+            diagram_upload_details=diagram_details
+        )
+        upload_response_dict = asdict(upload_response)
+        return redirect(
+            url_for(
+                "redirect_upload_diagram",
+                apitoken=apitoken,
+                project_id=project_id,
+                status=upload_response_dict["status"],
+                code=307,
+            )
+        )
+
     success_response = DrawViewSuccessResponse(
         status=1,
         message="Data from Geodesignhub retrieved",
@@ -517,9 +567,15 @@ def draw_trees_view():
         session_id=str(session_id),
         trees_wms_url=trees_wms_url,
         view_details=draw_view_details,
+        apitoken=apitoken,
+        project_id=projectid,
     )
 
-    return render_template("add_diagram/draw_trees.html", op=asdict(success_response))
+    return render_template(
+        "add_diagram/draw_trees.html",
+        op=asdict(success_response),
+        form=diagram_upload_form,
+    )
 
 
 if __name__ == "__main__":

@@ -18,3 +18,5 @@ Flask-SSE==1.0.0
 numpy==1.26.2
 pyproj==3.6.1
 Flask-Babel==4.0.0
+flask-wtf==1.2.1
+Bootstrap-Flask==2.4.0

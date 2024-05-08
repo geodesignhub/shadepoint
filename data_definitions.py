@@ -206,6 +206,8 @@ class DrawViewSuccessResponse:
     session_id: str
     trees_wms_url: str
     view_details: ToolboxDrawDiagramViewDetails
+    apitoken: str
+    project_id : str
 
 
 @dataclass

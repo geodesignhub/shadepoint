@@ -17,7 +17,7 @@ from data_definitions import (
     GeodesignhubSystemDetail,
     TreeFeatureProperties,
     DiagramUploadDetails,
-    UploadSuccessResponse
+    UploadSuccessResponse,
 )
 import utils
 from shapely.geometry.base import BaseGeometry
@@ -163,25 +163,27 @@ class GeodesignhubDataDownloader:
     ) -> Union[ErrorResponse, UploadSuccessResponse]:
 
         upload_job = self.api_helper.post_as_diagram(
-            geoms=diagram_upload_details.geojson,
+            geoms=json.loads(diagram_upload_details.geometry),
             projectorpolicy=diagram_upload_details.project_or_policy,
             featuretype=diagram_upload_details.feature_type,
             description=diagram_upload_details.description,
             sysid=diagram_upload_details.sys_id,
-            fundingtype=diagram_upload_details.funding_type
+            fundingtype=diagram_upload_details.funding_type,
         )
 
         job_result = upload_job.json()
 
-        if job_result.status == 201:
-            upload_result = UploadSuccessResponse(message = "Successfully uploaded diagram", code = 201, status = 1)
+        if upload_job.status_code == 201:
+            upload_result = UploadSuccessResponse(
+                message="Successfully uploaded diagram", code=201, status=1
+            )
 
-        else: 
-            upload_result = ErrorResponse(message = "Error in uploading diagram", code = 400, status = )
-        
+        else:
+            upload_result = ErrorResponse(
+                message=job_result["status"], code=400, status=0
+            )
+
         return upload_result
-
-
 
     def download_project_center(
         self,
@@ -361,6 +363,20 @@ class GeodesignhubDataDownloader:
 
         return _diagram_feature_collection
 
+    def generate_tree_point_feature_collection(
+        self, point_feature_list
+    ) -> FeatureCollection:
+
+        _all_tree_features: List[Feature] = []
+        for point_feature in point_feature_list:
+            _geometry = Point(coordinates=point_feature["geometry"]["coordinates"])
+            _feature = Feature(geometry=_geometry, properties={})
+            _all_tree_features.append(_feature)
+
+        _trees_feature_collection = FeatureCollection(features=_all_tree_features)
+
+        return _trees_feature_collection
+
     def filter_design_tree_points(
         self, unprocessed_design_geojson: FeatureCollection
     ) -> FeatureCollection:
@@ -388,6 +404,15 @@ class GeodesignhubDataDownloader:
 
         return _trees_feature_collection
 
+    def filter_to_get_gi_system(
+        self, geodesignhub_project_data: GeodesignhubProjectData
+    ) -> int:
+        geodesignhub_project_data = asdict(geodesignhub_project_data)
+        interesting_system = [
+            d for d in geodesignhub_project_data["systems"] if d["sysname"] == "GI"
+        ]
+        return interesting_system[0]["id"]
+
     def download_project_data_from_geodesignhub(
         self,
     ) -> Union[ErrorResponse, GeodesignhubProjectData]:
@@ -405,7 +430,7 @@ class GeodesignhubDataDownloader:
         # Check responses / data
         try:
             assert s.status_code == 200
-        except AssertionError as ae:
+        except AssertionError:
             error_msg = ErrorResponse(
                 status=0,
                 message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
@@ -428,7 +453,7 @@ class GeodesignhubDataDownloader:
 
         try:
             assert b.status_code == 200
-        except AssertionError as ae:
+        except AssertionError:
             error_msg = ErrorResponse(
                 status=0,
                 message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",

@@ -1,4 +1,6 @@
 {% extends "layout.html" %}
+{% from 'bootstrap5/form.html' import render_form %}
+{% from "_formhelpers.html" import render_field %}
 {% block headercss %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
@@ -11,7 +13,7 @@
     <br>
     <div class="row">
         <div class="col-md-12">
-            <h3>{{ gettext('Draw Trees') }} <small class="text-muted"></small></h3>
+            <h3><i class="bi bi-tree"></i>&nbsp;{{ gettext('Draw Trees') }} <small class="text-muted"></small></h3>
             <p class="text-muted">{{ gettext('Draw new trees by dropping points on a map and submit to be added to a Geodesignhub project') }}</p>
             <br>
             <div class="row">
@@ -59,17 +61,12 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form>
-                    <div class="mb-3">
-                      <label for="diagram-name" class="col-form-label">{{ gettext('Name your diagram') }}:</label>
-                      <input type="text" class="form-control" id="diagram-name" placeholder="{{ gettext('e.g. New tree planting near bus stop') }}">
-                    </div>
-                    <button type="submit" class="btn btn-primary">Submit</button>
-                  </fieldset>
-                </form>
+                <div class="mb-3">
+                    {{ render_form(form) }}
+     
+            </div>
             </div>
             <div class="modal-footer">
-                ...
             </div>
         </div>
         </div>
@@ -87,9 +84,9 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre-gl-measures.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 <script type="text/javascript">
-    const diagram_detail = {{ op| safe }};
-    var bounds = diagram_detail['project_data']['bounds']['bounds'];
-    var center = diagram_detail['project_data']['center']['center'];
+    const project_detail = {{ op| safe }};
+    var bounds = project_detail['project_data']['bounds']['bounds'];
+    var center = project_detail['project_data']['center']['center'];
     var map_center = center.split(',');
     var map_center_lat = map_center[0];
     var map_center_lng = map_center[1];
@@ -109,6 +106,13 @@
     });
     map.addControl(new maplibreGLMeasures.default({}), 'top-left');
 
+    map.addControl(
+            new maplibregl.NavigationControl({
+                visualizePitch: true,
+                showZoom: true,
+                showCompass: true
+            })
+        );
     // Create Terra Draw
     const draw = new terraDraw.TerraDraw({
         adapter: new terraDraw.TerraDrawMapLibreGLAdapter({
@@ -175,13 +179,13 @@
             );
         }
 
-        map.addControl(
-            new maplibregl.NavigationControl({
-                visualizePitch: true,
-                showZoom: true,
-                showCompass: true
-            })
-        );
+    });
+    const myModalEl = document.getElementById('addDiagramModal');
+    myModalEl.addEventListener('shown.bs.modal', event => {
+        const store_geojson = draw.getSnapshot();
+        const geo_json_element = document.getElementById('drawn_geojson');
+        geo_json_element.value = JSON.stringify(store_geojson);
+
     });
 </script>
 {% endif %}

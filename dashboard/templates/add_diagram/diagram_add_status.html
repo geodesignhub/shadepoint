@@ -1,4 +1,4 @@
-{% extends "../layout.html" %}
+{% extends "layout.html" %}
 {% block headercss %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
@@ -6,27 +6,20 @@
 {% endblock %}
 {% block body %}
 <div class="container">
-    <!-- Example row of columns -->
-    {% if messages['status'] == 1 %}
+    <!-- Example row of columns -->    
     <br>
     <div class="row">
-        <div class="col-md-12">
-            <div class="alert alert-success" role="alert">
-                <p>{{op['message']}} </p>
+        <div class="col-md-12">                   
+            <div class="alert {% if op %}alert-success{% else %}alert-warning {% endif %}" role="alert">
+                <p>{{message}}</p>
             </div>
         </div>
-    </div>
-    
-    {% else %}
+    </div> 
     <div class="row">
-        <div class="col-md-12">
-            <div class="alert alert-warning" role="alert">
-                <p>{{messages['message']}} </p>
-            </div>
+        <div class="col-md-4">
+            <a class="btn btn-primary btn-lg" href="/draw_trees/?apitoken={{apitoken}}&projectid={{project_id}}"><i class="bi bi-plus-circle-fill"></i> Add another one </a>
         </div>
-    </div>
-    {% endif %}
-
-</div>
-<!-- /container -->{% endblock %}
+    </div>   
+</div><!-- /container -->
+{% endblock %}
 
