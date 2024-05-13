@@ -15,16 +15,36 @@
         <div class="col-md-12">
             <h3><i class="bi bi-tree"></i>&nbsp;{{ gettext('Draw Trees') }} <small class="text-muted"></small></h3>
             <p class="text-muted">{{ gettext('Draw new trees by dropping points on a map and submit to be added to a Geodesignhub project') }}</p>
-            <br>
-            <div class="row">
-                <div class="col-md-12">
-                    <h6>{{ gettext('Layer tools') }}&nbsp;<small class="text-muted">{{ gettext('Toggle over or underlay layers') }}</small></h6>
-                </div>
-            </div>
-            <div id="map"></div>
-            <br>    
         </div>
     </div>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <div>
+                {% if op.baseline_index_wms_url != '0' or op.trees_wms_url != '0' %}
+                <h6>{{ gettext('Analytical Layers') }}&nbsp;<small class="text-muted">{{ gettext('Pre-computed layers for the area') }}</small></h6>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <br>                                
+    <div class="row">
+        <div class="col-md-12">            
+            <div id="listing-group" class="btn-group" role="group" aria-label="Layer selection tools">
+                {% if op.trees_wms_url != '0' %}
+                    <input type="checkbox" class="btn-check" id="trees_canopy" autocomplete="off" checked>
+                    <label class="btn btn-outline-primary" for="trees_canopy">{{ gettext('Tree Canopy') }}</label>
+                {% endif %}
+                {% if op.satellite_wms_url != '0' %}
+                    <input type="checkbox" class="btn-check" id="satellite_layer" autocomplete="off" checked>
+                    <label class="btn btn-outline-primary" for="satellite_layer">{{ gettext('Satellite') }}</label>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <br>
+    <div id="map"></div>
+    <br>    
     
     {% else %}
     <div class="row">
@@ -94,8 +114,8 @@
     var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
     var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
     var bounds = new maplibregl.LngLatBounds(southWest, northEast);
-
     let existing_canopy_source = '{{op["trees_wms_url"]|safe}}';
+    let satellite_source = '{{op["satellite_wms_url"]|safe}}';
     // input nodes map
     let map = new maplibregl.Map({
         container: 'map', // container id  
@@ -112,7 +132,15 @@
                 showZoom: true,
                 showCompass: true
             })
-        );
+        );        
+    document.getElementById('listing-group').addEventListener('change', function (e) {
+        var handler = e.target.id;
+        if (e.target.checked) {
+            map.setLayoutProperty(handler, 'visibility', 'visible');
+        } else {
+            map.setLayoutProperty(handler, 'visibility', 'none');
+        }
+    });
     // Create Terra Draw
     const draw = new terraDraw.TerraDraw({
         adapter: new terraDraw.TerraDrawMapLibreGLAdapter({
@@ -159,12 +187,11 @@
 
 
     map.on('load', function () {
-        if (existing_canpoy_source !== '0') {
-            map.addSource('existing_canpoy_source', {
+        if (existing_canopy_source !== '0') {
+            map.addSource('existing_canopy_source', {
                 'type': 'raster',
                 // use the tiles option to specify a WMS tile source URL
                 // https://maplibre.org/maplibre-style-spec/sources/
-
                 'tiles': ['{{op["trees_wms_url"]|safe}}'],
                 'tileSize': 256
             });
@@ -172,7 +199,25 @@
                 {
                     'id': 'trees_canopy',
                     'type': 'raster',
-                    'source': 'existing_canpoy_source',
+                    'source': 'existing_canopy_source',
+                    'paint': {}
+                },
+                'aeroway_fill'
+            );
+        }
+        if (satellite_source !== '0') {
+            map.addSource('satellite_source', {
+                'type': 'raster',
+                // use the tiles option to specify a WMS tile source URL
+                // https://maplibre.org/maplibre-style-spec/sources/
+                'tiles': ['{{op["satellite_wms_url"]|safe}}'],
+                'tileSize': 256
+            });
+            map.addLayer(
+                {
+                    'id': 'satellite_layer',
+                    'type': 'raster',
+                    'source': 'satellite_source',
                     'paint': {}
                 },
                 'aeroway_fill'
@@ -180,8 +225,8 @@
         }
 
     });
-    const myModalEl = document.getElementById('addDiagramModal');
-    myModalEl.addEventListener('shown.bs.modal', event => {
+    const addDiagramModalEl = document.getElementById('addDiagramModal');
+    addDiagramModalEl.addEventListener('shown.bs.modal', event => {
         const store_geojson = draw.getSnapshot();
         const geo_json_element = document.getElementById('drawn_geojson');
         geo_json_element.value = JSON.stringify(store_geojson);

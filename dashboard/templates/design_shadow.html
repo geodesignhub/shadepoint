@@ -145,7 +145,7 @@
     var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
     var map_bounds = new maplibregl.LngLatBounds(southWest, northEast);
     let baseline_shadow_index_source = '{{op["baseline_index_wms_url"]|safe}}';
-    let existing_canpoy_source = '{{op["trees_wms_url"]|safe}}';
+    let existing_canopy_source = '{{op["trees_wms_url"]|safe}}';
     // input nodes map
     var map = new maplibregl.Map({
         container: 'map', // container id  
@@ -197,8 +197,8 @@
             'type': 'geojson',
             'data': { "type": "FeatureCollection", "features": [] }
         });
-        if (existing_canpoy_source !== '0') {
-            map.addSource('existing_canpoy_source', {
+        if (existing_canopy_source !== '0') {
+            map.addSource('existing_canopy_source', {
                 'type': 'raster',
                 // use the tiles option to specify a WMS tile source URL
                 // https://maplibre.org/maplibre-style-spec/sources/
@@ -210,7 +210,7 @@
                 {
                     'id': 'trees_canopy',
                     'type': 'raster',
-                    'source': 'existing_canpoy_source',
+                    'source': 'existing_canopy_source',
                     'paint': {}
                 },
                 'aeroway_fill'

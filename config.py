@@ -31,6 +31,15 @@ class wms_url_generator():
         
         return trees_wms_url
 
+    def get_satellite_wms_url(self):
+        project_specific_url = "WMS_{project_id}_SATELLITE_URL".format(project_id = self.project_id)
+        if environ.get(project_specific_url) is not None:
+            trees_wms_url = environ.get(project_specific_url)            
+        else:
+            trees_wms_url = environ.get("WMS_SATELLITE_URL", "0")
+        
+        return trees_wms_url
+
     
     def get_baseline_index_wms_url(self):
         project_specific_baseline_index_url = "WMS_{project_id}_BASELINE_SHADOW_INDEX".format(project_id = self.project_id)

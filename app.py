@@ -476,7 +476,7 @@ def generate_diagram_shadow():
             message="Could download data from Geodesignhub, please check your project ID and API token.",
             code=400,
         )
-        return Response(msg, status=400, mimetype=MIMETYPE)
+        return Response(asdict(msg), status=400, mimetype=MIMETYPE)
 
 
 @app.route("/draw_trees/", methods=["GET", "POST"])
@@ -491,10 +491,10 @@ def draw_trees_view():
             code=400,
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
-  
+
     session_id = uuid.uuid4()
     maptiler_key = os.getenv("maptiler_key", "00000000000000")
-  
+
     my_geodesignhub_downloader = GeodesignhubDataDownloader(
         session_id=session_id,
         project_id=projectid,
@@ -507,6 +507,7 @@ def draw_trees_view():
         view_type="draw",
     )
     trees_wms_url = my_url_generator.get_trees_wms_url()
+    satellite_wms_url = my_url_generator.get_satellite_wms_url()
     project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
     if not project_data:
         error_msg = ErrorResponse(
@@ -515,7 +516,9 @@ def draw_trees_view():
             code=400,
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
-    gi_system_id = my_geodesignhub_downloader.filter_to_get_gi_system(geodesignhub_project_data=project_data)
+    gi_system_id = my_geodesignhub_downloader.filter_to_get_gi_system(
+        geodesignhub_project_data=project_data
+    )
     diagram_upload_form = DiagramUploadForm(
         project_id=projectid, apitoken=apitoken, gi_system_id=gi_system_id
     )
@@ -566,6 +569,7 @@ def draw_trees_view():
         maptiler_key=maptiler_key,
         session_id=str(session_id),
         trees_wms_url=trees_wms_url,
+        satellite_wms_url=satellite_wms_url,
         view_details=draw_view_details,
         apitoken=apitoken,
         project_id=projectid,
