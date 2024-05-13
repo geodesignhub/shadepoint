@@ -187,6 +187,27 @@
 
 
     map.on('load', function () {
+        
+        map.addSource('bike_pedestrian_roads', {
+                // GeoJSON Data source used in vector tiles, documented at
+                // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+                'type': 'geojson',
+                'data': { "type": "FeatureCollection", "features": [] }
+            });
+            map.addLayer({
+                'id': 'bike_pedestrian_roads',
+                'type': 'line',
+                'source': 'bike_pedestrian_roads',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': '#422518',
+                    'line-width': 3,
+                    'line-opacity': 0.7
+                }
+            });
         if (existing_canopy_source !== '0') {
             map.addSource('existing_canopy_source', {
                 'type': 'raster',
@@ -213,6 +234,7 @@
                 'tiles': ['{{op["satellite_wms_url"]|safe}}'],
                 'tileSize': 256
             });
+                    
             map.addLayer(
                 {
                     'id': 'satellite_layer',
@@ -231,6 +253,22 @@
         const geo_json_element = document.getElementById('drawn_geojson');
         geo_json_element.value = JSON.stringify(store_geojson);
 
+    });
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        const room = project_detail.session_id;
+        var source = new EventSource("{{ url_for('sse.stream') }}");
+        source.addEventListener('roads_download_success', function (event) {
+            var data = JSON.parse(event.data);
+            // do what you want with this data
+            let roads_key = data['roads_key'];
+            let session_id = roads_key.split(':')[0]
+            if (session_id === room) {
+                // The message is for the current sesion, download the data...
+                let roads_download_url = window.location.origin + '/get_downloaded_roads?roads_key=' + roads_key;
+                get_downloaded_roads(roads_download_url);
+            }
+        }, false);
     });
 </script>
 {% endif %}

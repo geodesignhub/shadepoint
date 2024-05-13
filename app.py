@@ -31,7 +31,7 @@ from wtforms import StringField, SubmitField, HiddenField
 from wtforms.validators import DataRequired, Length
 from wtforms.validators import DataRequired
 import os
-from download_helper import GeodesignhubDataDownloader, ShadowComputationHelper
+from download_helper import GeodesignhubDataDownloader, ShadowComputationHelper, RoadsDownloadFactory
 import arrow
 import uuid
 import geojson
@@ -523,6 +523,14 @@ def draw_trees_view():
         project_id=projectid, apitoken=apitoken, gi_system_id=gi_system_id
     )
     session_id = uuid.uuid4()
+
+    current_year = arrow.now().year
+    august_6_date = "{year}-08-06T10:10:00".format(year=current_year)
+    shadow_date_time = august_6_date
+
+    my_roads_downloader = RoadsDownloadFactory(session_id= str(session_id), bounds = project_data.bounds.bounds, project_id = projectid, shadow_date_time = shadow_date_time)
+    my_roads_downloader.start_download_roads_job()
+    
     if diagram_upload_form.validate_on_submit():
         diagram_upload_form_data = diagram_upload_form.data
 
