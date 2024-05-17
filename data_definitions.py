@@ -196,6 +196,15 @@ class ShadowViewSuccessResponse:
     trees_wms_url: str
     view_details: Union[ToolboxDesignViewDetails, ToolboxDiagramViewDetails]
 
+@dataclass
+class WMSLayer:
+    url: str
+    name: str
+
+@dataclass
+class WMSLayerList: 
+    layers: List[WMSLayer]
+    
 
 @dataclass
 class DrawViewSuccessResponse:
@@ -209,7 +218,6 @@ class DrawViewSuccessResponse:
     view_details: ToolboxDrawDiagramViewDetails
     apitoken: str
     project_id : str
-
 
 @dataclass
 class FloodingViewSuccessResponse:
