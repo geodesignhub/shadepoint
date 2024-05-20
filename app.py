@@ -30,7 +30,11 @@ from wtforms import StringField, SubmitField, HiddenField
 from wtforms.validators import DataRequired, Length
 from wtforms.validators import DataRequired
 import os
-from download_helper import GeodesignhubDataDownloader, ShadowComputationHelper, RoadsDownloadFactory
+from download_helper import (
+    GeodesignhubDataDownloader,
+    ShadowComputationHelper,
+    RoadsDownloadFactory,
+)
 import arrow
 import uuid
 import geojson
@@ -366,7 +370,7 @@ def generate_design_shadow():
 
     # Download Data
     maptiler_key = os.getenv("maptiler_key", "00000000000000")
-    
+
     trees_wms_url = my_url_generator.get_trees_wms_url()
     success_response = ShadowViewSuccessResponse(
         status=1,
@@ -380,7 +384,7 @@ def generate_design_shadow():
         trees_wms_url=trees_wms_url,
         view_details=design_view_details,
     )
-    
+
     return render_template("design_shadow.html", op=asdict(success_response))
 
 
@@ -505,26 +509,32 @@ def draw_trees_view():
         project_id=projectid,
         view_type="draw",
     )
-    
-    wms_layers:List[WMSLayer] = []
+
+    wms_layers: List[WMSLayer] = []
 
     trees_wms_url = my_url_generator.get_trees_wms_url()
-    trees_wms = WMSLayer(url=trees_wms_url, name="Tree Canopy", dom_id='trees_canopy')
+    trees_wms = WMSLayer(url=trees_wms_url, name="Tree Canopy", dom_id="trees_canopy")
     wms_layers.append(trees_wms)
     satellite_wms_url = my_url_generator.get_satellite_wms_url()
-    satellite_wms = WMSLayer(url=satellite_wms_url, name="Satellite", dom_id='satellite_layer')
+    satellite_wms = WMSLayer(
+        url=satellite_wms_url, name="Satellite", dom_id="satellite_layer"
+    )
     wms_layers.append(satellite_wms)
     current_bike_network_wms = my_url_generator.get_current_bike_network_wms()
     proposed_bike_network_wms = my_url_generator.get_proposed_bike_network_wms()
     bus_stops_wms = my_url_generator.get_existing_bus_stops_wms()
-    if current_bike_network_wms.url != '0':
+    if current_bike_network_wms.url != "0":
         wms_layers.append(current_bike_network_wms)
-    
-    if proposed_bike_network_wms.url != '0':
+
+    if proposed_bike_network_wms.url != "0":
         wms_layers.append(proposed_bike_network_wms)
 
-    if bus_stops_wms.url != '0':
+    if bus_stops_wms.url != "0":
         wms_layers.append(bus_stops_wms)
+
+    current_landuse_wms = my_url_generator.get_project_landuse_wms()
+    if current_landuse_wms.url != "0":
+        wms_layers.append(current_landuse_wms)
 
     project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
     if not project_data:
@@ -545,8 +555,13 @@ def draw_trees_view():
     august_6_date = "{year}-08-06T10:10:00".format(year=current_year)
     shadow_date_time = august_6_date
 
-    my_roads_downloader = RoadsDownloadFactory(session_id= str(session_id), bounds = project_data.bounds.bounds, project_id = projectid, shadow_date_time = shadow_date_time)
-    my_roads_downloader.start_download_roads_job()    
+    my_roads_downloader = RoadsDownloadFactory(
+        session_id=str(session_id),
+        bounds=project_data.bounds.bounds,
+        project_id=projectid,
+        shadow_date_time=shadow_date_time,
+    )
+    my_roads_downloader.start_download_roads_job()
     if diagram_upload_form.validate_on_submit():
         diagram_upload_form_data = diagram_upload_form.data
         point_feature_list = diagram_upload_form_data["drawn_geojson"]
@@ -591,7 +606,7 @@ def draw_trees_view():
         project_data=project_data,
         maptiler_key=maptiler_key,
         session_id=str(session_id),
-        wms_layers = wms_layers,
+        wms_layers=wms_layers,
         view_details=draw_view_details,
         apitoken=apitoken,
         project_id=projectid,

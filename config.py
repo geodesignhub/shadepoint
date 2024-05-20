@@ -98,13 +98,13 @@ class wms_url_generator:
             proposed_bike_network_url = environ.get(
                 "WMS_PROPOSED_BIKE_NETWORK_URL", "0"
             )
-        current_bike_network = WMSLayer(
+        proposed_bike_network = WMSLayer(
             url=proposed_bike_network_url,
             name="Proposed Bike Network",
             dom_id="proposed_bike_network",
         )
 
-        return current_bike_network
+        return proposed_bike_network
 
     def get_existing_bus_stops_wms(self) -> WMSLayer:
         project_specific_url = "WMS_{project_id}_BUS_STOPS_URL".format(
@@ -135,3 +135,23 @@ class wms_url_generator:
             trees_wms_url = environ.get("ROADS_URL", "0")
 
         return trees_wms_url
+
+    def get_project_landuse_wms(self):
+        """
+        This is the raw / GeoJSON url for roads
+        """
+        project_specific_url = "{project_id}_LANDUSE_URL".format(
+            project_id=self.project_id
+        )
+        if environ.get(project_specific_url) is not None:
+            landuse_wms_url = environ.get(project_specific_url)
+        else:
+            landuse_wms_url = environ.get("LANDUSE_URL", "0")
+
+        landuse_wms = WMSLayer(
+            url=landuse_wms_url,
+            name="Landuse",
+            dom_id="current_landuse",
+        )
+
+        return landuse_wms
