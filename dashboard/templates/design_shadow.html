@@ -35,7 +35,7 @@
         </div>
     </div>
     <br>
-    <div class="row">
+    <!-- <div class="row">
         <div class="col-md-12">
             <div>
                 <label for="shadow_date_time">{{ gettext('Select new (date and time)') }}:</label>
@@ -43,7 +43,7 @@
                 <input type="submit" value="Update Shadows" onclick="return update_date_time();" />
             </div>
         </div>
-    </div>
+    </div> -->
     <br>
     <div class="row">
         <div class="col-md-12">
@@ -163,19 +163,19 @@
             map.setLayoutProperty(handler, 'visibility', 'none');
         }
     });
-    function update_date_time() {
-        let new_url = new URL(window.location.href);
+    // function update_date_time() {
+    //     let new_url = new URL(window.location.href);
 
-        let date_time = new_url.searchParams.delete('date_time');
+    //     let date_time = new_url.searchParams.delete('date_time');
 
-        const dateControl = document.querySelector('input[type="datetime-local"]');
-        let new_date = dateControl.value;
-        if (new_date) {
-            new_url.searchParams.append('date_time', new_date);
-            window.location.href = new_url;
-        }
-        return true;
-    }
+    //     const dateControl = document.querySelector('input[type="datetime-local"]');
+    //     let new_date = dateControl.value;
+    //     if (new_date) {
+    //         new_url.searchParams.append('date_time', new_date);
+    //         window.location.href = new_url;
+    //     }
+    //     return true;
+    // }
 
 
     map.on('load', function () {
