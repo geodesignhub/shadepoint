@@ -79,7 +79,7 @@ function get_downloaded_roads(roads_url) {
             // let spinner_cont = document.getElementById('spinner');
             // spinner_cont.classList.add('d-none');
 
-            // let roads_to_render = roads_data;                
+            // let roads_to_render = roads_data;   ds_data);             
             map.getSource('bike_pedestrian_roads').setData(roads_data);
         }).catch((error) => {
             

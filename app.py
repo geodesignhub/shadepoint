@@ -366,7 +366,7 @@ def generate_design_shadow():
 
     # Download Data
     maptiler_key = os.getenv("maptiler_key", "00000000000000")
-    baseline_index_wms_url = my_url_generator.get_baseline_index_wms_url()
+    
     trees_wms_url = my_url_generator.get_trees_wms_url()
     success_response = ShadowViewSuccessResponse(
         status=1,
@@ -377,10 +377,10 @@ def generate_design_shadow():
         maptiler_key=maptiler_key,
         session_id=str(session_id),
         shadow_date_time=shadow_date_time,
-        baseline_index_wms_url=baseline_index_wms_url,
         trees_wms_url=trees_wms_url,
         view_details=design_view_details,
     )
+    
     return render_template("design_shadow.html", op=asdict(success_response))
 
 

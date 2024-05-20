@@ -192,7 +192,6 @@ class ShadowViewSuccessResponse:
     maptiler_key: str
     session_id: str
     shadow_date_time: str
-    baseline_index_wms_url: str
     trees_wms_url: str
     view_details: Union[ToolboxDesignViewDetails, ToolboxDiagramViewDetails]
 

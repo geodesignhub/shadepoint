@@ -526,7 +526,7 @@ class ShadowComputationHelper:
         r_url = my_url_generator.get_roads_url()
 
         try:
-            assert r_url is not None
+            assert r_url != '0'
 
         except AssertionError:
             print("A Roads GeoJSON as a URL is expected")

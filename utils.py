@@ -79,7 +79,7 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
             fc = download_request.json()
             r.set(roads_storage_key, json.dumps(fc))
         else:
-            print("Error")
+            print("Error in setting downloaded roads to local memory")
             r.set(
                 roads_storage_key,
                 json.dumps({"type": "FeatureCollection", "features": []}),
