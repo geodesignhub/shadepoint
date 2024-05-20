@@ -409,7 +409,7 @@ class GeodesignhubDataDownloader:
     ) -> int:
         geodesignhub_project_data = asdict(geodesignhub_project_data)
         interesting_system = [
-            d for d in geodesignhub_project_data["systems"] if d["sysname"] == "GI"
+            d for d in geodesignhub_project_data["systems"] if d["sysname"] == "TREE"
         ]
         return interesting_system[0]["id"]
 
@@ -474,25 +474,22 @@ class GeodesignhubDataDownloader:
 
         return project_data
 
+
 class RoadsDownloadFactory:
     def __init__(
-        self,
-        session_id: str,
-        bounds: str,
-        project_id: str,
-        shadow_date_time:str
+        self, session_id: str, bounds: str, project_id: str, shadow_date_time: str
     ):
-      
+
         self.session_id = session_id
         self.shadow_date_time = shadow_date_time
         self.bounds = bounds
         self.project_id = project_id
 
     def start_download_roads_job(self):
-        
+
         my_url_generator = wms_url_generator(project_id=self.project_id)
         r_url = my_url_generator.get_roads_url()
-    
+
         roads_download_job = RoadsDownloadRequest(
             bounds=self.bounds,
             session_id=str(self.session_id),
@@ -506,8 +503,6 @@ class RoadsDownloadFactory:
             on_failure=notify_roads_download_failure,
             job_id=self.session_id + ":" + self.shadow_date_time + ":roads",
         )
-
-
 
 
 class ShadowComputationHelper:

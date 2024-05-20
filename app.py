@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from ast import Sub
-from distutils.command import upload
 from flask import render_template
 from flask import request, Response
 from flask import session, redirect, url_for
@@ -22,10 +20,11 @@ from data_definitions import (
     DrawViewSuccessResponse,
     ToolboxDrawDiagramViewDetails,
     DiagramUploadDetails,
+    WMSLayer,
 )
-from flask import Flask, render_template, redirect, url_for
+from flask import render_template, redirect, url_for
 from flask_bootstrap import Bootstrap5
-
+from typing import List
 from flask_wtf import FlaskForm, CSRFProtect
 from wtforms import StringField, SubmitField, HiddenField
 from wtforms.validators import DataRequired, Length
@@ -506,8 +505,27 @@ def draw_trees_view():
         project_id=projectid,
         view_type="draw",
     )
+    
+    wms_layers:List[WMSLayer] = []
+
     trees_wms_url = my_url_generator.get_trees_wms_url()
+    trees_wms = WMSLayer(url=trees_wms_url, name="Tree Canopy", dom_id='trees_canopy')
+    wms_layers.append(trees_wms)
     satellite_wms_url = my_url_generator.get_satellite_wms_url()
+    satellite_wms = WMSLayer(url=satellite_wms_url, name="Satellite", dom_id='satellite_layer')
+    wms_layers.append(satellite_wms)
+    current_bike_network_wms = my_url_generator.get_current_bike_network_wms()
+    proposed_bike_network_wms = my_url_generator.get_proposed_bike_network_wms()
+    bus_stops_wms = my_url_generator.get_existing_bus_stops_wms()
+    if current_bike_network_wms.url != '0':
+        wms_layers.append(current_bike_network_wms)
+    
+    if proposed_bike_network_wms.url != '0':
+        wms_layers.append(proposed_bike_network_wms)
+
+    if bus_stops_wms.url != '0':
+        wms_layers.append(bus_stops_wms)
+
     project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
     if not project_data:
         error_msg = ErrorResponse(
@@ -523,17 +541,14 @@ def draw_trees_view():
         project_id=projectid, apitoken=apitoken, gi_system_id=gi_system_id
     )
     session_id = uuid.uuid4()
-
     current_year = arrow.now().year
     august_6_date = "{year}-08-06T10:10:00".format(year=current_year)
     shadow_date_time = august_6_date
 
     my_roads_downloader = RoadsDownloadFactory(session_id= str(session_id), bounds = project_data.bounds.bounds, project_id = projectid, shadow_date_time = shadow_date_time)
-    my_roads_downloader.start_download_roads_job()
-    
+    my_roads_downloader.start_download_roads_job()    
     if diagram_upload_form.validate_on_submit():
         diagram_upload_form_data = diagram_upload_form.data
-
         point_feature_list = diagram_upload_form_data["drawn_geojson"]
         gi_system_id = diagram_upload_form_data["gi_system_id"]
         diagram_name = diagram_upload_form_data["diagram_name"]
@@ -576,8 +591,7 @@ def draw_trees_view():
         project_data=project_data,
         maptiler_key=maptiler_key,
         session_id=str(session_id),
-        trees_wms_url=trees_wms_url,
-        satellite_wms_url=satellite_wms_url,
+        wms_layers = wms_layers,
         view_details=draw_view_details,
         apitoken=apitoken,
         project_id=projectid,

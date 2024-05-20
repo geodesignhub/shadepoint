@@ -200,11 +200,13 @@ class ShadowViewSuccessResponse:
 class WMSLayer:
     url: str
     name: str
+    dom_id: str
 
 @dataclass
 class WMSLayerList: 
     layers: List[WMSLayer]
     
+
 
 @dataclass
 class DrawViewSuccessResponse:
@@ -213,11 +215,10 @@ class DrawViewSuccessResponse:
     project_data: GeodesignhubProjectData
     maptiler_key: str
     session_id: str
-    trees_wms_url: str
-    satellite_wms_url: str
     view_details: ToolboxDrawDiagramViewDetails
     apitoken: str
     project_id : str
+    wms_layers: WMSLayerList
 
 @dataclass
 class FloodingViewSuccessResponse:
