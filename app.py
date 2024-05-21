@@ -540,7 +540,7 @@ def draw_trees_view():
     if administrative_boundaries.url != "0":
         wms_layers.append(administrative_boundaries)
 
-    conservation_buildings = my_url_generator.get_administrative_boundaries()
+    conservation_buildings = my_url_generator.get_conservation_buildings()
     if conservation_buildings.url != "0":
         wms_layers.append(conservation_buildings)
 
