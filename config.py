@@ -155,3 +155,36 @@ class wms_url_generator:
         )
 
         return landuse_wms
+
+
+    def get_administrative_boundaries(self) -> WMSLayer:
+        project_specific_url = "WMS_{project_id}_ADMINISTRATIVE_BOUNDARIES_URL".format(
+            project_id=self.project_id
+        )
+        if environ.get(project_specific_url) is not None:
+            bus_stops_url = environ.get(project_specific_url)
+        else:
+            bus_stops_url = environ.get("WMS_ADMINISTRATIVE_BOUNDARIES_URL", "0")
+        current_bike_network = WMSLayer(
+            url=bus_stops_url,
+            name="Statistical Areas",
+            dom_id="statistical_areas",
+        )
+
+        return current_bike_network
+
+    def get_conservation_buildings(self) -> WMSLayer:
+        project_specific_url = "WMS_{project_id}_CONSERVATION_BOUNDARIES_URL".format(
+            project_id=self.project_id
+        )
+        if environ.get(project_specific_url) is not None:
+            bus_stops_url = environ.get(project_specific_url)
+        else:
+            bus_stops_url = environ.get("WMS_CONSERVATION_BOUNDARIES_URL", "0")
+        current_bike_network = WMSLayer(
+            url=bus_stops_url,
+            name="Conservation Buildings",
+            dom_id="conservation_buildings",
+        )
+
+        return current_bike_network

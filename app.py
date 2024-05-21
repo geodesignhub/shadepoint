@@ -536,6 +536,14 @@ def draw_trees_view():
     if current_landuse_wms.url != "0":
         wms_layers.append(current_landuse_wms)
 
+    administrative_boundaries = my_url_generator.get_administrative_boundaries()
+    if administrative_boundaries.url != "0":
+        wms_layers.append(administrative_boundaries)
+
+    conservation_buildings = my_url_generator.get_administrative_boundaries()
+    if conservation_buildings.url != "0":
+        wms_layers.append(administrative_boundaries)
+
     project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
     if not project_data:
         error_msg = ErrorResponse(
