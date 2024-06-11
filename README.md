@@ -1,5 +1,5 @@
 # Geodesignhub Environmental Impact Indicators
-This plugin uses the [Geodesignhub API](https://www.geodesignhub.com/api) to download information about a design and / or diagramas to  analyze it to produce a variety of Climate Indicators. 
+This plugin uses the [Geodesignhub API](https://www.geodesignhub.com/api) to download information about a design and / or diagrams to  analyze it to produce a variety of views around heat and flood impacts at a local level. 
 
 ### Adding your project
 This plugin can be added to your project in the Administration interface or at the time of Geodesignhub project creation. 

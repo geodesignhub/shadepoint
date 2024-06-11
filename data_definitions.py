@@ -130,13 +130,14 @@ class GeodesignhubProjectTag:
 
 
 @dataclass
-class DiagramUploadDetails: 
+class DiagramUploadDetails:
     geometry: FeatureCollection
     project_or_policy: str
     feature_type: str
     description: str
     funding_type: str
     sys_id: str
+
 
 @dataclass
 class GeodesignhubProjectTags:
@@ -174,12 +175,12 @@ class ToolboxDiagramViewDetails:
     project_id: str
     view_type: str
 
+
 @dataclass
 class ToolboxDrawDiagramViewDetails:
     api_token: str
     project_id: str
     view_type: str
-
 
 
 @dataclass
@@ -195,16 +196,17 @@ class ShadowViewSuccessResponse:
     trees_wms_url: str
     view_details: Union[ToolboxDesignViewDetails, ToolboxDiagramViewDetails]
 
+
 @dataclass
 class WMSLayer:
     url: str
     name: str
     dom_id: str
 
+
 @dataclass
-class WMSLayerList: 
+class WMSLayerList:
     layers: List[WMSLayer]
-    
 
 
 @dataclass
@@ -216,8 +218,9 @@ class DrawViewSuccessResponse:
     session_id: str
     view_details: ToolboxDrawDiagramViewDetails
     apitoken: str
-    project_id : str
+    project_id: str
     wms_layers: WMSLayerList
+
 
 @dataclass
 class FloodingViewSuccessResponse:

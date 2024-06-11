@@ -390,7 +390,7 @@ def generate_design_shadow():
 
 @app.route("/diagram_shadow/", methods=["GET"])
 def generate_diagram_shadow():
-    """This is the root of the webservice, upon successful authentication a text will be displayed in the browser"""
+    """This is the root of the web service, upon successful authentication a text will be displayed in the browser"""
     try:
         projectid = request.args.get("projectid")
         apitoken = request.args.get("apitoken")
@@ -447,6 +447,7 @@ def generate_diagram_shadow():
             )
             gj_serialized = json.loads(geojson.dumps(_diagram_feature_collection))
             diagram_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
+            trees_feature_collection = GeodesignhubDiagramGeoJSON(geojson=json.loads(json.dumps({"type":"FeatureCollection", "features":[]})))
             maptiler_key = os.getenv("maptiler_key", "00000000000000")
             baseline_index_wms_url = my_url_generator.get_baseline_index_wms_url()
             trees_wms_url = my_url_generator.get_trees_wms_url()
@@ -470,6 +471,7 @@ def generate_diagram_shadow():
                 baseline_index_wms_url=baseline_index_wms_url,
                 trees_wms_url=trees_wms_url,
                 view_details=diagram_view_details,
+                trees_feature_collection = trees_feature_collection 
             )
 
             return render_template("diagram_shadow.html", op=asdict(success_response))
