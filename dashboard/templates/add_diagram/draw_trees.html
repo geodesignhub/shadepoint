@@ -119,7 +119,8 @@
         style:
             'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
         bounds: bounds,
-        zoom: 10 // starting zoom
+        zoom: 12, // starting zoom
+        maxZoom: 23,
     });
     map.addControl(new maplibreGLMeasures.default({}), 'top-left');
 
