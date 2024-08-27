@@ -94,6 +94,7 @@ class GeodesignhubSystem:
     id: int
     name: str
     color: str
+    verbose_description: str
 
 
 @dataclass
