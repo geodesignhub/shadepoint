@@ -15,7 +15,7 @@
                 <h6>{{ gettext('Project Theme details') }}</h6>
                 <ul class="list-group list-group-horizontal">
                     {% for system in op.project_data.system_details %}
-                        <li class="list-group-item"><b>{{ system.sysname }}&nbsp;<i class="bi bi-info-square-fill" style="color: {{system.syscolor}}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{system.verbose_description}}"></i></b></li>
+                        <li class="list-group-item"><b>{{ system.name }}&nbsp;<i class="bi bi-info-square-fill" style="color: {{system.color}}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{system.verbose_description}}"></i></b></li>
                     {% endfor %}
                 </ul>
             </div>

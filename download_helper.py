@@ -409,7 +409,7 @@ class GeodesignhubDataDownloader:
     ) -> int:
         geodesignhub_project_data = asdict(geodesignhub_project_data)
         interesting_system = [
-            d for d in geodesignhub_project_data["systems"] if d["sysname"] == "TREE"
+            d for d in geodesignhub_project_data["systems"] if d["name"] == "TREE"
         ]
         return interesting_system[0]["id"]
 

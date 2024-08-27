@@ -92,18 +92,18 @@ class GeodesignhubDiagramGeoJSON:
 class GeodesignhubSystem:
     # Source: https://www.geodesignhub.com/api/#systems-api-systems-collection-get
     id: int
-    sysname: str
-    syscolor: str
+    name: str
+    color: str
 
 
 @dataclass
 class GeodesignhubSystemDetail:
     id: int
-    sysname: str
-    syscolor: str
-    systag: str
-    syscost: int
-    sysbudget: int
+    name: str
+    color: str
+    tag: str
+    cost: int
+    budget: int
     current_ha: float
     target_ha: float
     verbose_description: str
