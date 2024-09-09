@@ -14,33 +14,35 @@
     <div class="row">
         <div class="col-md-12">
             <h3><i class="bi bi-tree"></i>&nbsp;{{ gettext('Draw Trees') }} <small class="text-muted"></small></h3>
-            <p class="text-muted">{{ gettext('Draw new trees by dropping points on a map and submit to be added to a Geodesignhub project') }}</p>
+            <p class="text-muted">{{ gettext('Draw new trees by dropping points on a map and submit to be added to a
+                Geodesignhub project') }}</p>
         </div>
     </div>
-    
+
     <div class="row">
         <div class="col-md-12">
-            <div>               
-                <h6>{{ gettext('Analytical Layers') }}&nbsp;<small class="text-muted">{{ gettext('Pre-computed layers for the area') }}</small>
+            <div>
+                <h6>{{ gettext('Analytical Layers') }}&nbsp;<small class="text-muted">{{ gettext('Pre-computed layers
+                        for the area') }}</small>
                 </h6>
             </div>
         </div>
     </div>
-    <br>                                
+    <br>
     <div class="row">
-        <div class="col-md-12">            
+        <div class="col-md-12">
             <div id="listing-group" class="btn-group" role="group" aria-label="Layer selection tools">
                 {% for wms_layer in op['wms_layers'] %}
-                    <input type="checkbox" class="btn-check" id="{{wms_layer['dom_id']}}" autocomplete="off" checked>
-                    <label class="btn btn-outline-primary" for="{{wms_layer['dom_id']}}">{{ wms_layer['name']}}</label>
+                <input type="checkbox" class="btn-check" id="{{wms_layer['dom_id']}}" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="{{wms_layer['dom_id']}}">{{ wms_layer['name']}}</label>
                 {% endfor %}
             </div>
         </div>
     </div>
     <br>
     <div id="map"></div>
-    <br>    
-    
+    <br>
+
     {% else %}
     <div class="row">
         <div class="col-md-12">
@@ -51,39 +53,53 @@
 
     <div class="row">
         <div class="col-md-12">
-            <h6>{{ gettext('Drawing Tools') }}&nbsp;<small class="text-muted">{{ gettext('Use the buttons below to draw trees') }}</small></h6>
+            <h6>{{ gettext('Drawing Tools') }}&nbsp;<small class="text-muted">{{ gettext('Use the buttons below to draw
+                    trees') }}</small></h6>
         </div>
     </div>
     <div class="row">
-        <div class="col-md-12">
-            <div class="btn-group" role="group" aria-label="Basic example">
-                <button type="button" onclick="tree_editing_control.add_tree()" class="btn btn-outline-secondary">{{ gettext('Add Trees') }}</button>
-                <button type="button" onclick="tree_editing_control.drawing_complete()" class="btn btn-outline-secondary">{{ gettext('Complete Drawing') }}</button>
-                <button type="button" onclick="tree_editing_control.move_trees()" class="btn btn-outline-secondary">{{ gettext('Move existing trees') }}</button>
-                <button type="button" onclick="tree_editing_control.delete_tree()" class="btn btn-outline-secondary">{{ gettext('Delete all trees') }}</button>&nbsp;
-                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#addDiagramModal">{{ gettext('Add as a diagram') }}</button>
+        <div class="col-md-10">
+            <div class="btn-group" role="group" aria-label="Tree drawing tools">
+                <button type="button" onclick="tree_editing_control.add_tree()" class="btn btn-outline-secondary">{{
+                    gettext('Add Trees') }}</button>
+                <button type="button" onclick="tree_editing_control.drawing_complete()"
+                    class="btn btn-outline-secondary">{{ gettext('Complete Drawing') }}</button>
+                <button type="button" onclick="tree_editing_control.move_trees()" class="btn btn-outline-secondary">{{
+                    gettext('Move / delete existing trees') }}</button>
+                <button id="single_tree_deletion_button" type="button" onclick="" class="btn btn-outline-secondary d-none">{{
+                    gettext('Delete selected tree') }}</button>
+                <button type="button" onclick="tree_editing_control.delete_all_trees()"
+                    class="btn btn-outline-secondary">{{
+                    gettext('Delete all trees') }}</button>&nbsp;
+                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal"
+                    data-bs-target="#addDiagramModal">{{ gettext('Add as a diagram') }}</button>
             </div>
+        </div>
+        <div class="col-md-2">
+            <h4 data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Number of trees added"><span
+                    class="badge text-bg-secondary" id="number_of_trees_drawn">0</span></h4>
+
         </div>
     </div>
 
 
     <!-- Modal -->
-    <div class="modal fade" id="addDiagramModal" tabindex="-1" aria-labelledby="addDiagramModalLabel" aria-hidden="true">
+    <div class="modal fade" id="addDiagramModal" tabindex="-1" aria-labelledby="addDiagramModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-            <h1 class="modal-title fs-5" id="addDiagramModalLabel">Add a diagram</h1>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="addDiagramModalLabel">Add a diagram</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        {{ render_form(form) }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                </div>
             </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    {{ render_form(form) }}
-     
-            </div>
-            </div>
-            <div class="modal-footer">
-            </div>
-        </div>
         </div>
     </div>
 
@@ -100,6 +116,10 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre-gl-measures.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 <script type="text/javascript">
+    let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
     const project_detail = {{ op| safe }};
     var bounds = project_detail['project_data']['bounds']['bounds'];
     var center = project_detail['project_data']['center']['center'];
@@ -125,12 +145,12 @@
     map.addControl(new maplibreGLMeasures.default({}), 'top-left');
 
     map.addControl(
-            new maplibregl.NavigationControl({
-                visualizePitch: true,
-                showZoom: true,
-                showCompass: true
-            })
-        );        
+        new maplibregl.NavigationControl({
+            visualizePitch: true,
+            showZoom: true,
+            showCompass: true
+        })
+    );
     document.getElementById('listing-group').addEventListener('change', function (e) {
         var handler = e.target.id;
         if (e.target.checked) {
@@ -156,10 +176,18 @@
                         draggable: true,
                     },
                 },
+            }, // Styles go here...
+            styles: {
+                // See Styling Guide for more information
+                // Outline colour (Hex color)
+                selectedPointOutlineColor: "#000000",
+                        
+                //Outline width (Integer)
+                selectedPointOutlineWidth: 2,
             },
         }),],
     });
-    
+
     draw.start();
     let TreeEditingFactory = function () {
 
@@ -170,46 +198,85 @@
             draw.setMode("render_trees");
 
         }
-        this.move_trees = function () {            
+        this.move_trees = function () {
             draw.setMode("select");
         }
-        this.delete_tree = function () {
+        this.delete_all_trees = function () {
             draw.clear();
+            this.update_tree_count();
+        }
+        this.delete_single_tree = function (id) {
+            // console.log(id);
+            draw.removeFeatures([id]);
+            let single_tree_deletion_control = document.getElementById('single_tree_deletion_button');
+            single_tree_deletion_control.classList.add('d-none');
         }
         // this.move_trees = function(entries) {
         //     this.entries = entries;
         // }
+        this.update_tree_count = function () {
+            const store_geojson = draw.getSnapshot();
+            let number_of_trees = store_geojson.length;
+            let tree_count_container = document.getElementById('number_of_trees_drawn');
+            tree_count_container.innerHTML = number_of_trees;
+            // store_geojson.filter((feature) => feature.properties.mode === 'polygon')
+        }
 
     }
     let tree_editing_control = new TreeEditingFactory();
+    draw.on("change", (ids, type) => {
+        // Possible type values:
+        // 'create'
+        // 'update'
+        // 'delete'
+        // 'styling'
 
+        if (['create', 'delete'].includes(type)) {
+            tree_editing_control.update_tree_count();
+        }
+    });
+    draw.on('select', (id) => {
+        const snapshot = draw.getSnapshot();
+        // Search the snapshot for the selected polygon
+        const selected_point = snapshot.find((feature) => feature.id === id);
+        // Enable delete control
 
+        let single_tree_deletion_control = document.getElementById('single_tree_deletion_button');
+        let single_tree_deletion_string = "tree_editing_control.delete_single_tree('" + id + "')";
+        single_tree_deletion_control.setAttribute('onclick', single_tree_deletion_string);
+        single_tree_deletion_control.classList.remove('d-none');
+    })
+
+    draw.on("deselect", () => {
+        // remove delete control
+        let single_tree_deletion_control = document.getElementById('single_tree_deletion_button');
+        single_tree_deletion_control.classList.add('d-none');
+    });
     map.on('load', function () {
-        
         map.addSource('bike_pedestrian_roads', {
-                // GeoJSON Data source used in vector tiles, documented at
-                // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
-                'type': 'geojson',
-                'data': { "type": "FeatureCollection", "features": [] }
-            });
-            map.addLayer({
-                'id': 'bike_pedestrian_roads',
-                'type': 'line',
-                'source': 'bike_pedestrian_roads',
-                'layout': {
-                    'line-join': 'round',
-                    'line-cap': 'round'
-                },
-                'paint': {
-                    'line-color': '#422518',
-                    'line-width': 3,
-                    'line-opacity': 0.7
-                }
-            });
+            // GeoJSON Data source used in vector tiles, documented at
+            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+            'type': 'geojson',
+            'data': { "type": "FeatureCollection", "features": [] }
+        });
+        map.addLayer({
+            'id': 'bike_pedestrian_roads',
+            'type': 'line',
+            'source': 'bike_pedestrian_roads',
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            'paint': {
+                'line-color': '#422518',
+                'line-width': 3,
+                'line-opacity': 0.7
+            }
+        });
 
         for (let index = 0; index < wms_layers.length; index++) {
             const wms_layer = wms_layers[index];
-            let source_str = wms_layer.dom_id+"_source";
+            let source_str = wms_layer.dom_id + "_source";
             map.addSource(source_str, {
                 'type': 'raster',
                 // use the tiles option to specify a WMS tile source URL
@@ -226,7 +293,7 @@
                 },
                 'aeroway_fill'
             );
-            
+
         }
 
     });
@@ -237,7 +304,7 @@
         geo_json_element.value = JSON.stringify(store_geojson);
 
     });
-    
+
     document.addEventListener('DOMContentLoaded', () => {
         const room = project_detail.session_id;
         var source = new EventSource("{{ url_for('sse.stream') }}");

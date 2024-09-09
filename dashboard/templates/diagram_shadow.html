@@ -91,6 +91,10 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 <script type="text/javascript">
+    let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
     const diagram_detail = {{ op|safe }};
 
     const diagram_geojson = {{ op["geometry_data"]["geojson"]|safe }};
