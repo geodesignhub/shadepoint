@@ -21,6 +21,7 @@ from data_definitions import (
     ToolboxDrawDiagramViewDetails,
     DiagramUploadDetails,
     WMSLayer,
+    COGLayer
 )
 from flask import render_template, redirect, url_for
 from flask_bootstrap import Bootstrap5
@@ -162,7 +163,7 @@ def get_existing_buildings_shadow_roads_stats():
         shadow_stats = json.loads(s)
     else:
         default_shadow = RoadsShadowOverlap(
-            total_roads_kms=0.0, shadowed_kms=0.0, job_id="0000"
+            total_roads_kms=0.0, shadowed_kms=0.0, job_id="0000", total_shadow_area = 0.0
         )
         shadow_stats = asdict(default_shadow)
 
@@ -180,7 +181,7 @@ def generate_shadow_road_stats():
         shadow_stats = json.loads(s)
     else:
         default_shadow = RoadsShadowOverlap(
-            total_roads_kms=0.0, shadowed_kms=0.0, job_id="0000"
+            total_roads_kms=0.0, shadowed_kms=0.0, job_id="0000", total_shadow_area = 0.0
         )
         shadow_stats = asdict(default_shadow)
 
@@ -513,6 +514,12 @@ def draw_trees_view():
     )
 
     wms_layers: List[WMSLayer] = []
+    cog_layers: List[COGLayer] = []
+
+    satellite_ortho_photo_url = my_url_generator.get_ortho_photo_cog_url()
+    if satellite_ortho_photo_url:
+        ortho_photo_url = COGLayer(url=satellite_ortho_photo_url, name="Orthogonal Photo", dom_id="ortho_photo")
+        cog_layers.append(ortho_photo_url)
 
     trees_wms_url = my_url_generator.get_trees_wms_url()
     trees_wms = WMSLayer(url=trees_wms_url, name="Tree Canopy", dom_id="trees_canopy")
@@ -607,6 +614,7 @@ def draw_trees_view():
         maptiler_key=maptiler_key,
         session_id=str(session_id),
         wms_layers=wms_layers,
+        cog_layers= cog_layers,
         view_details=draw_view_details,
         apitoken=apitoken,
         project_id=projectid,

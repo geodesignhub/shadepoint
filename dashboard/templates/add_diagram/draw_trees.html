@@ -36,6 +36,11 @@
                 <input type="checkbox" class="btn-check" id="{{wms_layer['dom_id']}}" autocomplete="off" checked>
                 <label class="btn btn-outline-primary" for="{{wms_layer['dom_id']}}">{{ wms_layer['name']}}</label>
                 {% endfor %}
+                
+                {% for cog_layer in op['cog_layers'] %}
+                <input type="checkbox" class="btn-check" id="{{cog_layer['dom_id']}}" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="{{cog_layer['dom_id']}}">{{ cog_layer['name']}}</label>
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -66,7 +71,8 @@
                     class="btn btn-outline-secondary">{{ gettext('Complete Drawing') }}</button>
                 <button type="button" onclick="tree_editing_control.move_trees()" class="btn btn-outline-secondary">{{
                     gettext('Move / delete existing trees') }}</button>
-                <button id="single_tree_deletion_button" type="button" onclick="" class="btn btn-outline-secondary d-none">{{
+                <button id="single_tree_deletion_button" type="button" onclick=""
+                    class="btn btn-outline-secondary d-none">{{
                     gettext('Delete selected tree') }}</button>
                 <button type="button" onclick="tree_editing_control.delete_all_trees()"
                     class="btn btn-outline-secondary">{{
@@ -115,6 +121,11 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/terra-draw.umd.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre-gl-measures.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
+
+{% if op['cog_layers'] %}
+<script type="text/javascript" src="{{ url_for('static', filename='js/cog/cog-protocol.min.js') }}"></script>
+{% endif %}
+
 <script type="text/javascript">
     let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
     let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -133,6 +144,7 @@
     let existing_canopy_source = '{{op["trees_wms_url"]|safe}}';
     let satellite_source = '{{op["satellite_wms_url"]|safe}}';
     let wms_layers = project_detail['wms_layers'];
+    let cog_layers = project_detail['cog_layers'];
     // input nodes map
     let map = new maplibregl.Map({
         container: 'map', // container id  
@@ -142,6 +154,8 @@
         zoom: 12, // starting zoom
         maxZoom: 23,
     });
+
+    maplibregl.addProtocol('cog', MaplibreCOGProtocol.cogProtocol);
     map.addControl(new maplibreGLMeasures.default({}), 'top-left');
 
     map.addControl(
@@ -181,7 +195,7 @@
                 // See Styling Guide for more information
                 // Outline colour (Hex color)
                 selectedPointOutlineColor: "#000000",
-                        
+
                 //Outline width (Integer)
                 selectedPointOutlineWidth: 2,
             },
@@ -295,6 +309,29 @@
             );
 
         }
+
+        if (cog_layers.length > 0) {        
+            for (let index = 0; index < cog_layers.length; index++) {
+                const cog_layer = cog_layers[index];                
+                let source_str = cog_layer.dom_id + "_source";                
+                map.addSource(source_str, {
+                    'type': 'raster',
+                    'url': 'cog://' + cog_layer['url'],
+                    'tileSize': 256
+                });
+                map.addLayer(
+                {
+                    'id': cog_layer['dom_id'],
+                    'source': source_str,
+                    'type': 'raster',
+                    'paint': {}
+                },
+                'aeroway_fill'
+            );
+            }
+        }
+
+
 
     });
     const addDiagramModalEl = document.getElementById('addDiagramModal');

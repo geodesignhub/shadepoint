@@ -204,10 +204,20 @@ class WMSLayer:
     name: str
     dom_id: str
 
-
 @dataclass
 class WMSLayerList:
     layers: List[WMSLayer]
+
+@dataclass
+class COGLayer:
+    url: str
+    name: str
+    dom_id: str
+
+@dataclass
+class COGLayerList:
+    layers: List[COGLayer]
+
 
 
 @dataclass
@@ -221,6 +231,7 @@ class DrawViewSuccessResponse:
     apitoken: str
     project_id: str
     wms_layers: WMSLayerList
+    cog_layers: COGLayerList
 
 
 @dataclass
