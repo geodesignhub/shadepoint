@@ -36,7 +36,7 @@
                 <input type="checkbox" class="btn-check" id="{{wms_layer['dom_id']}}" autocomplete="off" checked>
                 <label class="btn btn-outline-primary" for="{{wms_layer['dom_id']}}">{{ wms_layer['name']}}</label>
                 {% endfor %}
-                
+
                 {% for cog_layer in op['cog_layers'] %}
                 <input type="checkbox" class="btn-check" id="{{cog_layer['dom_id']}}" autocomplete="off" checked>
                 <label class="btn btn-outline-primary" for="{{cog_layer['dom_id']}}">{{ cog_layer['name']}}</label>
@@ -57,7 +57,7 @@
     {% endif %}
 
     <div class="row">
-        <div class="col-md-12">
+        <div class="col-md-10">
             <h6>{{ gettext('Drawing Tools') }}&nbsp;<small class="text-muted">{{ gettext('Use the buttons below to draw
                     trees') }}</small></h6>
         </div>
@@ -84,6 +84,13 @@
         <div class="col-md-2">
             <h4 data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Number of trees added"><span
                     class="badge text-bg-secondary" id="number_of_trees_drawn">0</span></h4>
+            <button class="btn btn-outline-info btn-sm" id="generate_shadows_control" type="button" onclick="tree_editing_control.clear_existing_shadows_control()"
+                class="btn btn-outline-secondary">
+                <small data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Shadow of the trees added">Show Shadows</small>
+            </button>
+            <button class="btn btn-outline-info btn-sm d-none" id="clear_shadows_control" type="button" onclick="tree_editing_control.show_generate_shadows_control()" class="btn btn-outline-secondary">
+                <small data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Clear generated shadows">Clear Shadows</small>
+            </button>
 
         </div>
     </div>
@@ -236,6 +243,21 @@
             // store_geojson.filter((feature) => feature.properties.mode === 'polygon')
         }
 
+        this.show_generate_shadows_control = function () {
+            let show_shadows_control = document.getElementById('generate_shadows_control');
+            show_shadows_control.classList.remove('d-none');
+            let clear_shadows_control = document.getElementById('clear_shadows_control');
+            clear_shadows_control.classList.add('d-none');
+
+        }
+        this.clear_existing_shadows_control = function () {
+            let show_shadows_control = document.getElementById('generate_shadows_control');
+            show_shadows_control.classList.add('d-none');
+            let clear_shadows_control = document.getElementById('clear_shadows_control');
+            clear_shadows_control.classList.remove('d-none');
+
+        }
+
     }
     let tree_editing_control = new TreeEditingFactory();
     draw.on("change", (ids, type) => {
@@ -267,9 +289,23 @@
         single_tree_deletion_control.classList.add('d-none');
     });
     map.on('load', function () {
+
+        map.addSource('tree_shadows', {
+            'type': 'geojson',
+            'data': { "type": "FeatureCollection", "features": [] }
+        });
+        map.addLayer({
+            'id': 'tree_shadows',
+            'type': 'fill',
+            'source': 'tree_shadows',
+            'layout': {},
+            'paint': {
+                'fill-color': '#808080',
+                'fill-opacity': 0.7
+            }
+        });
+
         map.addSource('bike_pedestrian_roads', {
-            // GeoJSON Data source used in vector tiles, documented at
-            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
             'type': 'geojson',
             'data': { "type": "FeatureCollection", "features": [] }
         });
@@ -310,24 +346,24 @@
 
         }
 
-        if (cog_layers.length > 0) {        
+        if (cog_layers.length > 0) {
             for (let index = 0; index < cog_layers.length; index++) {
-                const cog_layer = cog_layers[index];                
-                let source_str = cog_layer.dom_id + "_source";                
+                const cog_layer = cog_layers[index];
+                let source_str = cog_layer.dom_id + "_source";
                 map.addSource(source_str, {
                     'type': 'raster',
                     'url': 'cog://' + cog_layer['url'],
                     'tileSize': 256
                 });
                 map.addLayer(
-                {
-                    'id': cog_layer['dom_id'],
-                    'source': source_str,
-                    'type': 'raster',
-                    'paint': {}
-                },
-                'aeroway_fill'
-            );
+                    {
+                        'id': cog_layer['dom_id'],
+                        'source': source_str,
+                        'type': 'raster',
+                        'paint': {}
+                    },
+                    'aeroway_fill'
+                );
             }
         }
 
@@ -357,6 +393,28 @@
             }
         }, false);
     });
+
+    function clear_computed_shadows() {
+        let empty_fc = { "type": "FeatureCollection", "features": [] };
+        map.getSource('building_shadows').setData(empty_fc);
+    }
+
+    function get_processed_shadow_computation(session_id) {
+        let empty_fc = { "type": "FeatureCollection", "features": [] };
+        map.getSource('building_shadows').setData(empty_fc);
+        let url = window.location.origin + '/compute_existing_drawn_shadows?bounds=' + bounds + '&session_id=' + session_id + '&shadow_datetime=' + shadow_datetime;
+        fetch(url)
+            .then((response) => {
+                return response.json();
+            })
+            .then((success_data) => {
+
+            }).catch((error) => {
+                console.log(error);
+            });
+    }
+
+
 </script>
 {% endif %}
 
