@@ -388,6 +388,16 @@ def generate_design_shadow():
 
     return render_template("design_shadow.html", op=asdict(success_response))
 
+@app.route("/drawn_diagram_shadow/", methods=["POST"])
+def generate_drawn_diagram_shadow():    
+
+    # Get GeoJSON
+
+    # Buffer the points 
+
+    # Generate shadows
+    pass
+
 
 @app.route("/diagram_shadow/", methods=["GET"])
 def generate_diagram_shadow():

@@ -253,6 +253,13 @@ class GeodesignhubDataShadowGenerationRequest:
     request_date_time: str
     bounds: str
 
+@dataclass
+class DrawnTreesShadowGenerationRequest:
+    trees: dict
+    session_id: str
+    request_date_time: str
+    
+
 
 @dataclass
 class ExistingBuildingsDataShadowGenerationRequest:

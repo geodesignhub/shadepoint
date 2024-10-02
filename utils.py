@@ -13,6 +13,7 @@ from data_definitions import (
     BuildingsDownloadRequest,
     ExistingBuildingsDataShadowGenerationRequest,
     ExistingBuildingsFeatureProperties,
+    DrawnTreesShadowGenerationRequest,
 )
 from dacite import from_dict
 from pyproj import Geod
@@ -294,9 +295,33 @@ def kickoff_existing_buildings_roads_shadows_stats(roads_shadow_computation_star
     # print(shadow_roads_intersection_data)
 
 
-# def compute_existing_buildings_shadow_roads_analysis(geojson_session_date_time):
-#     compute_existing_buildings_shadow_with_tree_canopy(geojson_session_date_time)
-#     kickoff_existing_buildings_roads_shadows_stats(geojson_session_date_time)
+
+def draw_trees_compute_shadow(geojson_session_date_time: dict):
+    """This method computes """
+    _drawn_trees_shadow_request = from_dict(
+        data_class=DrawnTreesShadowGenerationRequest,
+        data=geojson_session_date_time,
+    )
+
+    _date_time = arrow.get(_drawn_trees_shadow_request.request_date_time).isoformat()
+
+    trees = gpd.GeoDataFrame.from_features(
+        _drawn_trees_shadow_request.trees["features"]
+    )
+    _pd_date_time = pd.to_datetime(_date_time).tz_convert("UTC")
+
+    shadows = pybdshadow.bdshadow_sunlight(trees, _pd_date_time)
+    dissolved_shadows = shadows.dissolve()
+    redis_key = (
+        _drawn_trees_shadow_request.session_id
+        + ":"
+        + _drawn_trees_shadow_request.request_date_time
+        + "_drawn_trees_shadow"
+    )
+    r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
+    r.expire(redis_key, time=6000)
+    time.sleep(7)
+    print("Job Completed...")
 
 
 def compute_shadow(geojson_session_date_time: dict):
@@ -375,7 +400,7 @@ def compute_existing_buildings_shadow_with_tree_canopy(geojson_session_date_time
 
 
 def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
-    
+
     _diagramid_building_date_time = from_dict(
         data_class=GeodesignhubDataShadowGenerationRequest,
         data=geojson_session_date_time,
@@ -384,8 +409,8 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
     gdh_design_diagram_buildings = gpd.GeoDataFrame.from_features(
         _diagramid_building_date_time.buildings["features"]
     )
-    
-    _pd_date_time = pd.to_datetime(_date_time).tz_convert("UTC")    
+
+    _pd_date_time = pd.to_datetime(_date_time).tz_convert("UTC")
     shadows = pybdshadow.bdshadow_sunlight(gdh_design_diagram_buildings, _pd_date_time)
 
     # # Merge the canopy with the shadow
@@ -415,11 +440,13 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
     time.sleep(7)
     print("Job Completed")
 
-def compute_polygon_area(polygon:Polygon):
+
+def compute_polygon_area(polygon: Polygon):
     geod = Geod(ellps="WGS84")
     poly_area_m2, poly_perimeter = geod.geometry_area_perimeter(polygon)
     poly_area_hectares = poly_area_m2 / 10000  # convert from m^2 to hectares
     return poly_area_hectares
+
 
 def compute_road_shadow_overlap(
     roads_shadows_data: ShadowsRoadsIntersectionRequest,
@@ -443,7 +470,7 @@ def compute_road_shadow_overlap(
     shadowed_kms = 0
 
     for line_feature in roads["features"]:
-        
+
         if line_feature["geometry"]["type"] == "LineString":
             line = LineString(line_feature["geometry"]["coordinates"])
         elif line_feature["geometry"]["type"] == "MultiLineString":
@@ -454,22 +481,22 @@ def compute_road_shadow_overlap(
             "Segment Length {segment_length:.3f}".format(segment_length=segment_length)
         )
         total_length += segment_length
-    total_shadow_area = 0 
+    total_shadow_area = 0
     for shadow_feature in shadows["features"]:
         s: Polygon = shape(shadow_feature["geometry"])
-        
+
         poly_area = 0
-        if s.geom_type == 'MultiPolygon':
+        if s.geom_type == "MultiPolygon":
             # do multipolygon things.
-            all_polygons = list(s.geoms)            
+            all_polygons = list(s.geoms)
             for p in all_polygons:
                 oriented = orient(p)
                 a = compute_polygon_area(oriented)
                 poly_area += a
-        elif s.geom_type == 'Polygon':
+        elif s.geom_type == "Polygon":
             poly_area = compute_polygon_area(s)
         else:
-            raise IOError('Shape is not a polygon.')
+            raise IOError("Shape is not a polygon.")
         print("Shadow Area {poly_area:.3f}".format(poly_area=poly_area))
         total_shadow_area += poly_area
 
@@ -501,7 +528,7 @@ def compute_road_shadow_overlap(
         total_roads_kms=round(total_length, 2),
         shadowed_kms=round(shadowed_kms, 2),
         job_id=job_id,
-        total_shadow_area = total_shadow_area_rounded
+        total_shadow_area=total_shadow_area_rounded,
     )
 
     r.set(job_id, json.dumps(asdict(road_shadow_overlap)))

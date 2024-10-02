@@ -84,11 +84,15 @@
         <div class="col-md-2">
             <h4 data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Number of trees added"><span
                     class="badge text-bg-secondary" id="number_of_trees_drawn">0</span></h4>
-            <button class="btn btn-outline-info btn-sm" id="generate_shadows_control" type="button" onclick="tree_editing_control.clear_existing_shadows_control()"
+            <button class="btn btn-outline-info btn-sm" id="generate_shadows_control" type="button" onclick="tree_editing_control.generate_shadows()"
                 class="btn btn-outline-secondary">
-                <small data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Shadow of the trees added">Show Shadows</small>
+                <small data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Shadow of the trees added">Generate Shadows</small>
             </button>
-            <button class="btn btn-outline-info btn-sm d-none" id="clear_shadows_control" type="button" onclick="tree_editing_control.show_generate_shadows_control()" class="btn btn-outline-secondary">
+            
+            <div id="shadow_spinner" class="d-none spinner-grow text-secondary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <button class="btn btn-outline-info btn-sm d-none" id="clear_shadows_control" type="button" onclick="tree_editing_control.clear_generated_shadows()" class="btn btn-outline-secondary">
                 <small data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Clear generated shadows">Clear Shadows</small>
             </button>
 
@@ -243,21 +247,43 @@
             // store_geojson.filter((feature) => feature.properties.mode === 'polygon')
         }
 
-        this.show_generate_shadows_control = function () {
+        this.generate_shadows = function () {
             let show_shadows_control = document.getElementById('generate_shadows_control');
-            show_shadows_control.classList.remove('d-none');
+            show_shadows_control.classList.add('d-none');
+            
+            let spinner_cont = document.getElementById('shadow_spinner');
+            spinner_cont.classList.remove('d-none');
+
             let clear_shadows_control = document.getElementById('clear_shadows_control');
             clear_shadows_control.classList.add('d-none');
 
         }
-        this.clear_existing_shadows_control = function () {
+        this.clear_generated_shadows = function () {
+            // hide generate shadows button
             let show_shadows_control = document.getElementById('generate_shadows_control');
-            show_shadows_control.classList.add('d-none');
+            show_shadows_control.classList.remove('d-none');
+            // load the spinner
+            let spinner_cont = document.getElementById('shadow_spinner');
+            spinner_cont.classList.add('d-none');
+            // 
             let clear_shadows_control = document.getElementById('clear_shadows_control');
-            clear_shadows_control.classList.remove('d-none');
+            clear_shadows_control.classList.add('d-none');
 
         }
 
+    
+        this.shadows_loaded = function (){
+            
+            // hide generate shadows button
+            let show_shadows_control = document.getElementById('generate_shadows_control');
+            show_shadows_control.classList.add('d-none');
+            // load the spinner
+            let spinner_cont = document.getElementById('shadow_spinner');
+            spinner_cont.classList.add('d-none');
+            // 
+            let clear_shadows_control = document.getElementById('clear_shadows_control');
+            clear_shadows_control.classList.remove('d-none');
+        }
     }
     let tree_editing_control = new TreeEditingFactory();
     draw.on("change", (ids, type) => {
