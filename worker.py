@@ -2,6 +2,8 @@ import os
 
 import redis
 from rq import Worker, Queue, Connection
+import logging
+logger = logging.getLogger("local-climate-response")
 
 listen = ["high", "default", "low"]
 

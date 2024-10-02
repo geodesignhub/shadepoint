@@ -62,6 +62,14 @@ class TreeFeatureProperties:
 
 
 @dataclass
+class DrawnTreesFeatureProperties:
+    height: float
+    base_height: float
+    tree_id: str
+    color: str
+
+
+@dataclass
 class GeodesignhubDesignFeatureProperties:
     author: str
     description: str
@@ -255,9 +263,10 @@ class GeodesignhubDataShadowGenerationRequest:
 
 @dataclass
 class DrawnTreesShadowGenerationRequest:
-    trees: dict
+    trees: list
     session_id: str
     request_date_time: str
+    processed_trees: dict
     
 
 

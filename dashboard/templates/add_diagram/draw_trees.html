@@ -84,16 +84,19 @@
         <div class="col-md-2">
             <h4 data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Number of trees added"><span
                     class="badge text-bg-secondary" id="number_of_trees_drawn">0</span></h4>
-            <button class="btn btn-outline-info btn-sm" id="generate_shadows_control" type="button" onclick="tree_editing_control.generate_shadows()"
-                class="btn btn-outline-secondary">
-                <small data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Shadow of the trees added">Generate Shadows</small>
+            <button class="btn btn-outline-info btn-sm" id="generate_shadows_control" type="button"
+                onclick="tree_editing_control.generate_shadows()" class="btn btn-outline-secondary">
+                <small data-bs-toggle="tooltip" data-bs-placement="left"
+                    data-bs-title="Shadow of the trees added">Generate Shadows</small>
             </button>
-            
+
             <div id="shadow_spinner" class="d-none spinner-grow text-secondary" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <button class="btn btn-outline-info btn-sm d-none" id="clear_shadows_control" type="button" onclick="tree_editing_control.clear_generated_shadows()" class="btn btn-outline-secondary">
-                <small data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Clear generated shadows">Clear Shadows</small>
+            <button class="btn btn-outline-info btn-sm d-none" id="clear_shadows_control" type="button"
+                onclick="tree_editing_control.clear_generated_shadows()" class="btn btn-outline-secondary">
+                <small data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Clear generated shadows">Clear
+                    Shadows</small>
             </button>
 
         </div>
@@ -142,6 +145,7 @@
     let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     })
+    const csrf_token = "{{ csrf_token() }}";
     const project_detail = {{ op| safe }};
     var bounds = project_detail['project_data']['bounds']['bounds'];
     var center = project_detail['project_data']['center']['center'];
@@ -248,14 +252,18 @@
         }
 
         this.generate_shadows = function () {
-            let show_shadows_control = document.getElementById('generate_shadows_control');
-            show_shadows_control.classList.add('d-none');
-            
-            let spinner_cont = document.getElementById('shadow_spinner');
-            spinner_cont.classList.remove('d-none');
+            const snapshot = draw.getSnapshot();
+            if (snapshot.length > 0) {
+                let show_shadows_control = document.getElementById('generate_shadows_control');
+                show_shadows_control.classList.add('d-none');
 
-            let clear_shadows_control = document.getElementById('clear_shadows_control');
-            clear_shadows_control.classList.add('d-none');
+                let spinner_cont = document.getElementById('shadow_spinner');
+                spinner_cont.classList.remove('d-none');
+
+                let clear_shadows_control = document.getElementById('clear_shadows_control');
+                clear_shadows_control.classList.add('d-none');
+                this.send_generate_shadow_request(snapshot);
+            }
 
         }
         this.clear_generated_shadows = function () {
@@ -271,9 +279,33 @@
 
         }
 
-    
-        this.shadows_loaded = function (){
-            
+        this.send_generate_shadow_request = function (snapshot) {
+            let session_id = uuidv4();
+            let post_shadow_url = window.location.origin + '/generate_drawn_trees_shadow?session_id=' + session_id;
+            fetch(post_shadow_url, {
+                method: "post",
+                headers: {
+                    "X-CSRF-Token": csrf_token,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+
+                //make sure to serialize your JSON body
+                body: JSON.stringify({
+                    unprocessed_tree_geojson: snapshot,
+                })
+            })
+                .then((response) => {
+                    //do something awesome that makes the world a better place
+                    console.log(response);
+                    console.log("Submitted...");
+                });
+
+        }
+
+
+        this.shadows_loaded = function () {
+
             // hide generate shadows button
             let show_shadows_control = document.getElementById('generate_shadows_control');
             show_shadows_control.classList.add('d-none');

@@ -9,6 +9,7 @@ from data_definitions import (
     GeodesignhubDesignFeatureProperties,
     RoadsDownloadRequest,
     TreesDownloadRequest,
+    DrawnTreesFeatureProperties,
     GeodesignhubProjectCenter,
     RoadsShadowsComputationStartRequest,
     BuildingsDownloadRequest,
@@ -18,8 +19,10 @@ from data_definitions import (
     TreeFeatureProperties,
     DiagramUploadDetails,
     UploadSuccessResponse,
+    DrawnTreesShadowGenerationRequest,
 )
 import utils
+from utils import GeometryHelper
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping, shape
 import json
@@ -38,6 +41,8 @@ from notifications_helper import (
     notify_roads_download_failure,
     notify_gdh_roads_shadow_intersection_complete,
     notify_gdh_roads_shadow_intersection_failure,
+    notify_drawn_trees_shadow_complete,
+    notify_drawn_trees_shadow_failure,
     notify_trees_download_complete,
     notify_trees_download_failure,
     notify_buildings_download_complete,
@@ -50,6 +55,10 @@ from rq import Queue
 from rq.job import Dependency
 from worker import conn
 from config import wms_url_generator
+import arrow
+import logging
+
+logger = logging.getLogger("local-climate-response")
 
 load_dotenv(find_dotenv())
 
@@ -76,6 +85,24 @@ def export_to_json(data):
     return json.loads(json.dumps(data, sort_keys=True, cls=ShapelyEncoder))
 
 
+def kickoff_drawn_trees_shadow_job(session_id: str, unprocessed_drawn_trees: dict):
+    request_date_time = arrow.now().format("YYYY-MM-DDTHH:mm:ss")
+    tree_processing_payload = DrawnTreesShadowGenerationRequest(
+        trees=unprocessed_drawn_trees,
+        session_id=session_id,
+        request_date_time=request_date_time,
+        processed_trees={},
+    )
+
+    tree_processing_job_result = q.enqueue(
+        utils.drawn_trees_compute_shadow,
+        asdict(tree_processing_payload),
+        on_success=notify_drawn_trees_shadow_complete,
+        on_failure=notify_drawn_trees_shadow_failure,
+        job_id=session_id + ":" + "drawn_trees_shadow_job",
+    )
+
+
 class GeodesignhubDataDownloader:
     """
     A class to download data from Geodesignhub
@@ -83,7 +110,7 @@ class GeodesignhubDataDownloader:
 
     def __init__(
         self,
-        session_id: uuid4,
+        session_id: str,
         project_id: str,
         apitoken: str,
         cteam_id=None,
@@ -228,6 +255,8 @@ class GeodesignhubDataDownloader:
     ) -> Union[ErrorResponse, FeatureCollection]:
 
         _all_features: List[Feature] = []
+
+        my_geometry_helper = GeometryHelper()
         # Populate Default building data if not available
         for _single_diagram_feature in unprocessed_design_geojson["features"]:
             _diagram_properties = _single_diagram_feature["properties"]
@@ -245,10 +274,9 @@ class GeodesignhubDataDownloader:
             )
 
             if _project_or_policy == "policy":
-                point_grid = utils.create_point_grid(
+                point_grid = my_geometry_helper.create_point_grid(
                     geojson_feature=_single_diagram_feature
                 )
-
                 _feature_properties.height = 0
                 _feature_properties.base_height = 0
                 for _point_feature in point_grid["features"]:
@@ -526,10 +554,10 @@ class ShadowComputationHelper:
         r_url = my_url_generator.get_roads_url()
 
         try:
-            assert r_url != '0'
+            assert r_url != "0"
 
         except AssertionError:
-            print("A Roads GeoJSON as a URL is expected")
+            logger.info("A Roads GeoJSON as a URL is expected")
         else:
             # first download the trees and then compute design shadow
 
@@ -594,7 +622,7 @@ class ShadowComputationHelper:
     #         assert t_url is not None
     #         assert b_url is not None
     #     except AssertionError as ae:
-    #         print("A Roads, Canopy and a Existing Buildings GeoJSON as a URL is expected")
+    #         logger.info("A Roads, Canopy and a Existing Buildings GeoJSON as a URL is expected")
     #     else:
     #         # first download the trees and then compute design shadow
     #         trees_download_job = TreesDownloadRequest(bounds= self.bounds,  session_id = str(self.session_id), request_date_time=self.shadow_date_time,trees_url=t_url)

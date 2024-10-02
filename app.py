@@ -21,7 +21,7 @@ from data_definitions import (
     ToolboxDrawDiagramViewDetails,
     DiagramUploadDetails,
     WMSLayer,
-    COGLayer
+    COGLayer,
 )
 from flask import render_template, redirect, url_for
 from flask_bootstrap import Bootstrap5
@@ -35,12 +35,16 @@ from download_helper import (
     GeodesignhubDataDownloader,
     ShadowComputationHelper,
     RoadsDownloadFactory,
+    kickoff_drawn_trees_shadow_job
 )
 import arrow
 import uuid
 import geojson
 from config import wms_url_generator
-from flask_wtf.csrf import CSRFProtect
+
+
+import logging
+logger = logging.getLogger("local-climate-response")
 
 
 load_dotenv(find_dotenv())
@@ -163,7 +167,7 @@ def get_existing_buildings_shadow_roads_stats():
         shadow_stats = json.loads(s)
     else:
         default_shadow = RoadsShadowOverlap(
-            total_roads_kms=0.0, shadowed_kms=0.0, job_id="0000", total_shadow_area = 0.0
+            total_roads_kms=0.0, shadowed_kms=0.0, job_id="0000", total_shadow_area=0.0
         )
         shadow_stats = asdict(default_shadow)
 
@@ -181,7 +185,7 @@ def generate_shadow_road_stats():
         shadow_stats = json.loads(s)
     else:
         default_shadow = RoadsShadowOverlap(
-            total_roads_kms=0.0, shadowed_kms=0.0, job_id="0000", total_shadow_area = 0.0
+            total_roads_kms=0.0, shadowed_kms=0.0, job_id="0000", total_shadow_area=0.0
         )
         shadow_stats = asdict(default_shadow)
 
@@ -388,15 +392,37 @@ def generate_design_shadow():
 
     return render_template("design_shadow.html", op=asdict(success_response))
 
-@app.route("/drawn_diagram_shadow/", methods=["POST"])
-def generate_drawn_diagram_shadow():    
 
-    # Get GeoJSON
+@app.route("/get_drawn_trees_shadows", methods=["GET"])
+def get_drawn_trees_shadows():
+    trees_key = request.args.get("drawn_trees_shadows_key", "0")
+    trees_session_exists = redis.exists(trees_key)
+    if trees_session_exists:
+        trees_data_key = redis.get(trees_key)
+        r_raw = redis.get(trees_data_key)
+        trees = json.loads(r_raw.decode("utf-8"))
+    else:
+        trees = {"type": "FeatureCollection", "features": []}
 
-    # Buffer the points 
+    trs = json.dumps(trees)
 
-    # Generate shadows
-    pass
+    return Response(trs, status=200, mimetype=MIMETYPE)
+
+
+@app.route("/generate_drawn_trees_shadow/", methods=["POST"])
+def generate_drawn_trees_shadow():
+    geojson_payload = request.get_json()
+    
+    unprocessed_tree_geojson = geojson_payload["unprocessed_tree_geojson"]
+    session_id = request.args.get('session_id')
+    
+    kickoff_drawn_trees_shadow_job(
+        unprocessed_drawn_trees=unprocessed_tree_geojson,
+        session_id = session_id
+    )
+    
+
+    return Response({}, status=200, mimetype=MIMETYPE)
 
 
 @app.route("/diagram_shadow/", methods=["GET"])
@@ -458,7 +484,11 @@ def generate_diagram_shadow():
             )
             gj_serialized = json.loads(geojson.dumps(_diagram_feature_collection))
             diagram_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
-            trees_feature_collection = GeodesignhubDiagramGeoJSON(geojson=json.loads(json.dumps({"type":"FeatureCollection", "features":[]})))
+            trees_feature_collection = GeodesignhubDiagramGeoJSON(
+                geojson=json.loads(
+                    json.dumps({"type": "FeatureCollection", "features": []})
+                )
+            )
             maptiler_key = os.getenv("maptiler_key", "00000000000000")
             baseline_index_wms_url = my_url_generator.get_baseline_index_wms_url()
             trees_wms_url = my_url_generator.get_trees_wms_url()
@@ -482,7 +512,7 @@ def generate_diagram_shadow():
                 baseline_index_wms_url=baseline_index_wms_url,
                 trees_wms_url=trees_wms_url,
                 view_details=diagram_view_details,
-                trees_feature_collection = trees_feature_collection 
+                trees_feature_collection=trees_feature_collection,
             )
 
             return render_template("diagram_shadow.html", op=asdict(success_response))
@@ -528,7 +558,9 @@ def draw_trees_view():
 
     satellite_ortho_photo_url = my_url_generator.get_ortho_photo_cog_url()
     if satellite_ortho_photo_url:
-        ortho_photo_url = COGLayer(url=satellite_ortho_photo_url, name="Orthogonal Photo", dom_id="ortho_photo")
+        ortho_photo_url = COGLayer(
+            url=satellite_ortho_photo_url, name="Orthogonal Photo", dom_id="ortho_photo"
+        )
         cog_layers.append(ortho_photo_url)
 
     trees_wms_url = my_url_generator.get_trees_wms_url()
@@ -624,7 +656,7 @@ def draw_trees_view():
         maptiler_key=maptiler_key,
         session_id=str(session_id),
         wms_layers=wms_layers,
-        cog_layers= cog_layers,
+        cog_layers=cog_layers,
         view_details=draw_view_details,
         apitoken=apitoken,
         project_id=projectid,

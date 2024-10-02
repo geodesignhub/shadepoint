@@ -7,14 +7,16 @@ from data_definitions import (
     RoadsShadowOverlap,
     ShadowsRoadsIntersectionRequest,
     TreesDownloadRequest,
-    TreeData,
     RoadsShadowsComputationStartRequest,
-    CanopyDownloadRequest,
     BuildingsDownloadRequest,
     ExistingBuildingsDataShadowGenerationRequest,
     ExistingBuildingsFeatureProperties,
     DrawnTreesShadowGenerationRequest,
+    ErrorResponse,
+    DrawnTreesFeatureProperties,
 )
+from typing import Union
+import geojson
 from dacite import from_dict
 from pyproj import Geod
 import geopandas as gpd
@@ -34,13 +36,49 @@ from shapely import STRtree
 import os
 import hashlib
 
+from geojson import Feature, FeatureCollection, Polygon, LineString, Point
 from dotenv import load_dotenv, find_dotenv
+import logging
+
+logger = logging.getLogger("local-climate-response")
 
 load_dotenv(find_dotenv())
 ENV_FILE = find_dotenv()
 if ENV_FILE:
     load_dotenv(ENV_FILE)
 r = get_redis()
+
+
+def get_default_shadow_datetime():
+    current_year = arrow.now().year
+    august_6_date = "{year}-08-06T10:10:00".format(year=current_year)
+    return august_6_date
+
+
+class DrawnTreesProcessor:
+
+    def process_drawn_trees_data(
+        self, unprocessed_tree_geojson
+    ) -> Union[ErrorResponse, FeatureCollection]:
+        """This method buffers the drawn trees GeoJSON as polygon and height"""
+
+        my_geometry_helper = GeometryHelper()
+        _all_features: List[Feature] = []
+        buffered_tree_features = my_geometry_helper.buffer_tree_points(
+            drawn_tree_geojson_features=unprocessed_tree_geojson
+        )
+
+        for _buffered_tree_feature in buffered_tree_features:
+            _geometry = Polygon(coordinates=_buffered_tree_feature["coordinates"])
+            _feature_property = DrawnTreesFeatureProperties(
+                height=10, base_height=0, color="#FF0000", tree_id=str(uuid.uuid4())
+            )
+            _feature = Feature(geometry=_geometry, properties=_feature_property)
+            _all_features.append(_feature)
+
+        _drawn_trees_feature_collection = FeatureCollection(features=_all_features)
+
+        return _drawn_trees_feature_collection
 
 
 def download_roads(roads_download_request: RoadsDownloadRequest):
@@ -80,7 +118,7 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
             fc = download_request.json()
             r.set(roads_storage_key, json.dumps(fc))
         else:
-            print("Error in setting downloaded roads to local memory")
+            logger.error("Error in setting downloaded roads to local memory")
             r.set(
                 roads_storage_key,
                 json.dumps({"type": "FeatureCollection", "features": []}),
@@ -129,7 +167,7 @@ def download_trees(trees_download_request: TreesDownloadRequest):
             fc = download_request.json()
             r.set(trees_storage_key, json.dumps(fc))
         else:
-            print("Error")
+            logger.error("Error")
             r.set(
                 trees_storage_key,
                 json.dumps({"type": "FeatureCollection", "features": []}),
@@ -189,7 +227,7 @@ def download_existing_buildings(buildings_download_request: BuildingsDownloadReq
 
             r.set(buildings_storage_key, json.dumps(fc))
         else:
-            print("Error")
+            logger.error("Error")
             r.set(
                 buildings_storage_key,
                 json.dumps({"type": "FeatureCollection", "features": []}),
@@ -199,37 +237,52 @@ def download_existing_buildings(buildings_download_request: BuildingsDownloadReq
     return fc
 
 
-def create_point_grid(geojson_feature):
-    """This function takes a policy polygon feature and generates a point grid"""
+class GeometryHelper:
 
-    x_spacing = 0.001  # The point spacing you want
-    y_spacing = 0.001
-    df = gpd.GeoDataFrame.from_features([geojson_feature])
+    def buffer_tree_points(self, drawn_tree_geojson_features):
+        print(type(drawn_tree_geojson_features))
+        print(type(drawn_tree_geojson_features[0]))
+        print(drawn_tree_geojson_features)
+        df = gpd.GeoDataFrame.from_features(drawn_tree_geojson_features)
+        print(df)
+        df["geometry"] = df["geometry"].buffer(0.00005)
+        point_json = df.to_json()
+        buffered_point_gj = json.loads(point_json)
+        return buffered_point_gj
 
-    (
-        xmin,
-        ymin,
-        xmax,
-        ymax,
-    ) = df.total_bounds  # Find the bounds of all polygons in the df
-    xcoords = [c for c in np.arange(xmin, xmax, x_spacing)]  # Create x coordinates
-    ycoords = [c for c in np.arange(ymin, ymax, y_spacing)]  # And y
+    def create_point_grid(self, geojson_feature):
+        """This function takes a policy polygon feature and generates a point grid"""
 
-    coordinate_pairs = np.array(np.meshgrid(xcoords, ycoords)).T.reshape(
-        -1, 2
-    )  # Create all combinations of xy coordinates
-    geometries = gpd.points_from_xy(
-        coordinate_pairs[:, 0], coordinate_pairs[:, 1]
-    )  # Create a list of shapely points
+        x_spacing = 0.001  # The point spacing you want
+        y_spacing = 0.001
+        df = gpd.GeoDataFrame.from_features([geojson_feature])
 
-    point_df = gpd.GeoDataFrame(geometry=geometries, crs=df.crs)  # Create the point df
-    point_df["geometry"] = point_df["geometry"].buffer(0.00005)
-    point_json = point_df.to_json()
-    point_gj = json.loads(point_json)
-    # TODO Filter the points to keep within bounds of the polygon
-    # filtered_points = df.within(df.at[0,'geometry'])
-    # print(filtered_points)
-    return point_gj
+        (
+            xmin,
+            ymin,
+            xmax,
+            ymax,
+        ) = df.total_bounds  # Find the bounds of all polygons in the df
+        xcoords = [c for c in np.arange(xmin, xmax, x_spacing)]  # Create x coordinates
+        ycoords = [c for c in np.arange(ymin, ymax, y_spacing)]  # And y
+
+        coordinate_pairs = np.array(np.meshgrid(xcoords, ycoords)).T.reshape(
+            -1, 2
+        )  # Create all combinations of xy coordinates
+        geometries = gpd.points_from_xy(
+            coordinate_pairs[:, 0], coordinate_pairs[:, 1]
+        )  # Create a list of shapely points
+
+        point_df = gpd.GeoDataFrame(
+            geometry=geometries, crs=df.crs
+        )  # Create the point df
+        point_df["geometry"] = point_df["geometry"].buffer(0.00005)
+        point_json = point_df.to_json()
+        point_gj = json.loads(point_json)
+        # TODO Filter the points to keep within bounds of the polygon
+        # filtered_points = df.within(df.at[0,'geometry'])
+        # logger.info(filtered_points)
+        return point_gj
 
 
 def kickoff_gdh_roads_shadows_stats(roads_shadow_computation_start):
@@ -260,7 +313,7 @@ def kickoff_gdh_roads_shadows_stats(roads_shadow_computation_start):
     compute_road_shadow_overlap(
         roads_shadows_data=asdict(shadow_roads_intersection_data)
     )
-    # print(shadow_roads_intersection_data)
+    # logger.info(shadow_roads_intersection_data)
 
 
 def kickoff_existing_buildings_roads_shadows_stats(roads_shadow_computation_start):
@@ -292,63 +345,37 @@ def kickoff_existing_buildings_roads_shadows_stats(roads_shadow_computation_star
     compute_road_shadow_overlap(
         roads_shadows_data=asdict(shadow_roads_intersection_data)
     )
-    # print(shadow_roads_intersection_data)
+    # logger.info(shadow_roads_intersection_data)
 
 
+def drawn_trees_compute_shadow(tree_processing_payload: dict):
+    """This method computes the shadow of drawn trees"""
 
-def draw_trees_compute_shadow(geojson_session_date_time: dict):
-    """This method computes """
     _drawn_trees_shadow_request = from_dict(
         data_class=DrawnTreesShadowGenerationRequest,
-        data=geojson_session_date_time,
+        data=tree_processing_payload,
     )
 
+    # buffer them
+    my_drawn_trees_helper = DrawnTreesProcessor()
+    _processed_trees = my_drawn_trees_helper.process_drawn_trees_data(
+        unprocessed_tree_geojson=_drawn_trees_shadow_request.trees
+    )
+
+    _drawn_trees_shadow_request.processed_trees = _processed_trees
     _date_time = arrow.get(_drawn_trees_shadow_request.request_date_time).isoformat()
 
-    trees = gpd.GeoDataFrame.from_features(
-        _drawn_trees_shadow_request.trees["features"]
-    )
+    processed_trees_serialzed = json.loads(geojson.dumps(_processed_trees))
+    trees = gpd.GeoDataFrame.from_features(processed_trees_serialzed["features"])
     _pd_date_time = pd.to_datetime(_date_time).tz_convert("UTC")
-
-    shadows = pybdshadow.bdshadow_sunlight(trees, _pd_date_time)
+    _shadow_date_time = get_default_shadow_datetime()
+    shadows = pybdshadow.bdshadow_sunlight(trees, _shadow_date_time)
     dissolved_shadows = shadows.dissolve()
-    redis_key = (
-        _drawn_trees_shadow_request.session_id
-        + ":"
-        + _drawn_trees_shadow_request.request_date_time
-        + "_drawn_trees_shadow"
-    )
+    redis_key = _drawn_trees_shadow_request.session_id + "_drawn_trees_shadow"
     r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
     r.expire(redis_key, time=6000)
     time.sleep(7)
-    print("Job Completed...")
-
-
-def compute_shadow(geojson_session_date_time: dict):
-    _diagramid_building_date_time = from_dict(
-        data_class=GeodesignhubDataShadowGenerationRequest,
-        data=geojson_session_date_time,
-    )
-
-    _date_time = arrow.get(_diagramid_building_date_time.request_date_time).isoformat()
-
-    buildings = gpd.GeoDataFrame.from_features(
-        _diagramid_building_date_time.buildings["features"]
-    )
-    _pd_date_time = pd.to_datetime(_date_time).tz_convert("UTC")
-
-    shadows = pybdshadow.bdshadow_sunlight(buildings, _pd_date_time)
-    dissolved_shadows = shadows.dissolve()
-    redis_key = (
-        _diagramid_building_date_time.session_id
-        + ":"
-        + _diagramid_building_date_time.request_date_time
-        + "_gdh_buildings_canopy_shadow"
-    )
-    r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
-    r.expire(redis_key, time=6000)
-    time.sleep(7)
-    print("Job Completed")
+    logger.info("Job Completed...")
 
 
 def compute_existing_buildings_shadow_with_tree_canopy(geojson_session_date_time: dict):
@@ -396,7 +423,7 @@ def compute_existing_buildings_shadow_with_tree_canopy(geojson_session_date_time
     r.set(redis_key, dissolved_shadows.to_json())
     r.expire(redis_key, time=6000)
     time.sleep(7)
-    print("Existing Buildings + Canopy Shadow Completed")
+    logger.info("Existing Buildings + Canopy Shadow Completed")
 
 
 def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
@@ -438,7 +465,7 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
     r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
     r.expire(redis_key, time=6000)
     time.sleep(7)
-    print("Job Completed")
+    logger.info("Job Completed")
 
 
 def compute_polygon_area(polygon: Polygon):
@@ -477,7 +504,7 @@ def compute_road_shadow_overlap(
             line = MultiLineString(line_feature["geometry"]["coordinates"])
         all_roads.append(line)
         segment_length = geod.geometry_length(line)
-        print(
+        logger.info(
             "Segment Length {segment_length:.3f}".format(segment_length=segment_length)
         )
         total_length += segment_length
@@ -497,7 +524,7 @@ def compute_road_shadow_overlap(
             poly_area = compute_polygon_area(s)
         else:
             raise IOError("Shape is not a polygon.")
-        print("Shadow Area {poly_area:.3f}".format(poly_area=poly_area))
+        logger.info("Shadow Area {poly_area:.3f}".format(poly_area=poly_area))
         total_shadow_area += poly_area
 
         all_shadows.append(s)
@@ -515,7 +542,7 @@ def compute_road_shadow_overlap(
             intersection = relevant_road.intersection(current_s)
             intersection_length = geod.geometry_length(intersection)
 
-            print(
+            logger.info(
                 "Intersection Length {intersection_length:.3f}".format(
                     intersection_length=intersection_length
                 )
@@ -533,4 +560,4 @@ def compute_road_shadow_overlap(
 
     r.set(job_id, json.dumps(asdict(road_shadow_overlap)))
     time.sleep(1)
-    print("Intersection Completed")
+    logger.info("Intersection Completed")

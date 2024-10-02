@@ -1,5 +1,7 @@
 import redis
 from os import environ as env
+import logging
+logger = logging.getLogger("local-climate-response")
 
 def get_redis():
     # A method to get the redis instance and is used globally
