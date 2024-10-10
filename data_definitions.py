@@ -63,9 +63,10 @@ class TreeFeatureProperties:
 
 @dataclass
 class DrawnTreesFeatureProperties:
+    # Use building_id instead of tree_id
     height: float
     base_height: float
-    tree_id: str
+    building_id: str
     color: str
 
 

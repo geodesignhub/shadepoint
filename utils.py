@@ -35,7 +35,6 @@ from conn import get_redis
 from shapely import STRtree
 import os
 import hashlib
-
 from geojson import Feature, FeatureCollection, Polygon, LineString, Point
 from dotenv import load_dotenv, find_dotenv
 import logging
@@ -67,13 +66,13 @@ class DrawnTreesProcessor:
         buffered_tree_features = my_geometry_helper.buffer_tree_points(
             drawn_tree_geojson_features=unprocessed_tree_geojson
         )
-
-        for _buffered_tree_feature in buffered_tree_features:
-            _geometry = Polygon(coordinates=_buffered_tree_feature["coordinates"])
+        for _buffered_tree_feature in buffered_tree_features['features']:
+            _geometry = Polygon(coordinates=_buffered_tree_feature["geometry"]["coordinates"])
+            # We must use Building_id in the properties
             _feature_property = DrawnTreesFeatureProperties(
-                height=10, base_height=0, color="#FF0000", tree_id=str(uuid.uuid4())
+                height=10, base_height=0, color="#FF0000", building_id=str(uuid.uuid4())
             )
-            _feature = Feature(geometry=_geometry, properties=_feature_property)
+            _feature = Feature(geometry=_geometry, properties=asdict(_feature_property))
             _all_features.append(_feature)
 
         _drawn_trees_feature_collection = FeatureCollection(features=_all_features)
@@ -240,14 +239,11 @@ def download_existing_buildings(buildings_download_request: BuildingsDownloadReq
 class GeometryHelper:
 
     def buffer_tree_points(self, drawn_tree_geojson_features):
-        print(type(drawn_tree_geojson_features))
-        print(type(drawn_tree_geojson_features[0]))
-        print(drawn_tree_geojson_features)
         df = gpd.GeoDataFrame.from_features(drawn_tree_geojson_features)
-        print(df)
         df["geometry"] = df["geometry"].buffer(0.00005)
         point_json = df.to_json()
-        buffered_point_gj = json.loads(point_json)
+        buffered_point_gj = json.loads(point_json)      
+
         return buffered_point_gj
 
     def create_point_grid(self, geojson_feature):
@@ -367,10 +363,11 @@ def drawn_trees_compute_shadow(tree_processing_payload: dict):
 
     processed_trees_serialzed = json.loads(geojson.dumps(_processed_trees))
     trees = gpd.GeoDataFrame.from_features(processed_trees_serialzed["features"])
-    _pd_date_time = pd.to_datetime(_date_time).tz_convert("UTC")
     _shadow_date_time = get_default_shadow_datetime()
-    shadows = pybdshadow.bdshadow_sunlight(trees, _shadow_date_time)
+    _pd_date_time = pd.to_datetime(_shadow_date_time).tz_localize("UTC")
+    shadows = pybdshadow.bdshadow_sunlight(trees, _pd_date_time)
     dissolved_shadows = shadows.dissolve()
+    
     redis_key = _drawn_trees_shadow_request.session_id + "_drawn_trees_shadow"
     r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
     r.expire(redis_key, time=6000)

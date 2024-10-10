@@ -53,9 +53,9 @@ def notify_drawn_trees_shadow_complete(job, connection, result, *args, **kwargs)
     app, babel = create_app()
     with app.app_context():
         time.sleep(3)
-        sse.publish({"roads_key": job_id}, type="roads_download_success")
-
-    logger.info("Job with id %s downloaded roads data successfully.." % str(job.id))
+        sse.publish({"drawn_trees_shadow_job_id": job_id}, type="drawn_trees_shadow_success")
+    
+    logger.info("Job with id %s for computing drawn shadow completed successfully.." % str(job.id))
 
 
 def notify_drawn_trees_shadow_failure(job, connection, result, *args, **kwargs):
@@ -65,7 +65,7 @@ def notify_drawn_trees_shadow_failure(job, connection, result, *args, **kwargs):
     app, babel = create_app()
     with app.app_context():
         time.sleep(3)
-        sse.publish({"roads_key": job_id}, type="roads_download_success")
+        sse.publish({"drawn_trees_shadow_key": job_id}, type="drawn_trees_shadow_failure")
 
     logger.info("Job with id %s downloaded roads data successfully.." % str(job.id))
 

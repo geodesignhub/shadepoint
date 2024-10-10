@@ -219,6 +219,7 @@
 
     draw.start();
     let TreeEditingFactory = function () {
+        let session_id = uuidv4()
 
         this.add_tree = function () {
             draw.setMode("point");
@@ -278,9 +279,15 @@
             clear_shadows_control.classList.add('d-none');
 
         }
+        this.update_session_id = function(){
+            session_id = uuidv4();
+        }
+        this.get_session_id = function(){
+            return session_id;
+        }
 
         this.send_generate_shadow_request = function (snapshot) {
-            let session_id = uuidv4();
+            
             let post_shadow_url = window.location.origin + '/generate_drawn_trees_shadow?session_id=' + session_id;
             fetch(post_shadow_url, {
                 method: "post",
@@ -297,8 +304,6 @@
             })
                 .then((response) => {
                     //do something awesome that makes the world a better place
-                    console.log(response);
-                    console.log("Submitted...");
                 });
 
         }
@@ -325,8 +330,9 @@
         // 'delete'
         // 'styling'
 
-        if (['create', 'delete'].includes(type)) {
+        if (['create', 'delete', 'move'].includes(type)) {
             tree_editing_control.update_tree_count();
+            tree_editing_control.update_session_id();
         }
     });
     draw.on('select', (id) => {
@@ -450,28 +456,29 @@
                 get_downloaded_roads(roads_download_url);
             }
         }, false);
+        source.addEventListener('drawn_trees_shadow_success', function (event) {
+            let room = tree_editing_control.get_session_id();
+
+            var data = JSON.parse(event.data);
+            // do what you want with this data
+            
+            let drawn_trees_shadow_job_id = data['drawn_trees_shadow_job_id'];
+            
+            let session_id = drawn_trees_shadow_job_id.split(':')[0];
+            
+            if (session_id === room) {
+                let drawn_trees_shadow_key = session_id + '_drawn_trees_shadow';
+                // The message is for the current sesion, download the data...
+                let drawn_trees_download_url = window.location.origin + '/get_drawn_trees_shadows?drawn_trees_shadows_key=' + drawn_trees_shadow_key;
+                get_drawn_trees_shadows(drawn_trees_download_url);
+            }
+        }, false);
     });
 
     function clear_computed_shadows() {
         let empty_fc = { "type": "FeatureCollection", "features": [] };
         map.getSource('building_shadows').setData(empty_fc);
     }
-
-    function get_processed_shadow_computation(session_id) {
-        let empty_fc = { "type": "FeatureCollection", "features": [] };
-        map.getSource('building_shadows').setData(empty_fc);
-        let url = window.location.origin + '/compute_existing_drawn_shadows?bounds=' + bounds + '&session_id=' + session_id + '&shadow_datetime=' + shadow_datetime;
-        fetch(url)
-            .then((response) => {
-                return response.json();
-            })
-            .then((success_data) => {
-
-            }).catch((error) => {
-                console.log(error);
-            });
-    }
-
 
 </script>
 {% endif %}

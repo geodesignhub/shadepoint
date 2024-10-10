@@ -55,6 +55,25 @@ function get_existing_building_shadow(shadow_download_url) {
         });
 }
 
+
+function get_drawn_trees_shadows(drawn_trees_download_url) {
+    
+    fetch(drawn_trees_download_url)
+        .then((response) => {
+            return response.json();
+        })
+        .then((shadow_data) => {
+            let spinner_cont = document.getElementById('shadow_spinner');
+            spinner_cont.classList.add('d-none');                
+            let shadows_to_render = shadow_data;
+            
+            map.getSource('tree_shadows').setData(JSON.parse(shadows_to_render));
+            // map.getSource('existing_building_shadows').setData(shadows_to_render);
+        }).catch((error) => {
+            console.log(error);
+        });
+}
+
 function get_downloaded_tree_canpoy(trees_url) {
 
     fetch(trees_url)

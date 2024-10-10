@@ -35,7 +35,7 @@ from download_helper import (
     GeodesignhubDataDownloader,
     ShadowComputationHelper,
     RoadsDownloadFactory,
-    kickoff_drawn_trees_shadow_job
+    kickoff_drawn_trees_shadow_job,
 )
 import arrow
 import uuid
@@ -44,6 +44,7 @@ from config import wms_url_generator
 
 
 import logging
+
 logger = logging.getLogger("local-climate-response")
 
 
@@ -396,11 +397,11 @@ def generate_design_shadow():
 @app.route("/get_drawn_trees_shadows", methods=["GET"])
 def get_drawn_trees_shadows():
     trees_key = request.args.get("drawn_trees_shadows_key", "0")
+    
     trees_session_exists = redis.exists(trees_key)
     if trees_session_exists:
-        trees_data_key = redis.get(trees_key)
-        r_raw = redis.get(trees_data_key)
-        trees = json.loads(r_raw.decode("utf-8"))
+        trees_data_raw = redis.get(trees_key)
+        trees = json.loads(trees_data_raw.decode("utf-8"))
     else:
         trees = {"type": "FeatureCollection", "features": []}
 
@@ -412,15 +413,13 @@ def get_drawn_trees_shadows():
 @app.route("/generate_drawn_trees_shadow/", methods=["POST"])
 def generate_drawn_trees_shadow():
     geojson_payload = request.get_json()
-    
+
     unprocessed_tree_geojson = geojson_payload["unprocessed_tree_geojson"]
-    session_id = request.args.get('session_id')
-    
+    session_id = request.args.get("session_id")
+
     kickoff_drawn_trees_shadow_job(
-        unprocessed_drawn_trees=unprocessed_tree_geojson,
-        session_id = session_id
+        unprocessed_drawn_trees=unprocessed_tree_geojson, session_id=session_id
     )
-    
 
     return Response({}, status=200, mimetype=MIMETYPE)
 
@@ -489,8 +488,7 @@ def generate_diagram_shadow():
                     json.dumps({"type": "FeatureCollection", "features": []})
                 )
             )
-            maptiler_key = os.getenv("maptiler_key", "00000000000000")
-            baseline_index_wms_url = my_url_generator.get_baseline_index_wms_url()
+            maptiler_key = os.getenv("maptiler_key", "00000000000000")            
             trees_wms_url = my_url_generator.get_trees_wms_url()
             shadow_computation_helper = ShadowComputationHelper(
                 session_id=str(session_id),
@@ -509,7 +507,6 @@ def generate_diagram_shadow():
                 maptiler_key=maptiler_key,
                 session_id=str(session_id),
                 shadow_date_time=shadow_date_time,
-                baseline_index_wms_url=baseline_index_wms_url,
                 trees_wms_url=trees_wms_url,
                 view_details=diagram_view_details,
                 trees_feature_collection=trees_feature_collection,
