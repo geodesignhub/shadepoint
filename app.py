@@ -5,6 +5,7 @@ from flask import session, redirect, url_for
 from conn import get_redis
 from dotenv import load_dotenv, find_dotenv
 from dashboard import create_app
+from dashboard.configurations.data_helper import ViewDataGenerator
 import json
 from rq import Queue
 from worker import conn
@@ -326,6 +327,9 @@ def generate_design_shadow():
         august_6_date = "{year}-08-06T10:10:00".format(year=current_year)
         shadow_date_time = august_6_date
 
+    wms_layers: List[WMSLayer] = []
+    cog_layers: List[COGLayer] = []
+
     session_id = uuid.uuid4()
     my_geodesignhub_downloader = GeodesignhubDataDownloader(
         session_id=session_id,
@@ -376,8 +380,7 @@ def generate_design_shadow():
 
     # Download Data
     maptiler_key = os.getenv("maptiler_key", "00000000000000")
-
-    trees_wms_url = my_url_generator.get_trees_wms_url()
+    
     success_response = ShadowViewSuccessResponse(
         status=1,
         message="Data from Geodesignhub retrieved",
@@ -387,8 +390,9 @@ def generate_design_shadow():
         maptiler_key=maptiler_key,
         session_id=str(session_id),
         shadow_date_time=shadow_date_time,
-        trees_wms_url=trees_wms_url,
         view_details=design_view_details,
+        wms_layers=wms_layers,
+        cog_layers=cog_layers,
     )
 
     return render_template("design_shadow.html", op=asdict(success_response))
@@ -489,7 +493,9 @@ def generate_diagram_shadow():
                 )
             )
             maptiler_key = os.getenv("maptiler_key", "00000000000000")            
-            trees_wms_url = my_url_generator.get_trees_wms_url()
+            my_view_helper = ViewDataGenerator(view_type='tree_shadow_analysis',project_id= projectid)
+            wms_layers_list = my_view_helper.generate_wms_layers_list()
+            cog_layers_list = my_view_helper.generate_cog_layers_list()
             shadow_computation_helper = ShadowComputationHelper(
                 session_id=str(session_id),
                 design_diagram_geojson=gj_serialized,
@@ -507,7 +513,8 @@ def generate_diagram_shadow():
                 maptiler_key=maptiler_key,
                 session_id=str(session_id),
                 shadow_date_time=shadow_date_time,
-                trees_wms_url=trees_wms_url,
+                cog_layers= cog_layers_list.layers, 
+                wms_layers=wms_layers_list.layers,
                 view_details=diagram_view_details,
                 trees_feature_collection=trees_feature_collection,
             )
