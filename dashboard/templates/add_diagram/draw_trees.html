@@ -41,6 +41,15 @@
                 <input type="checkbox" class="btn-check" id="{{cog_layer['dom_id']}}" autocomplete="off" checked>
                 <label class="btn btn-outline-primary" for="{{cog_layer['dom_id']}}">{{ cog_layer['name']}}</label>
                 {% endfor %}
+                {% for fgb_layer in op['fgb_layers'] %}
+                <input type="checkbox" class="btn-check" id="{{fgb_layer['dom_id']}}" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="{{fgb_layer['dom_id']}}">{{ fgb_layer['name']}}</label>
+                {% endfor %}
+                {% for pmtiles_layer in op['pmtiles_layers'] %}
+                <input type="checkbox" class="btn-check" id="{{pmtiles_layer['dom_id']}}" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="{{pmtiles_layer['dom_id']}}">{{
+                    pmtiles_layer['name']}}</label>
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -139,6 +148,13 @@
 {% if op['cog_layers'] %}
 <script type="text/javascript" src="{{ url_for('static', filename='js/cog/cog-protocol.min.js') }}"></script>
 {% endif %}
+{% if op['fgb_layers'] %}
+<script type="text/javascript" src="{{ url_for('static', filename='js/fgb/flatgeobuf-geojson.min.js') }}"></script>
+{% endif %}
+{% if op['pmtiles_layers'] %}
+<script type="text/javascript" src="{{ url_for('static', filename='js/pmtiles/pmtiles.js') }}"></script>
+{% endif %}
+
 
 <script type="text/javascript">
     let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -156,10 +172,11 @@
     var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
     var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
     var bounds = new maplibregl.LngLatBounds(southWest, northEast);
-    let existing_canopy_source = '{{op["trees_wms_url"]|safe}}';
-    let satellite_source = '{{op["satellite_wms_url"]|safe}}';
+
     let wms_layers = project_detail['wms_layers'];
     let cog_layers = project_detail['cog_layers'];
+    let fgb_layers = project_detail['fgb_layers'];
+    let pmtiles_layers = project_detail['pmtiles_layers'];
     // input nodes map
     let map = new maplibregl.Map({
         container: 'map', // container id  
@@ -169,8 +186,16 @@
         zoom: 12, // starting zoom
         maxZoom: 23,
     });
+    if (cog_layers.length > 0) {
+        maplibregl.addProtocol('cog', MaplibreCOGProtocol.cogProtocol);
+    }
 
-    maplibregl.addProtocol('cog', MaplibreCOGProtocol.cogProtocol);
+    if (pmtiles_layers.length > 0) {
+        let pmtiles_protocol = new pmtiles.Protocol({ metadata: true });
+        maplibregl.addProtocol("pmtiles", pmtiles_protocol.tile);
+
+    }
+
     map.addControl(new maplibreGLMeasures.default({}), 'top-left');
 
     map.addControl(
@@ -181,11 +206,21 @@
         })
     );
     document.getElementById('listing-group').addEventListener('change', function (e) {
-        var handler = e.target.id;
-        if (e.target.checked) {
-            map.setLayoutProperty(handler, 'visibility', 'visible');
-        } else {
-            map.setLayoutProperty(handler, 'visibility', 'none');
+        var map_layer = e.target.id;
+        let map_layer_line_id = map_layer + "_lines";
+        let map_layer_point_id = map_layer + "_points";
+
+        let all_ids = [map_layer, map_layer_line_id, map_layer_point_id];
+
+        for (let index = 0; index < all_ids.length; index++) {
+            const map_source_id = all_ids[index];
+            if (map.getLayer(map_source_id)) {
+                if (e.target.checked) {
+                    map.setLayoutProperty(map_source_id, 'visibility', 'visible');
+                } else {
+                    map.setLayoutProperty(map_source_id, 'visibility', 'none');
+                }
+            }
         }
     });
     // Create Terra Draw
@@ -279,15 +314,15 @@
             clear_shadows_control.classList.add('d-none');
 
         }
-        this.update_session_id = function(){
+        this.update_session_id = function () {
             session_id = uuidv4();
         }
-        this.get_session_id = function(){
+        this.get_session_id = function () {
             return session_id;
         }
 
         this.send_generate_shadow_request = function (snapshot) {
-            
+
             let post_shadow_url = window.location.origin + '/generate_drawn_trees_shadow?session_id=' + session_id;
             fetch(post_shadow_url, {
                 method: "post",
@@ -352,7 +387,7 @@
         let single_tree_deletion_control = document.getElementById('single_tree_deletion_button');
         single_tree_deletion_control.classList.add('d-none');
     });
-    map.on('load', function () {
+    map.on('load', async () => {
 
         map.addSource('tree_shadows', {
             'type': 'geojson',
@@ -413,6 +448,7 @@
         if (cog_layers.length > 0) {
             for (let index = 0; index < cog_layers.length; index++) {
                 const cog_layer = cog_layers[index];
+
                 let source_str = cog_layer.dom_id + "_source";
                 map.addSource(source_str, {
                     'type': 'raster',
@@ -430,9 +466,92 @@
                 );
             }
         }
+        if (pmtiles_layers.length > 0) {
+            for (let index = 0; index < pmtiles_layers.length; index++) {
+                const pmtiles_layer = pmtiles_layers[index];
+                console.log(pmtiles_layer);
+                let source_str = pmtiles_layer.dom_id + "_source";
+                if (pmtiles_layer.layer_type == 'raster') {
+                    map.addSource(source_str, {
+                        'type': 'raster',
+                        'url': 'pmtiles://' + pmtiles_layer['url']
+                    });
+                    map.addLayer(
+                        {
+                            'id': pmtiles_layer['dom_id'],
+                            'source': source_str,
+                            'type': 'raster',
+                            'paint': {}
+                        },
+                        'aeroway_fill'
+                    );
+                }
+            }
+        }
 
 
+        if (fgb_layers.length > 0) {
+            for (let index = 0; index < fgb_layers.length; index++) {
+                const fgb_layer = fgb_layers[index];
+                const geometry_type = fgb_layer['geometry_type'];
+                const response = await fetch(fgb_layer['url']);
+                let source_str = fgb_layer.dom_id + "_source";
+                const fc = { type: "FeatureCollection", features: [] };
+                let i = 0;
+                for await (const f of flatgeobuf.deserialize(response.body, undefined)) {
+                    fc.features.push({ ...f, id: i });
+                    i += 1;
+                }
 
+                map.addSource(source_str, {
+                    type: "geojson",
+                    data: fc,
+                });
+                if (geometry_type == 'polygon') {
+                    map.addLayer({
+                        id: fgb_layer['dom_id'],
+                        type: "fill",
+                        source: source_str,
+                        paint: {
+                            "fill-color": fgb_layer['color'],
+                            "fill-opacity": 0.75,
+                        },
+                    });
+                }
+                else if (geometry_type == 'line') {
+                    map.addLayer({
+                        id: fgb_layer['dom_id'] + "_lines",
+                        type: "line",
+                        source: source_str,
+                        paint: {
+                            "line-color": fgb_layer['color'],
+                            "line-opacity": 0.9,
+                            "line-width": 2,
+                        },
+                    });
+                }
+
+                else if (geometry_type == 'point') {
+                    map.addLayer({
+                        id: fgb_layer['dom_id'] + "_points",
+                        type: 'circle',
+                        source: source_str,
+                        paint: {
+
+                            "circle-blur": 0,
+                            "circle-color": fgb_layer['color'],
+                            "circle-opacity": 0.8,
+                            "circle-radius": 10,
+                            "circle-stroke-color": fgb_layer['color'],
+                            "circle-stroke-opacity": 0.9,
+                            "circle-stroke-width": 1,
+
+                        }
+
+                    });
+                }
+            }
+        }
     });
     const addDiagramModalEl = document.getElementById('addDiagramModal');
     addDiagramModalEl.addEventListener('shown.bs.modal', event => {
@@ -461,11 +580,11 @@
 
             var data = JSON.parse(event.data);
             // do what you want with this data
-            
+
             let drawn_trees_shadow_job_id = data['drawn_trees_shadow_job_id'];
-            
+
             let session_id = drawn_trees_shadow_job_id.split(':')[0];
-            
+
             if (session_id === room) {
                 let drawn_trees_shadow_key = session_id + '_drawn_trees_shadow';
                 // The message is for the current sesion, download the data...

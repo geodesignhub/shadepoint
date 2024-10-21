@@ -11,7 +11,9 @@ from worker import conn
 from dataclasses import asdict
 from data_definitions import (
     ErrorResponse,
+    FGBLayer,
     GeodesignhubDiagramGeoJSON,
+    PMTilesLayer,
     ShadowViewSuccessResponse,
     RoadsShadowOverlap,
     ToolboxDesignViewDetails,
@@ -22,6 +24,8 @@ from data_definitions import (
     DiagramUploadDetails,
     WMSLayer,
     COGLayer,
+    GeometryType,    
+    RasterOrVector
 )
 from flask import render_template, redirect, url_for
 from flask_bootstrap import Bootstrap5
@@ -40,7 +44,7 @@ from download_helper import (
 import arrow
 import uuid
 import geojson
-from config import wms_url_generator
+from config import ExternalLayerUrlGenerator
 
 
 import logging
@@ -208,7 +212,7 @@ def generate_design_flooding_analysis():
             code=400,
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
-    my_url_generator = wms_url_generator(project_id=projectid)
+    my_url_generator = ExternalLayerUrlGenerator(project_id=projectid)
     design_view_details = ToolboxDesignViewDetails(
         project_id=projectid,
         cteam_id=cteamid,
@@ -307,7 +311,7 @@ def generate_design_shadow():
             code=400,
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
-    my_url_generator = wms_url_generator(project_id=projectid)
+    my_url_generator = ExternalLayerUrlGenerator(project_id=projectid)
     design_view_details = ToolboxDesignViewDetails(
         project_id=projectid,
         cteam_id=cteamid,
@@ -397,7 +401,7 @@ def generate_design_shadow():
 @app.route("/get_drawn_trees_shadows", methods=["GET"])
 def get_drawn_trees_shadows():
     trees_key = request.args.get("drawn_trees_shadows_key", "0")
-    
+
     trees_session_exists = redis.exists(trees_key)
     if trees_session_exists:
         trees_data_raw = redis.get(trees_key)
@@ -439,7 +443,7 @@ def generate_diagram_shadow():
             code=400,
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
-    my_url_generator = wms_url_generator(project_id=projectid)
+    my_url_generator = ExternalLayerUrlGenerator(project_id=projectid)
     diagram_view_details = ToolboxDiagramViewDetails(
         api_token=apitoken,
         project_id=projectid,
@@ -488,7 +492,7 @@ def generate_diagram_shadow():
                     json.dumps({"type": "FeatureCollection", "features": []})
                 )
             )
-            maptiler_key = os.getenv("maptiler_key", "00000000000000")            
+            maptiler_key = os.getenv("maptiler_key", "00000000000000")
             trees_wms_url = my_url_generator.get_trees_wms_url()
             shadow_computation_helper = ShadowComputationHelper(
                 session_id=str(session_id),
@@ -543,7 +547,7 @@ def draw_trees_view():
         project_id=projectid,
         apitoken=apitoken,
     )
-    my_url_generator = wms_url_generator(project_id=projectid)
+    my_url_generator = ExternalLayerUrlGenerator(project_id=projectid)
     draw_view_details = ToolboxDrawDiagramViewDetails(
         api_token=apitoken,
         project_id=projectid,
@@ -552,45 +556,60 @@ def draw_trees_view():
 
     wms_layers: List[WMSLayer] = []
     cog_layers: List[COGLayer] = []
+    fgb_layers: List[FGBLayer] = []
+    pmtiles_layers: List[PMTilesLayer] = []
 
-    satellite_ortho_photo_url = my_url_generator.get_ortho_photo_cog_url()
+    satellite_ortho_photo_url = my_url_generator.get_ortho_photo_pmtiles_url()
     if satellite_ortho_photo_url:
-        ortho_photo_url = COGLayer(
-            url=satellite_ortho_photo_url, name="Orthogonal Photo", dom_id="ortho_photo"
+        ortho_photo_pmtiles_layer = PMTilesLayer(
+            url=satellite_ortho_photo_url, name="Ortho Photo", dom_id="ortho_photo", layer_type = RasterOrVector.raster.value
         )
-        cog_layers.append(ortho_photo_url)
+        pmtiles_layers.append(ortho_photo_pmtiles_layer)
 
-    trees_wms_url = my_url_generator.get_trees_wms_url()
-    trees_wms = WMSLayer(url=trees_wms_url, name="Tree Canopy", dom_id="trees_canopy")
-    wms_layers.append(trees_wms)
-    satellite_wms_url = my_url_generator.get_satellite_wms_url()
-    satellite_wms = WMSLayer(
-        url=satellite_wms_url, name="Satellite", dom_id="satellite_layer"
-    )
-    wms_layers.append(satellite_wms)
-    current_bike_network_wms = my_url_generator.get_current_bike_network_wms()
-    proposed_bike_network_wms = my_url_generator.get_proposed_bike_network_wms()
-    bus_stops_wms = my_url_generator.get_existing_bus_stops_wms()
-    if current_bike_network_wms.url != "0":
-        wms_layers.append(current_bike_network_wms)
+    trees_fgb_url = my_url_generator.get_trees_fgb_url()
+    if trees_fgb_url:
+        trees_fgb_layer = FGBLayer(
+            url=trees_fgb_url,
+            name="Existing Trees",
+            dom_id="existing_trees",
+            color="#2e8b57",
+            geometry_type=GeometryType.point.value,
+        )
+        fgb_layers.append(trees_fgb_layer)
 
-    if proposed_bike_network_wms.url != "0":
-        wms_layers.append(proposed_bike_network_wms)
+    canopy_fgb_url = my_url_generator.get_canopy_fgb_url()
+    if canopy_fgb_url:
+        canopy_fgb_layer = FGBLayer(
+            url=canopy_fgb_url,
+            name="Existing Canopy",
+            dom_id="existing_canopy",
+            color="#138808",
+            geometry_type=GeometryType.polygon.value,
+        )
+        fgb_layers.append(canopy_fgb_layer)
 
-    if bus_stops_wms.url != "0":
-        wms_layers.append(bus_stops_wms)
+    existing_roads_fgb_url = my_url_generator.get_existing_roads_fgb_url()
+    if existing_roads_fgb_url:
+        existing_roads_layer = FGBLayer(
+            url=existing_roads_fgb_url,
+            name="Existing Roads",
+            dom_id="existing_roads",
+            color="#1b1b1b",
+            geometry_type=GeometryType.line.value,
+        )
+        fgb_layers.append(existing_roads_layer)
 
-    current_landuse_wms = my_url_generator.get_project_landuse_wms()
-    if current_landuse_wms.url != "0":
-        wms_layers.append(current_landuse_wms)
+    proposed_roads_fgb_url = my_url_generator.get_proposed_roads_fgb_url()
+    if proposed_roads_fgb_url:
+        proposed_roads_layer = FGBLayer(
+            url=proposed_roads_fgb_url,
+            name="Proposed Roads",
+            dom_id="proposed_roads",
+            color="#7b1113",
+            geometry_type=GeometryType.line.value,
+        )
 
-    administrative_boundaries = my_url_generator.get_administrative_boundaries()
-    if administrative_boundaries.url != "0":
-        wms_layers.append(administrative_boundaries)
-
-    conservation_buildings = my_url_generator.get_conservation_buildings()
-    if conservation_buildings.url != "0":
-        wms_layers.append(conservation_buildings)
+        fgb_layers.append(proposed_roads_layer)
 
     project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
     if not project_data:
@@ -654,6 +673,8 @@ def draw_trees_view():
         session_id=str(session_id),
         wms_layers=wms_layers,
         cog_layers=cog_layers,
+        fgb_layers=fgb_layers,
+        pmtiles_layers = pmtiles_layers, 
         view_details=draw_view_details,
         apitoken=apitoken,
         project_id=projectid,

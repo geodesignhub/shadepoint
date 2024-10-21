@@ -54,7 +54,7 @@ from json import encoder
 from rq import Queue
 from rq.job import Dependency
 from worker import conn
-from config import wms_url_generator
+from config import ExternalLayerUrlGenerator
 import arrow
 import logging
 
@@ -515,7 +515,7 @@ class RoadsDownloadFactory:
 
     def start_download_roads_job(self):
 
-        my_url_generator = wms_url_generator(project_id=self.project_id)
+        my_url_generator = ExternalLayerUrlGenerator(project_id=self.project_id)
         r_url = my_url_generator.get_roads_url()
 
         roads_download_job = RoadsDownloadRequest(
@@ -550,7 +550,7 @@ class ShadowComputationHelper:
 
     def compute_gdh_buildings_shadow(self):
         """This method computes the shadow for existing or GDH buidlings"""
-        my_url_generator = wms_url_generator(project_id=self.project_id)
+        my_url_generator = ExternalLayerUrlGenerator(project_id=self.project_id)
         r_url = my_url_generator.get_roads_url()
 
         try:

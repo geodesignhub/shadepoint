@@ -20,9 +20,21 @@ apisettings = {
 }
 
 
-class wms_url_generator:
+class ExternalLayerUrlGenerator:
     def __init__(self, project_id):
         self.project_id = project_id
+
+    def get_ortho_photo_pmtiles_url(self):
+
+        project_specific_url = "ORTHO_PHOTO_{project_id}_PMTILES_URL".format(
+            project_id=self.project_id
+        )
+        if environ.get(project_specific_url, None) is not None:
+            ortho_photo_url = environ.get(project_specific_url)
+        else:
+            ortho_photo_url = environ.get("ORTHO_PHOTO_PMTILES_URL", 0)
+
+        return ortho_photo_url
 
     def get_ortho_photo_cog_url(self):
 
@@ -32,9 +44,57 @@ class wms_url_generator:
         if environ.get(project_specific_url, None) is not None:
             ortho_photo_url = environ.get(project_specific_url)
         else:
-            ortho_photo_url = environ.get("ORTHO_PHOTO_COG_URL", "0")
+            ortho_photo_url = environ.get("ORTHO_PHOTO_COG_URL", 0)
 
         return ortho_photo_url
+
+    def get_trees_fgb_url(self):
+
+        project_specific_url = "TREES_{project_id}_FGB_URL".format(
+            project_id=self.project_id
+        )
+        if environ.get(project_specific_url, None) is not None:
+            tress_fgb_url = environ.get(project_specific_url)
+        else:
+            tress_fgb_url = environ.get("TREES_FGB_URL", 0)
+
+        return tress_fgb_url
+
+    def get_canopy_fgb_url(self):
+
+        project_specific_url = "CANOPY_{project_id}_FGB_URL".format(
+            project_id=self.project_id
+        )
+        if environ.get(project_specific_url, None) is not None:
+            canopy_fgb_url = environ.get(project_specific_url)
+        else:
+            canopy_fgb_url = environ.get("CANOPY_FGB_URL", 0)
+
+        return canopy_fgb_url
+
+    def get_existing_roads_fgb_url(self):
+
+        project_specific_url = "EXISTING_ROADS_{project_id}_FGB_URL".format(
+            project_id=self.project_id
+        )
+        if environ.get(project_specific_url, None) is not None:
+            existing_roads_fgb_url = environ.get(project_specific_url)
+        else:
+            existing_roads_fgb_url = environ.get("EXISTING_ROADS_FGB_URL", 0)
+
+        return existing_roads_fgb_url
+
+    def get_proposed_roads_fgb_url(self):
+
+        project_specific_url = "PROPOSED_ROADS_{project_id}_FGB_URL".format(
+            project_id=self.project_id
+        )
+        if environ.get(project_specific_url, None) is not None:
+            proposed_roads_fgb_url = environ.get(project_specific_url)
+        else:
+            proposed_roads_fgb_url = environ.get("PROPOSED_ROADS_FGB_URL", 0)
+
+        return proposed_roads_fgb_url
 
     def get_trees_wms_url(self):
         project_specific_url = "WMS_{project_id}_EXISTING_TREES_URL".format(
@@ -43,18 +103,7 @@ class wms_url_generator:
         if environ.get(project_specific_url, None) is not None:
             trees_wms_url = environ.get(project_specific_url)
         else:
-            trees_wms_url = environ.get("WMS_EXISTING_TREES_URL", "0")
-
-        return trees_wms_url
-
-    def get_satellite_wms_url(self):
-        project_specific_url = "WMS_{project_id}_SATELLITE_URL".format(
-            project_id=self.project_id
-        )
-        if environ.get(project_specific_url, None) is not None:
-            trees_wms_url = environ.get(project_specific_url)
-        else:
-            trees_wms_url = environ.get("WMS_SATELLITE_URL", "0")
+            trees_wms_url = environ.get("WMS_EXISTING_TREES_URL", 0)
 
         return trees_wms_url
 
@@ -65,7 +114,7 @@ class wms_url_generator:
         if environ.get(project_specific_baseline_index_url, None) is not None:
             baseline_index_url = environ.get(project_specific_baseline_index_url)
         else:
-            baseline_index_url = environ.get("WMS_BASELINE_SHADOW_INDEX", "0")
+            baseline_index_url = environ.get("WMS_BASELINE_SHADOW_INDEX", 0)
 
         return baseline_index_url
 
@@ -80,7 +129,7 @@ class wms_url_generator:
                 project_specific_flood_vulnerability_wms_url
             )
         else:
-            flood_vulnerability_url = environ.get("WMS_BASELINE_SHADOW_INDEX", "0")
+            flood_vulnerability_url = environ.get("WMS_BASELINE_SHADOW_INDEX", 0)
 
         return flood_vulnerability_url
 
@@ -91,7 +140,7 @@ class wms_url_generator:
         if environ.get(project_specific_url, None) is not None:
             current_bike_network_url = environ.get(project_specific_url)
         else:
-            current_bike_network_url = environ.get("WMS_CURRENT_BIKE_NETWORK_URL", "0")
+            current_bike_network_url = environ.get("WMS_CURRENT_BIKE_NETWORK_URL", 0)
         current_bike_network = WMSLayer(
             url=current_bike_network_url,
             name="Current Bike Network",
@@ -107,9 +156,7 @@ class wms_url_generator:
         if environ.get(project_specific_url, None) is not None:
             proposed_bike_network_url = environ.get(project_specific_url)
         else:
-            proposed_bike_network_url = environ.get(
-                "WMS_PROPOSED_BIKE_NETWORK_URL", "0"
-            )
+            proposed_bike_network_url = environ.get("WMS_PROPOSED_BIKE_NETWORK_URL", 0)
         proposed_bike_network = WMSLayer(
             url=proposed_bike_network_url,
             name="Proposed Bike Network",
@@ -125,7 +172,7 @@ class wms_url_generator:
         if environ.get(project_specific_url, None) is not None:
             bus_stops_url = environ.get(project_specific_url)
         else:
-            bus_stops_url = environ.get("WMS_BUS_STOPS_URL", "0")
+            bus_stops_url = environ.get("WMS_BUS_STOPS_URL", 0)
         current_bike_network = WMSLayer(
             url=bus_stops_url,
             name="Bus Stops",
@@ -144,7 +191,7 @@ class wms_url_generator:
         if environ.get(project_specific_url, None) is not None:
             trees_wms_url = environ.get(project_specific_url)
         else:
-            trees_wms_url = environ.get("ROADS_URL", "0")
+            trees_wms_url = environ.get("FULL_ROADS_GEOSJON_URL", 0)
 
         return trees_wms_url
 
@@ -158,7 +205,7 @@ class wms_url_generator:
         if environ.get(project_specific_url, None) is not None:
             landuse_wms_url = environ.get(project_specific_url)
         else:
-            landuse_wms_url = environ.get("LANDUSE_URL", "0")
+            landuse_wms_url = environ.get("LANDUSE_URL", 0)
 
         landuse_wms = WMSLayer(
             url=landuse_wms_url,
@@ -175,7 +222,7 @@ class wms_url_generator:
         if environ.get(project_specific_url, None) is not None:
             bus_stops_url = environ.get(project_specific_url)
         else:
-            bus_stops_url = environ.get("WMS_ADMINISTRATIVE_BOUNDARIES_URL", "0")
+            bus_stops_url = environ.get("WMS_ADMINISTRATIVE_BOUNDARIES_URL", 0)
         current_bike_network = WMSLayer(
             url=bus_stops_url,
             name="Statistical Areas",
@@ -191,7 +238,7 @@ class wms_url_generator:
         if environ.get(project_specific_url, None) is not None:
             bus_stops_url = environ.get(project_specific_url)
         else:
-            bus_stops_url = environ.get("WMS_CONSERVATION_BOUNDARIES_URL", "0")
+            bus_stops_url = environ.get("WMS_CONSERVATION_BOUNDARIES_URL", 0)
         current_bike_network = WMSLayer(
             url=bus_stops_url,
             name="Conservation Buildings",

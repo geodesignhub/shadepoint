@@ -1,6 +1,20 @@
 from dataclasses import dataclass
 from typing import List, Union
 from geojson import FeatureCollection
+import enum
+
+
+class GeometryType(str, enum.Enum):
+
+    line = "line"
+    point = "point"
+    polygon = "polygon"
+
+
+class RasterOrVector(str, enum.Enum):
+
+    raster = "raster"
+    vector = "vector"
 
 
 @dataclass
@@ -213,9 +227,11 @@ class WMSLayer:
     name: str
     dom_id: str
 
+
 @dataclass
 class WMSLayerList:
     layers: List[WMSLayer]
+
 
 @dataclass
 class COGLayer:
@@ -223,10 +239,37 @@ class COGLayer:
     name: str
     dom_id: str
 
+
+@dataclass
+class PMTilesLayer:
+    url: str
+    name: str
+    dom_id: str
+    layer_type: RasterOrVector
+
+
+@dataclass
+class FGBLayer:
+    url: str
+    name: str
+    dom_id: str
+    color: str
+    geometry_type: GeometryType
+
+
 @dataclass
 class COGLayerList:
     layers: List[COGLayer]
 
+
+@dataclass
+class PMTilesLayerList:
+    layers: List[PMTilesLayer]
+
+
+@dataclass
+class FGBLayerList:
+    layers: List[FGBLayer]
 
 
 @dataclass
@@ -241,6 +284,8 @@ class DrawViewSuccessResponse:
     project_id: str
     wms_layers: WMSLayerList
     cog_layers: COGLayerList
+    fgb_layers: FGBLayerList
+    pmtiles_layers: PMTilesLayerList
 
 
 @dataclass
@@ -262,13 +307,13 @@ class GeodesignhubDataShadowGenerationRequest:
     request_date_time: str
     bounds: str
 
+
 @dataclass
 class DrawnTreesShadowGenerationRequest:
     trees: list
     session_id: str
     request_date_time: str
     processed_trees: dict
-    
 
 
 @dataclass
