@@ -70,7 +70,7 @@ class ViewDataGenerator:
                 cog_layer = WMSLayer(
                     url=wms_url, name=wms_layer["name"], dom_id=wms_layer["dom_id"]
                 )
-        # TODO: COGS layers
+        # TODO: COG layers
         # TODO: PMTiles layers
 
         _layers_available_in_all_views = LayersAvailableInAllViews(
@@ -78,7 +78,6 @@ class ViewDataGenerator:
         )
 
         return _layers_available_in_all_views
-
 
     def generate_wms_layers_list(self) -> WMSLayerList:
         return self.all_external_data.wms
