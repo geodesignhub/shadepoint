@@ -208,20 +208,6 @@ class ToolboxDrawDiagramViewDetails:
 
 
 @dataclass
-class ShadowViewSuccessResponse:
-    message: str
-    status: int
-    project_data: GeodesignhubProjectData
-    geometry_data: GeodesignhubDiagramGeoJSON
-    trees_feature_collection: GeodesignhubDiagramGeoJSON
-    maptiler_key: str
-    session_id: str
-    shadow_date_time: str
-    trees_wms_url: str
-    view_details: Union[ToolboxDesignViewDetails, ToolboxDiagramViewDetails]
-
-
-@dataclass
 class WMSLayer:
     url: str
     name: str
@@ -260,6 +246,20 @@ class FGBLayer:
 @dataclass
 class COGLayerList:
     layers: List[COGLayer]
+
+@dataclass
+class ShadowViewSuccessResponse:
+    message: str
+    status: int
+    project_data: GeodesignhubProjectData
+    geometry_data: GeodesignhubDiagramGeoJSON
+    trees_feature_collection: GeodesignhubDiagramGeoJSON
+    maptiler_key: str
+    session_id: str
+    shadow_date_time: str
+    cog_layers: List[COGLayer]
+    wms_layers: List[WMSLayer]
+    view_details: Union[ToolboxDesignViewDetails, ToolboxDiagramViewDetails]
 
 
 @dataclass
@@ -368,3 +368,9 @@ class RoadsShadowOverlap:
     shadowed_kms: float
     job_id: str
     total_shadow_area: float
+
+@dataclass
+class LayersAvailableInAllViews: 
+    cogs: List[COGLayer]
+    wms: List[WMSLayer]
+    # TODO: Add FGB and PMtiles here

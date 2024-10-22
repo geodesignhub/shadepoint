@@ -20,3 +20,4 @@ pyproj==3.7.0
 Flask-Babel==4.0.0
 flask-wtf==1.2.1
 Bootstrap-Flask==2.4.1
+PyYAML==6.0.2

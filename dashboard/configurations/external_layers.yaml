@@ -1,0 +1,42 @@
+# This file has all the layers that are needed for the app
+- tree_shadow_analysis: 
+  wms:
+    - url: str
+      name: str
+      dom_id: str
+      environment_key: str
+
+  fgb:
+    - url: ""
+      name: "Existing Canopy"
+      dom_id: "existing_canopy"
+      environment_key: "EXISTING_CANOPY_PROJECT_ID_FGB_URL"
+      geometry_type: "polygon"
+      color: "#2e8b57"
+    - url: ""
+      name: "Existing Roads"
+      dom_id: "existing_roads"
+      environment_key: "EXISTING_ROADS_PROJECT_ID_FGB_URL"
+      geometry_type: "line"
+    - url: ""
+      name: "Existing Trees"
+      dom_id: "existing_trees"
+      environment_key: "EXISTING_ROADS_PROJECT_ID_FGB_URL"
+      geometry_type: "line"
+      color: "#228b22"
+
+
+  pmtiles:
+    - url: ""
+      name: "Ortho Photo"
+      dom_id: "ortho_photo"
+      environment_key: "ORTHO_PHOTO_PROJECT_ID_PMTILES_URL"
+      layer_type: "raster"
+      
+  cogs:
+    - url: ""
+      name: "Ortho Photo"
+      dom_id: "ortho_photo"
+      environment_key: "ORTHO_PHOTO_PROJECT_ID_COGS_URL"
+      layer_type: "raster"
+      
