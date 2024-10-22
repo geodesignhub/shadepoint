@@ -215,7 +215,7 @@ class WMSLayer:
 
 
 @dataclass
-class WMSLayerList:
+class WMSDataSourceList:
     layers: List[WMSLayer]
 
 
@@ -227,7 +227,7 @@ class COGLayer:
 
 
 @dataclass
-class PMTilesLayer:
+class PMTilesDataSource:
     url: str
     name: str
     dom_id: str
@@ -235,7 +235,7 @@ class PMTilesLayer:
 
 
 @dataclass
-class FGBLayer:
+class FGBDataSource:
     url: str
     name: str
     dom_id: str
@@ -244,8 +244,9 @@ class FGBLayer:
 
 
 @dataclass
-class COGLayerList:
+class COGDataSourceList:
     layers: List[COGLayer]
+
 
 @dataclass
 class ShadowViewSuccessResponse:
@@ -259,17 +260,30 @@ class ShadowViewSuccessResponse:
     shadow_date_time: str
     cog_layers: List[COGLayer]
     wms_layers: List[WMSLayer]
+    fgb_layers: List[FGBDataSource]
+    pmtiles_layers: List[PMTilesDataSource]
     view_details: Union[ToolboxDesignViewDetails, ToolboxDiagramViewDetails]
 
 
 @dataclass
-class PMTilesLayerList:
-    layers: List[PMTilesLayer]
+class PMTilesDataSourceList:
+    layers: List[PMTilesDataSource]
 
 
 @dataclass
-class FGBLayerList:
-    layers: List[FGBLayer]
+class FGBDataSourceList:
+    layers: List[FGBDataSource]
+
+
+@dataclass
+class GeoJSONDataSource:
+    url: str
+    name: str
+
+
+@dataclass
+class GeoJSONDataSourceList:
+    layers: List[GeoJSONDataSource]
 
 
 @dataclass
@@ -282,10 +296,10 @@ class DrawViewSuccessResponse:
     view_details: ToolboxDrawDiagramViewDetails
     apitoken: str
     project_id: str
-    wms_layers: WMSLayerList
-    cog_layers: COGLayerList
-    fgb_layers: FGBLayerList
-    pmtiles_layers: PMTilesLayerList
+    wms_layers: WMSDataSourceList
+    cog_layers: COGDataSourceList
+    fgb_layers: FGBDataSourceList
+    pmtiles_layers: PMTilesDataSourceList
 
 
 @dataclass
@@ -296,7 +310,6 @@ class FloodingViewSuccessResponse:
     project_data: GeodesignhubProjectData
     geometry_data: GeodesignhubDiagramGeoJSON
     maptiler_key: str
-    flood_vulnerability_wms_url: str
     view_details: Union[ToolboxDesignViewDetails, ToolboxDiagramViewDetails]
 
 
@@ -369,8 +382,15 @@ class RoadsShadowOverlap:
     job_id: str
     total_shadow_area: float
 
+
 @dataclass
-class LayersAvailableInAllViews: 
+class LayersAvailableInSpecificViews:
     cogs: List[COGLayer]
     wms: List[WMSLayer]
-    # TODO: Add FGB and PMtiles here
+    pmtiles: List[PMTilesDataSource]
+    fgb_layers: List[FGBDataSource]
+
+
+@dataclass
+class CommonDataForAllViews:
+    geojson_layers: List[GeoJSONDataSource]

@@ -38,7 +38,7 @@ import hashlib
 from geojson import Feature, FeatureCollection, Polygon, LineString, Point
 from dotenv import load_dotenv, find_dotenv
 import logging
-
+from pyproj.exceptions import GeodError as GeodError
 logger = logging.getLogger("local-climate-response")
 
 load_dotenv(find_dotenv())
@@ -66,8 +66,10 @@ class DrawnTreesProcessor:
         buffered_tree_features = my_geometry_helper.buffer_tree_points(
             drawn_tree_geojson_features=unprocessed_tree_geojson
         )
-        for _buffered_tree_feature in buffered_tree_features['features']:
-            _geometry = Polygon(coordinates=_buffered_tree_feature["geometry"]["coordinates"])
+        for _buffered_tree_feature in buffered_tree_features["features"]:
+            _geometry = Polygon(
+                coordinates=_buffered_tree_feature["geometry"]["coordinates"]
+            )
             # We must use Building_id in the properties
             _feature_property = DrawnTreesFeatureProperties(
                 height=10, base_height=0, color="#FF0000", building_id=str(uuid.uuid4())
@@ -242,7 +244,7 @@ class GeometryHelper:
         df = gpd.GeoDataFrame.from_features(drawn_tree_geojson_features)
         df["geometry"] = df["geometry"].buffer(0.00005)
         point_json = df.to_json()
-        buffered_point_gj = json.loads(point_json)      
+        buffered_point_gj = json.loads(point_json)
 
         return buffered_point_gj
 
@@ -306,38 +308,7 @@ def kickoff_gdh_roads_shadows_stats(roads_shadow_computation_start):
         shadows=shadows,
         job_id=_roads_shadow_computation_details.session_id + ":gdh_roads_shadow",
     )
-    compute_road_shadow_overlap(
-        roads_shadows_data=asdict(shadow_roads_intersection_data)
-    )
-    # logger.info(shadow_roads_intersection_data)
 
-
-def kickoff_existing_buildings_roads_shadows_stats(roads_shadow_computation_start):
-    _roads_shadow_computation_details = from_dict(
-        data_class=RoadsShadowsComputationStartRequest,
-        data=roads_shadow_computation_start,
-    )
-
-    shadows_key = (
-        _roads_shadow_computation_details.session_id
-        + ":"
-        + _roads_shadow_computation_details.request_date_time
-        + "_existing_buildings_canopy_shadow"
-    )
-    shadows_str = r.get(shadows_key)
-    shadows = json.loads(shadows_str.decode("utf-8"))
-    bounds = _roads_shadow_computation_details.bounds
-    bounds_hash = hashlib.sha512(bounds.encode("utf-8")).hexdigest()
-    roads_storage_key = bounds_hash[:15] + ":roads"
-    roads_str = r.get(roads_storage_key)
-    roads = json.loads(roads_str.decode("utf-8"))
-
-    shadow_roads_intersection_data = ShadowsRoadsIntersectionRequest(
-        roads=json.dumps(roads),
-        shadows=json.dumps(shadows),
-        job_id=_roads_shadow_computation_details.session_id
-        + ":existing_buildings_roads_shadow",
-    )
     compute_road_shadow_overlap(
         roads_shadows_data=asdict(shadow_roads_intersection_data)
     )
@@ -367,7 +338,7 @@ def drawn_trees_compute_shadow(tree_processing_payload: dict):
     _pd_date_time = pd.to_datetime(_shadow_date_time).tz_localize("UTC")
     shadows = pybdshadow.bdshadow_sunlight(trees, _pd_date_time)
     dissolved_shadows = shadows.dissolve()
-    
+
     redis_key = _drawn_trees_shadow_request.session_id + "_drawn_trees_shadow"
     r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
     r.expire(redis_key, time=6000)
@@ -487,22 +458,23 @@ def compute_road_shadow_overlap(
     shadows = json.loads(shadows_str)
 
     intersections: List[LineString] = []
-    all_roads: List[LineString] = []
+    all_roads: List[Union[LineString,MultiLineString]] = []
     all_shadows: List[Polygon] = []
 
     total_length = 0
     shadowed_kms = 0
 
     for line_feature in roads["features"]:
-
         if line_feature["geometry"]["type"] == "LineString":
-            line = LineString(line_feature["geometry"]["coordinates"])
+            line = LineString(coordinates=line_feature["geometry"]["coordinates"])
         elif line_feature["geometry"]["type"] == "MultiLineString":
             line = MultiLineString(line_feature["geometry"]["coordinates"])
-        all_roads.append(line)
+        all_roads.append(line)        
         segment_length = geod.geometry_length(line)
         logger.info(
-            "Segment Length {segment_length:.3f}".format(segment_length=segment_length)
+            "Segment Length {segment_length:.3f}".format(
+                segment_length=segment_length
+            )
         )
         total_length += segment_length
     total_shadow_area = 0

@@ -18,25 +18,7 @@
         </div>
     </div>
     <br>
-    <div class="row">
-        <div class="col-md-12">
-            <div>
-                {% if op.flood_vulnerability_wms_url != '0' or op.trees_wms_url != '0' %}
-                <h6>{{ gettext('Analytical Layers') }}&nbsp;<small class="text-muted">{{ gettext('Pre-computed layers for the area') }}</small></h6>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-12">
-             <div id="listing-group" class="btn-group" role="group" aria-label="Layer selection tools">
-                {% if op.flood_vulnerability_wms_url != '0' %}
-                <input type="checkbox" class="btn-check" id="baseline_flood_vulnerability_index" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="baseline_flood_vulnerability_index">{{ gettext('Flood Vulnerability') }}</label>
-                {%endif %}
-              </div>
-        </div>
-    </div>
+    
     <br>
     <div class="row">
         <div class="col-md-12">
@@ -96,7 +78,6 @@
     var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
     var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
     var map_bounds = new maplibregl.LngLatBounds(southWest, northEast);
-    let baseline_flood_vulnerability = '{{op["flood_vulnerability_wms_url"]|safe}}';
     
     // input nodes map
     var map = new maplibregl.Map({
@@ -107,14 +88,7 @@
         zoom: 10 // starting zoom
     });
 
-    document.getElementById('listing-group').addEventListener('change', function (e) {
-        var handler = e.target.id;
-        if (e.target.checked) {            
-            map.setLayoutProperty(handler, 'visibility', 'visible');
-        } else {
-            map.setLayoutProperty(handler, 'visibility', 'none');
-        }
-    });
+    
 
     map.on('load', function () {
 
@@ -125,26 +99,6 @@
             'data': design_geojson
         });
         
-
-        if (baseline_flood_vulnerability !=='0'){
-            map.addSource('baseline_flood_vulnerability', {
-            'type': 'raster',
-            // use the tiles option to specify a WMS tile source URL
-            // https://maplibre.org/maplibre-style-spec/sources/
-            
-            'tiles': ['{{op["flood_vulnerability_wms_url"]|safe}}'],
-            'tileSize': 256
-            });
-            map.addLayer(
-            {
-            'id': 'baseline_flood_vulnerability_index',
-            'type': 'raster',
-            'source': 'baseline_flood_vulnerability',
-            'paint': {}
-            },
-            'aeroway_fill'
-            );
-        }
 
         map.addLayer({
             'id': 'buildings-extrusion',

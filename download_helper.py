@@ -21,6 +21,7 @@ from data_definitions import (
     UploadSuccessResponse,
     DrawnTreesShadowGenerationRequest,
 )
+from dashboard.configurations.data_helper import ViewDataGenerator
 import utils
 from utils import GeometryHelper
 from shapely.geometry.base import BaseGeometry
@@ -54,7 +55,6 @@ from json import encoder
 from rq import Queue
 from rq.job import Dependency
 from worker import conn
-from config import ExternalLayerUrlGenerator
 import arrow
 import logging
 
@@ -515,14 +515,14 @@ class RoadsDownloadFactory:
 
     def start_download_roads_job(self):
 
-        my_url_generator = ExternalLayerUrlGenerator(project_id=self.project_id)
-        r_url = my_url_generator.get_roads_url()
-
+        my_url_generator = ViewDataGenerator(view_type=None, project_id=self.project_id)
+        r_url = my_url_generator.get_existing_roads_geojson_url()
+        
         roads_download_job = RoadsDownloadRequest(
             bounds=self.bounds,
             session_id=str(self.session_id),
             request_date_time=self.shadow_date_time,
-            roads_url=r_url,
+            roads_url=r_url.url,
         )
         roads_download_result = q.enqueue(
             utils.download_roads,
@@ -550,8 +550,9 @@ class ShadowComputationHelper:
 
     def compute_gdh_buildings_shadow(self):
         """This method computes the shadow for existing or GDH buidlings"""
-        my_url_generator = ExternalLayerUrlGenerator(project_id=self.project_id)
-        r_url = my_url_generator.get_roads_url()
+        my_url_generator = ViewDataGenerator(view_type=None, project_id=self.project_id)
+        r_url = my_url_generator.get_existing_roads_geojson_url()
+        
 
         try:
             assert r_url != "0"
@@ -565,7 +566,7 @@ class ShadowComputationHelper:
                 bounds=self.bounds,
                 session_id=str(self.session_id),
                 request_date_time=self.shadow_date_time,
-                roads_url=r_url,
+                roads_url=r_url.url,
             )
             roads_download_result = q.enqueue(
                 utils.download_roads,
@@ -611,38 +612,3 @@ class ShadowComputationHelper:
                 depends_on=[gdh_shadow_result],
             )
 
-    # def compute_existing_buildings_shadow(self):
-    #     ''' This method computes the shadow for existing or GDH buidlings '''
-
-    #     r_url = os.getenv("ROADS_URL", None)
-    #     t_url = os.getenv("TREES_URL", None)
-    #     b_url = os.getenv("BUILDINGS_URL", None)
-    #     try:
-    #         assert r_url is not None
-    #         assert t_url is not None
-    #         assert b_url is not None
-    #     except AssertionError as ae:
-    #         logger.info("A Roads, Canopy and a Existing Buildings GeoJSON as a URL is expected")
-    #     else:
-    #         # first download the trees and then compute design shadow
-    #         trees_download_job = TreesDownloadRequest(bounds= self.bounds,  session_id = str(self.session_id), request_date_time=self.shadow_date_time,trees_url=t_url)
-    #         trees_download_result = q.enqueue(utils.download_trees, asdict(trees_download_job), job_id = self.session_id + ":"+ self.shadow_date_time +":trees")
-
-    #         roads_download_job = RoadsDownloadRequest(bounds= self.bounds,  session_id = str(self.session_id), request_date_time=self.shadow_date_time,roads_url=r_url)
-    #         roads_download_result = q.enqueue(utils.download_roads, asdict(roads_download_job), job_id = self.session_id + ":"+ self.shadow_date_time +":roads")
-
-    #         # # download existing buildings
-    #         buildings_download_job = BuildingsDownloadRequest(bounds= self.bounds,  session_id = str(self.session_id), request_date_time=self.shadow_date_time,buildings_url=b_url)
-    #         buildings_download_result = q.enqueue(utils.download_existing_buildings, asdict(buildings_download_job), job_id = self.session_id + ":"+ self.shadow_date_time +":existing_buildings")
-
-    #         existing_buildings_shadow_dependency = Dependency(jobs=[trees_download_result, roads_download_result, buildings_download_result], allow_failure=False,enqueue_at_front=True)
-
-    #         # generate the existing buildings Shadows
-    #         existing_worker_data = ExistingBuildingsDataShadowGenerationRequest(session_id = self.session_id, request_date_time = self.shadow_date_time, bounds =self.bounds)
-    #         existing_shadow_result = q.enqueue(utils.compute_existing_buildings_shadow_with_tree_canopy,asdict(existing_worker_data), on_success= existing_buildings_notify_shadow_complete, on_failure = existing_buildings_shadow_generation_failure, job_id = self.session_id + ":"+ self.shadow_date_time,  depends_on=existing_buildings_shadow_dependency)
-
-    #         # Compute roads shadow interection based on Existing Buildings
-
-    #         _existing_roads_shadows_start_processing = RoadsShadowsComputationStartRequest(bounds = self.bounds, session_id= self.session_id, request_date_time= self. shadow_date_time)
-
-    #         existing_roads_intersection_result = q.enqueue(utils.kickoff_existing_buildings_roads_shadows_stats, asdict(_existing_roads_shadows_start_processing), on_success= notify_existing_roads_shadow_intersection_complete, on_failure = notify_existing_roads_shadow_intersection_failure, job_id = self.session_id + ':existing_buildings_roads_shadow' , depends_on = [existing_shadow_result])

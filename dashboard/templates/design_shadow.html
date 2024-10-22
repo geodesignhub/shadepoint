@@ -45,23 +45,28 @@
         </div>
     </div> -->
     <br>
-    <div class="row">
-        <div class="col-md-12">
-            <div>
-                {% if op.trees_wms_url != '0' %}
-                <h6>{{ gettext('Analytical Layers') }}&nbsp;<small class="text-muted">{{ gettext('Pre-computed layers for the area') }}</small></h6>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+
     <div class="row">
         <div class="col-md-12">
             <div id="listing-group" class="btn-group" role="group" aria-label="Layer selection tools">
-                {% if op.trees_wms_url != '0' %}
-                <input type="checkbox" class="btn-check" id="trees_canopy" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="trees_canopy">{{ gettext('Existing Tree Canopy') }}</label>
-                {% endif %}
+                {% for wms_layer in op['wms_layers'] %}
+                <input type="checkbox" class="btn-check" id="{{wms_layer['dom_id']}}" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="{{wms_layer['dom_id']}}">{{ wms_layer['name']}}</label>
+                {% endfor %}
 
+                {% for cog_layer in op['cog_layers'] %}
+                <input type="checkbox" class="btn-check" id="{{cog_layer['dom_id']}}" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="{{cog_layer['dom_id']}}">{{ cog_layer['name']}}</label>
+                {% endfor %}
+                {% for fgb_layer in op['fgb_layers'] %}
+                <input type="checkbox" class="btn-check" id="{{fgb_layer['dom_id']}}" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="{{fgb_layer['dom_id']}}">{{ fgb_layer['name']}}</label>
+                {% endfor %}
+                {% for pmtiles_layer in op['pmtiles_layers'] %}
+                <input type="checkbox" class="btn-check" id="{{pmtiles_layer['dom_id']}}" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="{{pmtiles_layer['dom_id']}}">{{
+                    pmtiles_layer['name']}}</label>
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -123,6 +128,16 @@
 <script src="{{ url_for('static', filename='js/threejs/three.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/threejs/GLTFLoader.js') }}"></script>
 
+{% if op['cog_layers'] %}
+<script type="text/javascript" src="{{ url_for('static', filename='js/cog/cog-protocol.min.js') }}"></script>
+{% endif %}
+{% if op['fgb_layers'] %}
+<script type="text/javascript" src="{{ url_for('static', filename='js/fgb/flatgeobuf-geojson.min.js') }}"></script>
+{% endif %}
+{% if op['pmtiles_layers'] %}
+<script type="text/javascript" src="{{ url_for('static', filename='js/pmtiles/pmtiles.js') }}"></script>
+{% endif %}
+
 <script type="text/javascript">
     let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
     let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -138,8 +153,11 @@
     var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
     var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
     var map_bounds = new maplibregl.LngLatBounds(southWest, northEast);
-    let existing_canopy_source = '{{op["trees_wms_url"]|safe}}';
-    // input nodes map
+    let wms_layers = design_detail['wms_layers'];
+    let cog_layers = design_detail['cog_layers'];
+    let fgb_layers = design_detail['fgb_layers'];
+    let pmtiles_layers = design_detail['pmtiles_layers'];
+    
     var map = new maplibregl.Map({
         container: 'map', // container id  
         style:
@@ -148,12 +166,32 @@
         zoom: 10 // starting zoom
     });
 
+    if (cog_layers.length > 0) {
+        maplibregl.addProtocol('cog', MaplibreCOGProtocol.cogProtocol);
+    }
+
+    if (pmtiles_layers.length > 0) {
+        let pmtiles_protocol = new pmtiles.Protocol({ metadata: true });
+        maplibregl.addProtocol("pmtiles", pmtiles_protocol.tile);
+
+    }
+
     document.getElementById('listing-group').addEventListener('change', function (e) {
-        var handler = e.target.id;
-        if (e.target.checked) {
-            map.setLayoutProperty(handler, 'visibility', 'visible');
-        } else {
-            map.setLayoutProperty(handler, 'visibility', 'none');
+        var map_layer = e.target.id;
+        let map_layer_line_id = map_layer + "_lines";
+        let map_layer_point_id = map_layer + "_points";
+
+        let all_ids = [map_layer, map_layer_line_id, map_layer_point_id];
+
+        for (let index = 0; index < all_ids.length; index++) {
+            const map_source_id = all_ids[index];
+            if (map.getLayer(map_source_id)) {
+                if (e.target.checked) {
+                    map.setLayoutProperty(map_source_id, 'visibility', 'visible');
+                } else {
+                    map.setLayoutProperty(map_source_id, 'visibility', 'none');
+                }
+            }
         }
     });
     // function update_date_time() {
@@ -171,7 +209,7 @@
     // }
 
 
-    map.on('load', function () {
+    map.on('load', async () => {
         map.addSource('buildings', {
             // GeoJSON Data source used in vector tiles, documented at
             // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
@@ -190,25 +228,7 @@
             'type': 'geojson',
             'data': { "type": "FeatureCollection", "features": [] }
         });
-        if (existing_canopy_source !== '0') {
-            map.addSource('existing_canopy_source', {
-                'type': 'raster',
-                // use the tiles option to specify a WMS tile source URL
-                // https://maplibre.org/maplibre-style-spec/sources/
-
-                'tiles': ['{{op["trees_wms_url"]|safe}}'],
-                'tileSize': 256
-            });
-            map.addLayer(
-                {
-                    'id': 'trees_canopy',
-                    'type': 'raster',
-                    'source': 'existing_canopy_source',
-                    'paint': {}
-                },
-                'aeroway_fill'
-            );
-        }
+        
         map.addSource('bike_pedestrian_roads', {
             // GeoJSON Data source used in vector tiles, documented at
             // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
@@ -278,6 +298,135 @@
                 showCompass: true
             })
         );
+        for (let index = 0; index < wms_layers.length; index++) {
+            const wms_layer = wms_layers[index];
+            let source_str = wms_layer.dom_id + "_source";
+            map.addSource(source_str, {
+                'type': 'raster',
+                // use the tiles option to specify a WMS tile source URL
+                // https://maplibre.org/maplibre-style-spec/sources/
+                'tiles': [wms_layer['url']],
+                'tileSize': 256
+            });
+            map.addLayer(
+                {
+                    'id': wms_layer['dom_id'],
+                    'type': 'raster',
+                    'source': source_str,
+                    'paint': {}
+                },
+                'aeroway_fill'
+            );
+
+        }
+
+        if (cog_layers.length > 0) {
+            for (let index = 0; index < cog_layers.length; index++) {
+                const cog_layer = cog_layers[index];
+
+                let source_str = cog_layer.dom_id + "_source";
+                map.addSource(source_str, {
+                    'type': 'raster',
+                    'url': 'cog://' + cog_layer['url'],
+                    'tileSize': 256
+                });
+                map.addLayer(
+                    {
+                        'id': cog_layer['dom_id'],
+                        'source': source_str,
+                        'type': 'raster',
+                        'paint': {}
+                    },
+                    'aeroway_fill'
+                );
+            }
+        }
+        if (pmtiles_layers.length > 0) {
+            for (let index = 0; index < pmtiles_layers.length; index++) {
+                const pmtiles_layer = pmtiles_layers[index];
+                console.log(pmtiles_layer);
+                let source_str = pmtiles_layer.dom_id + "_source";
+                if (pmtiles_layer.layer_type == 'raster') {
+                    map.addSource(source_str, {
+                        'type': 'raster',
+                        'url': 'pmtiles://' + pmtiles_layer['url']
+                    });
+                    map.addLayer(
+                        {
+                            'id': pmtiles_layer['dom_id'],
+                            'source': source_str,
+                            'type': 'raster',
+                            'paint': {}
+                        },
+                        'aeroway_fill'
+                    );
+                }
+            }
+        }
+
+
+        if (fgb_layers.length > 0) {
+            for (let index = 0; index < fgb_layers.length; index++) {
+                const fgb_layer = fgb_layers[index];
+                const geometry_type = fgb_layer['geometry_type'];
+                const response = await fetch(fgb_layer['url']);
+                let source_str = fgb_layer.dom_id + "_source";
+                const fc = { type: "FeatureCollection", features: [] };
+                let i = 0;
+                for await (const f of flatgeobuf.deserialize(response.body, undefined)) {
+                    fc.features.push({ ...f, id: i });
+                    i += 1;
+                }
+
+                map.addSource(source_str, {
+                    type: "geojson",
+                    data: fc,
+                });
+                if (geometry_type == 'polygon') {
+                    map.addLayer({
+                        id: fgb_layer['dom_id'],
+                        type: "fill",
+                        source: source_str,
+                        paint: {
+                            "fill-color": fgb_layer['color'],
+                            "fill-opacity": 0.75,
+                        },
+                    });
+                }
+                else if (geometry_type == 'line') {
+                    map.addLayer({
+                        id: fgb_layer['dom_id'] + "_lines",
+                        type: "line",
+                        source: source_str,
+                        paint: {
+                            "line-color": fgb_layer['color'],
+                            "line-opacity": 0.9,
+                            "line-width": 2,
+                        },
+                    });
+                }
+
+                else if (geometry_type == 'point') {
+                    map.addLayer({
+                        id: fgb_layer['dom_id'] + "_points",
+                        type: 'circle',
+                        source: source_str,
+                        paint: {
+
+                            "circle-blur": 0,
+                            "circle-color": fgb_layer['color'],
+                            "circle-opacity": 0.8,
+                            "circle-radius": 10,
+                            "circle-stroke-color": fgb_layer['color'],
+                            "circle-stroke-opacity": 0.9,
+                            "circle-stroke-width": 1,
+
+                        }
+
+                    });
+                }
+            }
+        }
     });
 
     async function process_trees() {
