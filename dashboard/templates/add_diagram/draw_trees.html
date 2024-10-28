@@ -181,7 +181,7 @@
     let map = new maplibregl.Map({
         container: 'map', // container id  
         style:
-            'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
+            'https://api.maptiler.com/maps/streets-v2/style.json?key={{op["maptiler_key"]}}',
         bounds: bounds,
         zoom: 12, // starting zoom
         maxZoom: 23,
@@ -389,6 +389,9 @@
     });
     map.on('load', async () => {
 
+        map.setPaintProperty('Minor road', 'line-color', '#000000');
+        map.setPaintProperty('Minor road', 'line-opacity', 0.15);
+        
         map.addSource('tree_shadows', {
             'type': 'geojson',
             'data': { "type": "FeatureCollection", "features": [] }
