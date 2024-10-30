@@ -472,7 +472,7 @@
         if (pmtiles_layers.length > 0) {
             for (let index = 0; index < pmtiles_layers.length; index++) {
                 const pmtiles_layer = pmtiles_layers[index];
-                console.log(pmtiles_layer);
+               
                 let source_str = pmtiles_layer.dom_id + "_source";
                 if (pmtiles_layer.layer_type == 'raster') {
                     map.addSource(source_str, {
@@ -486,7 +486,7 @@
                             'type': 'raster',
                             'paint': {}
                         },
-                        'aeroway_fill'
+                        
                     );
                 }
             }
