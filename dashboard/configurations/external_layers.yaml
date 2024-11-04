@@ -25,6 +25,13 @@ tree_shadow_analysis:
       environment_key: "EXISTING_TREES_PROJECT_ID_FGB_URL"
       geometry_type: "point"
       color: "#2e8b57"
+    - url: ""
+      name: "Bus Stops"
+      dom_id: "bus_stops"
+      environment_key: "EXISTING_BUSSTOPS_PROJECT_ID_FGB_URL"
+      geometry_type: "point"
+      color: "#9932cc "
+
 
   pmtiles:
     - url: ""
