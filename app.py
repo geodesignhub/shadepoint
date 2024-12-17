@@ -83,7 +83,7 @@ bootstrap = Bootstrap5(app)
 
 @app.route("/", methods=["GET"])
 def home():
-    return render_template("home.html")
+    return render_template("home.html",op={})
 
 
 @app.context_processor
