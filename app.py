@@ -539,6 +539,7 @@ def generate_diagram_shadow():
 
 @app.route("/draw_trees/", methods=["GET", "POST"])
 def draw_trees_view():
+    session_id = uuid.uuid4()
     try:
         projectid = request.args.get("projectid")
         apitoken = request.args.get("apitoken")
@@ -550,7 +551,6 @@ def draw_trees_view():
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
 
-    session_id = uuid.uuid4()
     maptiler_key = os.getenv("maptiler_key", "00000000000000")
 
     my_geodesignhub_downloader = GeodesignhubDataDownloader(
@@ -587,7 +587,7 @@ def draw_trees_view():
     diagram_upload_form = DiagramUploadForm(
         project_id=projectid, apitoken=apitoken, gi_system_id=gi_system_id
     )
-    session_id = uuid.uuid4()
+    
 
     if diagram_upload_form.validate_on_submit():
         diagram_upload_form_data = diagram_upload_form.data
@@ -598,7 +598,7 @@ def draw_trees_view():
         apitoken = diagram_upload_form_data["apitoken"]
 
         my_geodesignhub_downloader = GeodesignhubDataDownloader(
-            session_id=session_id, project_id=project_id, apitoken=apitoken
+            session_id=str(session_id), project_id=project_id, apitoken=apitoken
         )
         _design_trees_feature_collection = (
             my_geodesignhub_downloader.generate_tree_point_feature_collection(
