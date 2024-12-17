@@ -651,5 +651,5 @@ def draw_trees_view():
 
 if __name__ == "__main__":
     app.debug = True
-    port = int(os.environ.get("PORT", 5001))
+    port = int(os.environ.get("PORT", 8001))
     app.run(port=port)
