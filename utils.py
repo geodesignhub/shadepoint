@@ -404,9 +404,11 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
     gdh_design_diagram_buildings = gpd.GeoDataFrame.from_features(
         _diagramid_building_date_time.buildings["features"]
     )
-
+    exploded_gdh_buildings = gdh_design_diagram_buildings.explode()
+    _exploded_gdh_building_polygons = exploded_gdh_buildings[exploded_gdh_buildings.geometry.type != 'LineString']
+    
     _pd_date_time = pd.to_datetime(_date_time).tz_convert("UTC")
-    shadows = pybdshadow.bdshadow_sunlight(gdh_design_diagram_buildings, _pd_date_time)
+    shadows = pybdshadow.bdshadow_sunlight(_exploded_gdh_building_polygons, _pd_date_time)
 
     # # Merge the canopy with the shadow
     # bounds = _diagramid_building_date_time.bounds
