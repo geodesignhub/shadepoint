@@ -83,7 +83,7 @@ bootstrap = Bootstrap5(app)
 
 @app.route("/", methods=["GET"])
 def home():
-    return render_template("home.html")
+    return render_template("home.html",op={})
 
 
 @app.context_processor
@@ -651,5 +651,5 @@ def draw_trees_view():
 
 if __name__ == "__main__":
     app.debug = True
-    port = int(os.environ.get("PORT", 5001))
+    port = int(os.environ.get("PORT", 8001))
     app.run(port=port)
