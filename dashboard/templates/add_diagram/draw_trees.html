@@ -22,9 +22,8 @@
     <div class="row">
         <div class="col-md-12">
             <div>
-                <h6>{{ gettext('Analytical Layers') }}&nbsp;<small class="text-muted">{{ gettext('Pre-computed layers
-                        for the area') }}</small>
-                </h6>
+                <h5>{{ gettext('Analytical Layers') }}&nbsp;<small class="text-muted">{{ gettext('Pre-computed layers for the area') }}</small>
+                </h5>
             </div>
         </div>
     </div>
@@ -67,50 +66,62 @@
 
     <div class="row">
         <div class="col-md-10">
-            <h6>{{ gettext('Drawing Tools') }}&nbsp;<small class="text-muted">{{ gettext('Use the buttons below to draw
-                    trees') }}</small></h6>
+            <h5>{{ gettext('Drawing Tools') }}&nbsp;<small class="text-muted">{{ gettext('Use the buttons below to draw trees') }}</small></h5>
         </div>
     </div>
     <div class="row">
-        <div class="col-md-10">
+        <div class="col-md-8">
             <div class="btn-group" role="group" aria-label="Tree drawing tools">
-                <button type="button" onclick="tree_editing_control.add_tree()" class="btn btn-outline-secondary">{{
+                <button id="add_trees_button" type="button" onclick="tree_editing_control.add_tree()" class="btn btn-outline-secondary"><i class="bi bi-plus"></i>&nbsp;{{
                     gettext('Add Trees') }}</button>
-                <button type="button" onclick="tree_editing_control.drawing_complete()"
-                    class="btn btn-outline-secondary">{{ gettext('Complete Drawing') }}</button>
-                <button type="button" onclick="tree_editing_control.move_trees()" class="btn btn-outline-secondary">{{
+            </div>&nbsp;
+            <div class="btn-group" role="group" aria-label="Drawn trees editing tools">
+                <button name="" id="drawing_complete_button" type="button" onclick="tree_editing_control.drawing_complete()"
+                    class="btn btn-outline-secondary drawing_mode_controls d-none">{{ gettext('Complete Drawing') }}</button>
+                <button type="button" onclick="tree_editing_control.move_trees()" class="btn btn-outline-secondary drawing_mode_controls d-none">{{
                     gettext('Move / delete existing trees') }}</button>
                 <button id="single_tree_deletion_button" type="button" onclick=""
-                    class="btn btn-outline-secondary d-none">{{
+                    class="btn btn-outline-secondary drawing_mode_controls d-none">{{
                     gettext('Delete selected tree') }}</button>
                 <button type="button" onclick="tree_editing_control.delete_all_trees()"
-                    class="btn btn-outline-secondary">{{
-                    gettext('Delete all trees') }}</button>&nbsp;
-                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal"
-                    data-bs-target="#addDiagramModal">{{ gettext('Add as a diagram') }}</button>
-            </div>
+                    class="btn btn-outline-secondary drawing_mode_controls d-none">{{
+                    gettext('Delete all trees') }}</button>
+            </div>&nbsp;
+            
         </div>
-        <div class="col-md-2">
-            <h4 data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Number of trees added"><span
-                    class="badge text-bg-secondary" id="number_of_trees_drawn">0</span></h4>
-            <button class="btn btn-outline-info btn-sm" id="generate_shadows_control" type="button"
-                onclick="tree_editing_control.generate_shadows()" class="btn btn-outline-secondary">
-                <small data-bs-toggle="tooltip" data-bs-placement="left"
-                    data-bs-title="Shadow of the trees added">Generate Shadows</small>
-            </button>
+        <div class="col-md-4">
+            <div class="btn-toolbar" role="toolbar" aria-label="Drawn trees toolbar">
+                <div class="btn-group" role="group" aria-label="First group">
+                    <button type="button" class="btn btn-secondary" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Number of trees added" id="number_of_trees_drawn">0
+                    </button>
+                    <button data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Shadow of the trees added" id="generate_shadows_control" type="button" onclick="tree_editing_control.generate_shadows()" class="btn btn-outline-secondary d-none">
+                        Generate Tree Shadows
+                    </button>
 
-            <div id="shadow_spinner" class="d-none spinner-grow text-secondary" role="status">
-                <span class="visually-hidden">Loading...</span>
+                    <div id="shadow_spinner" class="d-none spinner-grow text-secondary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <button class="btn btn-outline-info btn-sm d-none" id="clear_shadows_control" type="button"
+                        onclick="tree_editing_control.clear_generated_shadows()" class="btn btn-outline-secondary"data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Clear generated shadows">Clear Tree Shadows
+                    </button>&nbsp;
+                </div>
+            
+                <div class="btn-group" role="group" aria-label="Add Diagram tools">
+                    <button id="add_as_diagram_button" type="button" class="btn btn-outline-success d-none" data-bs-toggle="modal"
+                        data-bs-target="#addDiagramModal"><i class="bi bi-arrow-bar-up"></i>&nbsp;{{ gettext('Add as a diagram') }}</button>
+                    
+                </div>
             </div>
-            <button class="btn btn-outline-info btn-sm d-none" id="clear_shadows_control" type="button"
-                onclick="tree_editing_control.clear_generated_shadows()" class="btn btn-outline-secondary">
-                <small data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Clear generated shadows">Clear
-                    Shadows</small>
-            </button>
 
         </div>
     </div>
-
+    <br><br>
+    <div class="row">
+        <div class="col-md-10">
+            <h5>{{ gettext('Shadows added') }}&nbsp;<small class="text-muted">{{ gettext('The shadows are generated based on the trees drawn on the map') }}</small></h5>
+            <p id="drawn_trees_shadow_area" class="lead"><small class="text-muted">{{ gettext('Additional shadowed area in m2') }}</small></p>
+        </div>
+    </div>
 
     <!-- Modal -->
     <div class="modal fade" id="addDiagramModal" tabindex="-1" aria-labelledby="addDiagramModalLabel"
@@ -142,6 +153,7 @@
 {% if op['status'] == 1 %}
 <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/terra-draw.umd.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/terra-draw-maplibre-gl-adapter.umd.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/maplibre-gl-measures.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 
@@ -155,6 +167,7 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/pmtiles/pmtiles.js') }}"></script>
 {% endif %}
 
+<script type="text/javascript" src="{{ url_for('static', filename='js/turf.min.js') }}"></script>
 
 <script type="text/javascript">
     let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -224,12 +237,23 @@
         }
     });
     // Create Terra Draw
-    const draw = new terraDraw.TerraDraw({
-        adapter: new terraDraw.TerraDrawMapLibreGLAdapter({
+    const TerraDraw = terraDraw.TerraDraw
+    const TerraDrawMapLibreGLAdapter = terraDrawMaplibreGlAdapter.TerraDrawMapLibreGLAdapter
+
+    const draw = new TerraDraw({
+        adapter: new TerraDrawMapLibreGLAdapter({
             map: map,
             lib: maplibregl,
         }),
-        modes: [new terraDraw.TerraDrawPointMode(), new terraDraw.TerraDrawRenderMode({ modeName: "render_trees" }),
+        modes: [new terraDraw.TerraDrawPointMode({styles: {
+                // See Styling Guide for more information
+                // Outline colour (Hex color)
+                pointColor: "#008000",
+                pointOutlineColor: "#228b22",
+                //Outline width (Integer)
+                pointWidth: 5,
+            }}), 
+        new terraDraw.TerraDrawRenderMode({ modeName: "render_trees" }),
         new terraDraw.TerraDrawSelectMode({
             flags: {
                 arbitary: {
@@ -258,9 +282,30 @@
 
         this.add_tree = function () {
             draw.setMode("point");
+            let drawing_controls =  document.getElementsByClassName("drawing_mode_controls");
+            for (var i = drawing_controls.length - 1; i >= 0; i--)
+            {
+                drawing_controls[i].classList.remove('d-none');
+            }
+
+            let add_tree_control =  document.getElementById("add_trees_button");
+            add_tree_control.classList.add('d-none');
+            
+            
         }
         this.drawing_complete = function () {
             draw.setMode("render_trees");
+            let drawing_complete_control = document.getElementById('drawing_complete_button');
+            drawing_complete_control.classList.add('d-none');
+            let drawing_controls =  document.getElementsByClassName("drawing_mode_controls");
+            for (var i = drawing_controls.length - 1; i >= 0; i--)
+            {
+                drawing_controls[i].classList.add('d-none');
+            }
+
+            let add_tree_control =  document.getElementById("add_trees_button");
+            add_tree_control.classList.remove('d-none');
+            
 
         }
         this.move_trees = function () {
@@ -284,6 +329,25 @@
             let number_of_trees = store_geojson.length;
             let tree_count_container = document.getElementById('number_of_trees_drawn');
             tree_count_container.innerHTML = number_of_trees;
+
+            // if the number of trees is more than 1 , then show the add as diagram button
+            if (number_of_trees > 0) {
+                let add_as_diagram_button = document.getElementById('add_as_diagram_button');
+                add_as_diagram_button.classList.remove('d-none');
+                // show the generate shadows button
+                let show_shadows_control = document.getElementById('generate_shadows_control');
+                show_shadows_control.classList.remove('d-none');
+            }
+            else {
+                let add_as_diagram_button = document.getElementById('add_as_diagram_button');
+                add_as_diagram_button.classList.add('d-none');
+                ;
+                // show the generate shadows button
+                let show_shadows_control = document.getElementById('generate_shadows_control');
+                show_shadows_control.classList.add('d-none');
+            }
+
+
             // store_geojson.filter((feature) => feature.properties.mode === 'polygon')
         }
 
@@ -309,9 +373,20 @@
             // load the spinner
             let spinner_cont = document.getElementById('shadow_spinner');
             spinner_cont.classList.add('d-none');
-            // 
+            
             let clear_shadows_control = document.getElementById('clear_shadows_control');
             clear_shadows_control.classList.add('d-none');
+
+            let empty_fc = { "type": "FeatureCollection", "features": [] };
+            map.getSource('tree_shadows').setData(empty_fc);
+
+            let drawn_trees_shadow_area = document.getElementById('drawn_trees_shadow_area');
+            drawn_trees_shadow_area.innerHTML = "";
+            let small = document.createElement('small');
+            small.classList.add('text-muted');
+            small.innerHTML = "{{ gettext('Additional shadowed area in m2') }}";
+            drawn_trees_shadow_area.appendChild(small);          
+
 
         }
         this.update_session_id = function () {
@@ -338,7 +413,7 @@
                 })
             })
                 .then((response) => {
-                    //do something awesome that makes the world a better place
+                  
                 });
 
         }
@@ -352,7 +427,7 @@
             // load the spinner
             let spinner_cont = document.getElementById('shadow_spinner');
             spinner_cont.classList.add('d-none');
-            // 
+            // show the clear shadows button
             let clear_shadows_control = document.getElementById('clear_shadows_control');
             clear_shadows_control.classList.remove('d-none');
         }
@@ -597,11 +672,7 @@
         }, false);
     });
 
-    function clear_computed_shadows() {
-        let empty_fc = { "type": "FeatureCollection", "features": [] };
-        map.getSource('building_shadows').setData(empty_fc);
-    }
-
+    
 </script>
 {% endif %}
 

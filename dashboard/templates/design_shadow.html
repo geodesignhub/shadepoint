@@ -134,10 +134,9 @@
 {% if op['fgb_layers'] %}
 <script type="text/javascript" src="{{ url_for('static', filename='js/fgb/flatgeobuf-geojson.min.js') }}"></script>
 {% endif %}
-
+{% if op['pmtiles_layers'] %}
 <script type="text/javascript" src="{{ url_for('static', filename='js/pmtiles/pmtiles.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', filename='js/pmtiles/working_theme.js') }}"></script>
-
+{% endif %}
 
 <script type="text/javascript">
     let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -159,50 +158,24 @@
     let fgb_layers = design_detail['fgb_layers'];
     let pmtiles_layers = design_detail['pmtiles_layers'];
     
-    let pmtiles_protocol = new pmtiles.Protocol({ metadata: true });
-    maplibregl.addProtocol("pmtiles", pmtiles_protocol.tile);
-
-    // let pmtiles_style = protomaps_themes_base.default("protomaps","light");
-
-    // let building_style = pmtiles_style.find(style_item => style_item.id === 'buildings'); 
-    // console.log(building_style);
-    // let filtered_styles = light_theme.filter(x => {
-    //     return x.id != 'buildings';
-    // })
-    // filtered_styles.push(building_style_item);
-    const PMTILES_URL = 'https://gdh-tiles.ams3.digitaloceanspaces.com/osm2025.pmtiles';
-
-    const p = new pmtiles.PMTiles(PMTILES_URL);
-
-    // this is so we share one instance across the JS code and the map renderer
-    pmtiles_protocol.add(p);
-
-    const map = new maplibregl.Map({
-    container: 'map', // container id  
-    bounds: map_bounds,
-    zoom:10,
-        style: {
-
-            glyphs:'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf',
-            sprite: "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
-            version: 8,
-            sources: {
-                'protomaps': {
-                    type: 'vector',
-                    url: `pmtiles://${PMTILES_URL}`,
-                    attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
-                }
-            },
-            layers: light_theme
-        }
+    var map = new maplibregl.Map({
+        container: 'map', // container id  
+        style:
+            'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
+        bounds: map_bounds,
+        zoom: 10 // starting zoom
     });
 
-    
     if (cog_layers.length > 0) {
         maplibregl.addProtocol('cog', MaplibreCOGProtocol.cogProtocol);
     }
 
-    
+    if (pmtiles_layers.length > 0) {
+        let pmtiles_protocol = new pmtiles.Protocol({ metadata: true });
+        maplibregl.addProtocol("pmtiles", pmtiles_protocol.tile);
+
+    }
+
     document.getElementById('listing-group').addEventListener('change', function (e) {
         var map_layer = e.target.id;
         let map_layer_line_id = map_layer + "_lines";

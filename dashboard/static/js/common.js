@@ -66,8 +66,13 @@ function get_drawn_trees_shadows(drawn_trees_download_url) {
             let spinner_cont = document.getElementById('shadow_spinner');
             spinner_cont.classList.add('d-none');                
             let shadows_to_render = shadow_data;
-            
-            map.getSource('tree_shadows').setData(JSON.parse(shadows_to_render));
+            shadows_to_render = JSON.parse(shadows_to_render);
+            let area = turf.area(shadows_to_render);
+            //update the drawn_trees_shadow_area text with this in m2
+            let drawn_trees_shadow_area = document.getElementById('drawn_trees_shadow_area');
+            drawn_trees_shadow_area.innerHTML = area.toFixed(2) + ' m2';
+            map.getSource('tree_shadows').setData(shadows_to_render);
+            tree_editing_control.shadows_loaded();
             // map.getSource('existing_building_shadows').setData(shadows_to_render);
         }).catch((error) => {
             console.log(error);
