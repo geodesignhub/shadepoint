@@ -42,7 +42,7 @@
                 {% endfor %}
                 {% for fgb_layer in op['fgb_layers'] %}
                 <input type="checkbox" class="btn-check" id="{{fgb_layer['dom_id']}}" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="{{fgb_layer['dom_id']}}">{{ fgb_layer['name']}}</label>
+                <label class="btn btn-outline-primary" for="{{fgb_layer['dom_id']}}">{{ fgb_layer['name']}}</label> 
                 {% endfor %}
                 {% for pmtiles_layer in op['pmtiles_layers'] %}
                 <input type="checkbox" class="btn-check" id="{{pmtiles_layer['dom_id']}}" autocomplete="off" checked>
@@ -103,6 +103,9 @@
                     </div>
                     <button class="btn btn-outline-info btn-sm d-none" id="clear_shadows_control" type="button"
                         onclick="tree_editing_control.clear_generated_shadows()" class="btn btn-outline-secondary"data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Clear generated shadows">Clear Tree Shadows
+                    </button>&nbsp;
+                    <button class="btn btn-outline-info btn-sm d-none" id="get_shadows_control" type="button"
+                        onclick="tree_editing_control.get_generated_shadows({{ op['session_id'] }})" class="btn btn-outline-secondary"data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Clear generated shadows">Clear Tree Shadows
                     </button>&nbsp;
                 </div>
             
@@ -363,8 +366,23 @@
                 let clear_shadows_control = document.getElementById('clear_shadows_control');
                 clear_shadows_control.classList.add('d-none');
                 this.send_generate_shadow_request(snapshot);
+                // after 20 seconds remove spinner and add a get shadows button
+                setTimeout(
+                function() {
+                    // hide the spinner container
+                spinner_cont.classList.add('d-none');
+                }, 30000);
+
             }
 
+        }
+
+        this.get_generated_shadows = function (session_id){
+
+            let drawn_trees_shadow_key = session_id + '_drawn_trees_shadow';
+                // The message is for the current sesion, download the data...
+                let drawn_trees_download_url = window.location.origin + '/get_drawn_trees_shadows?drawn_trees_shadows_key=' + drawn_trees_shadow_key;
+                get_drawn_trees_shadows(drawn_trees_download_url);
         }
         this.clear_generated_shadows = function () {
             // hide generate shadows button
@@ -397,7 +415,6 @@
         }
 
         this.send_generate_shadow_request = function (snapshot) {
-
             let post_shadow_url = window.location.origin + '/generate_drawn_trees_shadow?session_id=' + session_id;
             fetch(post_shadow_url, {
                 method: "post",
@@ -410,6 +427,7 @@
                 //make sure to serialize your JSON body
                 body: JSON.stringify({
                     unprocessed_tree_geojson: snapshot,
+                    session_id:session_id
                 })
             })
                 .then((response) => {
@@ -419,6 +437,11 @@
         }
 
 
+        this.empty_shadows_loaded = function () {
+            console.log("Shadow computation ongoing...");
+            // TODO: Add toast notifications
+
+        }
         this.shadows_loaded = function () {
 
             // hide generate shadows button
@@ -639,38 +662,34 @@
 
     });
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const room = project_detail.session_id;
-        var source = new EventSource("{{ url_for('sse.stream') }}");
-        source.addEventListener('roads_download_success', function (event) {
-            var data = JSON.parse(event.data);
-            // do what you want with this data
-            let roads_key = data['roads_key'];
-            let session_id = roads_key.split(':')[0]
-            if (session_id === room) {
-                // The message is for the current sesion, download the data...
-                let roads_download_url = window.location.origin + '/get_downloaded_roads?roads_key=' + roads_key;
-                get_downloaded_roads(roads_download_url);
-            }
-        }, false);
-        source.addEventListener('drawn_trees_shadow_success', function (event) {
-            let room = tree_editing_control.get_session_id();
+    // document.addEventListener('DOMContentLoaded', () => {
+    //     const room = project_detail.session_id;
+    //     var source = new EventSource("{{ url_for('sse.stream') }}");
+    //     source.addEventListener('roads_download_success', function (event) {
+    //         var data = JSON.parse(event.data);
+    //         // do what you want with this data
+    //         let roads_key = data['roads_key'];
+    //         let session_id = roads_key.split(':')[0]
+    //         if (session_id === room) {
+    //             // The message is for the current sesion, download the data...
+    //             let roads_download_url = window.location.origin + '/get_downloaded_roads?roads_key=' + roads_key;
+    //             get_downloaded_roads(roads_download_url);
+    //         }
+    //     }, false);
+    //     source.addEventListener('drawn_trees_shadow_success', function (event) {
+    //         let room = tree_editing_control.get_session_id();
 
-            var data = JSON.parse(event.data);
-            // do what you want with this data
+    //         var data = JSON.parse(event.data);
+    //         // do what you want with this data
 
-            let drawn_trees_shadow_job_id = data['drawn_trees_shadow_job_id'];
+    //         let drawn_trees_shadow_job_id = data['drawn_trees_shadow_job_id'];
 
-            let session_id = drawn_trees_shadow_job_id.split(':')[0];
+    //         let session_id = drawn_trees_shadow_job_id.split(':')[0];
 
-            if (session_id === room) {
-                let drawn_trees_shadow_key = session_id + '_drawn_trees_shadow';
-                // The message is for the current sesion, download the data...
-                let drawn_trees_download_url = window.location.origin + '/get_drawn_trees_shadows?drawn_trees_shadows_key=' + drawn_trees_shadow_key;
-                get_drawn_trees_shadows(drawn_trees_download_url);
-            }
-        }, false);
-    });
+    //         if (session_id === room) {
+    //         }
+    //     }, false);
+    // });
 
     
 </script>

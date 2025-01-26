@@ -56,8 +56,7 @@ function get_existing_building_shadow(shadow_download_url) {
 }
 
 
-function get_drawn_trees_shadows(drawn_trees_download_url) {
-    
+function get_drawn_trees_shadows(drawn_trees_download_url) {   
     fetch(drawn_trees_download_url)
         .then((response) => {
             return response.json();
@@ -72,7 +71,12 @@ function get_drawn_trees_shadows(drawn_trees_download_url) {
             let drawn_trees_shadow_area = document.getElementById('drawn_trees_shadow_area');
             drawn_trees_shadow_area.innerHTML = area.toFixed(2) + ' m2';
             map.getSource('tree_shadows').setData(shadows_to_render);
-            tree_editing_control.shadows_loaded();
+            if (shadows_to_render['features']){
+                tree_editing_control.shadows_loaded();
+            }
+            else{
+                tree_editing_control.empty_shadows_loaded();
+            }
             // map.getSource('existing_building_shadows').setData(shadows_to_render);
         }).catch((error) => {
             console.log(error);
