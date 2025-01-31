@@ -85,11 +85,12 @@ def export_to_json(data):
     return json.loads(json.dumps(data, sort_keys=True, cls=ShapelyEncoder))
 
 
-def kickoff_drawn_trees_shadow_job(session_id: str, unprocessed_drawn_trees: dict):
+def kickoff_drawn_trees_shadow_job(session_id: str, state_id:str, unprocessed_drawn_trees: dict):
     request_date_time = arrow.now().format("YYYY-MM-DDTHH:mm:ss")
     tree_processing_payload = DrawnTreesShadowGenerationRequest(
         trees=unprocessed_drawn_trees,
         session_id=session_id,
+        state_id = state_id,
         request_date_time=request_date_time,
         processed_trees={},
     )

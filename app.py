@@ -402,8 +402,9 @@ def generate_design_shadow():
 @app.route("/get_drawn_trees_shadows", methods=["GET"])
 def get_drawn_trees_shadows():
     trees_key = request.args.get("drawn_trees_shadows_key", "0")
+    
+    trees_session_exists = redis.exists(trees_key) 
 
-    trees_session_exists = redis.exists(trees_key)
     if trees_session_exists:
         trees_data_raw = redis.get(trees_key)
         trees = json.loads(trees_data_raw.decode("utf-8"))
@@ -421,9 +422,10 @@ def generate_drawn_trees_shadow():
 
     unprocessed_tree_geojson = geojson_payload["unprocessed_tree_geojson"]
     session_id = request.args.get("session_id")
-
+    state_id = request.args.get("state_id")
+    print(session_id,state_id)
     kickoff_drawn_trees_shadow_job(
-        unprocessed_drawn_trees=unprocessed_tree_geojson, session_id=session_id
+        unprocessed_drawn_trees=unprocessed_tree_geojson, session_id=session_id, state_id=state_id
     )
 
     return Response({}, status=200, mimetype=MIMETYPE)
