@@ -85,12 +85,14 @@ def export_to_json(data):
     return json.loads(json.dumps(data, sort_keys=True, cls=ShapelyEncoder))
 
 
-def kickoff_drawn_trees_shadow_job(session_id: str, state_id:str, unprocessed_drawn_trees: dict):
+def kickoff_drawn_trees_shadow_job(
+    session_id: str, state_id: str, unprocessed_drawn_trees: dict
+):
     request_date_time = arrow.now().format("YYYY-MM-DDTHH:mm:ss")
     tree_processing_payload = DrawnTreesShadowGenerationRequest(
         trees=unprocessed_drawn_trees,
         session_id=session_id,
-        state_id = state_id,
+        state_id=state_id,
         request_date_time=request_date_time,
         processed_trees={},
     )
@@ -189,7 +191,6 @@ class GeodesignhubDataDownloader:
     def upload_diagram(
         self, diagram_upload_details: DiagramUploadDetails
     ) -> Union[ErrorResponse, UploadSuccessResponse]:
-
         upload_job = self.api_helper.post_as_diagram(
             geoms=json.loads(diagram_upload_details.geometry),
             projectorpolicy=diagram_upload_details.project_or_policy,
@@ -254,7 +255,6 @@ class GeodesignhubDataDownloader:
     def process_design_data_from_geodesignhub(
         self, unprocessed_design_geojson
     ) -> Union[ErrorResponse, FeatureCollection]:
-
         _all_features: List[Feature] = []
 
         my_geometry_helper = GeometryHelper()
@@ -395,7 +395,6 @@ class GeodesignhubDataDownloader:
     def generate_tree_point_feature_collection(
         self, point_feature_list
     ) -> FeatureCollection:
-
         _all_tree_features: List[Feature] = []
         for point_feature in point_feature_list:
             _geometry = Point(coordinates=point_feature["geometry"]["coordinates"])
@@ -438,7 +437,9 @@ class GeodesignhubDataDownloader:
     ) -> int:
         geodesignhub_project_data = asdict(geodesignhub_project_data)
         interesting_system = [
-            d for d in geodesignhub_project_data["systems"] if d["name"] in ["TREE", "GI"]
+            d
+            for d in geodesignhub_project_data["systems"]
+            if d["name"] in ["TREE", "GI"]
         ]
         return interesting_system[0]["id"]
 
@@ -504,34 +505,32 @@ class GeodesignhubDataDownloader:
         return project_data
 
 
-class RoadsDownloadFactory:
-    def __init__(
-        self, session_id: str, bounds: str, project_id: str, shadow_date_time: str
-    ):
+# class RoadsDownloadFactory:
+#     def __init__(
+#         self, session_id: str, bounds: str, project_id: str, shadow_date_time: str
+#     ):
+#         self.session_id = session_id
+#         self.shadow_date_time = shadow_date_time
+#         self.bounds = bounds
+#         self.project_id = project_id
 
-        self.session_id = session_id
-        self.shadow_date_time = shadow_date_time
-        self.bounds = bounds
-        self.project_id = project_id
+#     def start_download_roads_job(self):
+#         my_url_generator = ViewDataGenerator(view_type=None, project_id=self.project_id)
+#         r_url = my_url_generator.get_existing_roads_geojson_url()
 
-    def start_download_roads_job(self):
-
-        my_url_generator = ViewDataGenerator(view_type=None, project_id=self.project_id)
-        r_url = my_url_generator.get_existing_roads_geojson_url()
-        
-        roads_download_job = RoadsDownloadRequest(
-            bounds=self.bounds,
-            session_id=str(self.session_id),
-            request_date_time=self.shadow_date_time,
-            roads_url=r_url.url,
-        )
-        roads_download_result = q.enqueue(
-            utils.download_roads,
-            asdict(roads_download_job),
-            on_success=notify_roads_download_complete,
-            on_failure=notify_roads_download_failure,
-            job_id=self.session_id + ":" + self.shadow_date_time + ":roads",
-        )
+#         roads_download_job = RoadsDownloadRequest(
+#             bounds=self.bounds,
+#             session_id=str(self.session_id),
+#             request_date_time=self.shadow_date_time,
+#             roads_url=r_url.url,
+#         )
+#         roads_download_result = q.enqueue(
+#             utils.download_roads,
+#             asdict(roads_download_job),
+#             on_success=notify_roads_download_complete,
+#             on_failure=notify_roads_download_failure,
+#             job_id=self.session_id + ":" + self.shadow_date_time + ":roads",
+#         )
 
 
 class ShadowComputationHelper:
@@ -553,7 +552,6 @@ class ShadowComputationHelper:
         """This method computes the shadow for existing or GDH buidlings"""
         my_url_generator = ViewDataGenerator(view_type=None, project_id=self.project_id)
         r_url = my_url_generator.get_existing_roads_geojson_url()
-        
 
         try:
             assert r_url != "0"
@@ -612,4 +610,3 @@ class ShadowComputationHelper:
                 job_id=self.session_id + ":gdh_roads_shadow",
                 depends_on=[gdh_shadow_result],
             )
-

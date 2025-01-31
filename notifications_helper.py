@@ -1,6 +1,7 @@
 from dashboard import create_app
 import time
 import logging
+
 logger = logging.getLogger("local-climate-response")
 
 
@@ -16,18 +17,6 @@ def notify_shadow_complete(job, connection, result, *args, **kwargs):
 
 def shadow_generation_failure(job, connection, type, value, traceback):
     logger.info("Shadow generation with job with id %s failed.." % str(job.id))
-
-
-def existing_buildings_notify_shadow_complete(job, connection, result, *args, **kwargs):
-    # send a message to the room / channel that the shadows is ready
-
-    job_id = job.id + "_existing_buildings_canopy_shadow"
-    # app, babel = create_app()
-    # with app.app_context():
-    #     sse.publish(
-    #         {"shadow_key": job_id}, type="existing_buildings_shadow_generation_success"
-    #     )
-    logger.info(f"Job with id {job_id} completed")
 
 
 def existing_buildings_shadow_generation_failure(
@@ -47,6 +36,7 @@ def notify_roads_download_complete(job, connection, result, *args, **kwargs):
 
     logger.info("Job with id %s downloaded roads data successfully.." % str(job_id))
 
+
 def notify_drawn_trees_shadow_complete(job, connection, result, *args, **kwargs):
     # send a message to the room / channel that the shadows is ready
 
@@ -55,10 +45,13 @@ def notify_drawn_trees_shadow_complete(job, connection, result, *args, **kwargs)
     # with app.app_context():
     #     time.sleep(3)
     #     sse.publish({"drawn_trees_shadow_job_id": job_id}, type="drawn_trees_shadow_success")
+
+    logger.info(
+        "Job with id %s for computing drawn shadow completed successfully.."
+        % str(job_id)
+    )
+
     
-    logger.info("Job with id %s for computing drawn shadow completed successfully.." % str(job_id))
-
-
 def notify_drawn_trees_shadow_failure(job, connection, result, *args, **kwargs):
     # send a message to the room / channel that the shadows is ready
 
@@ -69,6 +62,7 @@ def notify_drawn_trees_shadow_failure(job, connection, result, *args, **kwargs):
     #     sse.publish({"drawn_trees_shadow_key": job_id}, type="drawn_trees_shadow_failure")
 
     logger.info("Job with id %s downloaded roads data successfully.." % str(job_id))
+
 
 def notify_roads_download_failure(job, connection, type, value, traceback):
     logger.info("Job with %s failed.." % str(job.id))

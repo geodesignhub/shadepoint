@@ -97,7 +97,6 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
     )
     bounds_hash = hashlib.sha512(bounds.encode("utf-8")).hexdigest()
 
-    """A function to download roads GeoJSON from GDH data server for the given bounds,  """
     fc = {"type": "FeatureCollection", "features": []}
     roads_storage_key = bounds_hash[:15] + ":roads"
     r.set(session_roads_key, roads_storage_key)

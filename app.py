@@ -127,22 +127,6 @@ def get_existing_buildings_shadow():
         shadow = {"type": "FeatureCollection", "features": []}
     return Response(json.dumps(shadow), status=200, mimetype=MIMETYPE)
 
-
-@app.route("/get_downloaded_roads", methods=["GET"])
-def get_downloaded_roads():
-    roads_key = request.args.get("roads_key", "0")
-    roads_session_exists = redis.exists(roads_key)
-    if roads_session_exists:
-        roads_data_key = redis.get(roads_key)
-        r_raw = redis.get(roads_data_key)
-        roads = json.loads(r_raw.decode("utf-8"))
-    else:
-        roads = {"type": "FeatureCollection", "features": []}
-
-    rds = json.dumps(roads)
-    return Response(rds, status=200, mimetype=MIMETYPE)
-
-
 @app.route("/get_downloaded_trees", methods=["GET"])
 def get_downloaded_trees():
     trees_key = request.args.get("trees_key", "0")
@@ -318,7 +302,7 @@ def generate_design_shadow():
             shadow_date_time = arrow.get(r_date_time).format("YYYY-MM-DDTHH:mm:ss")
     except KeyError:
         current_year = arrow.now().year
-        august_6_date = "{year}-08-06T10:10:00".format(year=current_year)
+        august_6_date = f"{current_year}-08-06T10:10:00"
         shadow_date_time = august_6_date
 
     my_view_helper = ViewDataGenerator(
