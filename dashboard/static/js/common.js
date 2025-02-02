@@ -10,11 +10,36 @@ function get_building_shadow(shadow_download_url) {
             return response.json();
         })
         .then((shadow_data) => {
-            let spinner_cont = document.getElementById('spinner');
-            spinner_cont.classList.add('d-none');
+            if (shadow_data['features'].length > 0) {
+                let spinner_cont = document.getElementById('spinner');
+                spinner_cont.classList.add('d-none');
+                let shadows_to_render = shadow_data;
+                map.getSource('building_shadows').setData(shadows_to_render);
 
-            let shadows_to_render = shadow_data;
-            map.getSource('building_shadows').setData(shadows_to_render);
+                
+            } else {
+
+                console.log("Shadow computation ongoing...");
+                new Notify({
+                    status: 'info',
+                    title: 'Not completed',
+                    text: 'Shadows are still being generated, check after 10 - 30 seconds',
+                    effect: 'fade',
+                    speed: 300,
+                    customClass: '',
+                    customIcon: '',
+                    showIcon: true,
+                    showCloseButton: true,
+                    autoclose: true,
+                    autotimeout: 3000,
+                    notificationsGap: null,
+                    notificationsPadding: null,
+                    type: 'outline',
+                    position: 'bottom center',
+                    customWrapper: '',
+                });
+
+            }
         }).catch((error) => {
             console.log(error);
         });
@@ -74,6 +99,7 @@ function get_road_shadow_stats(roads_shadow_stats_url) {
             return response.json();
         })
         .then((roads_shadow_data) => {
+            
             let shadow_stats_cont = document.getElementById('shadow_stats');
             shadow_stats_cont.classList.remove('d-none');
             let total_roads = document.getElementById('total_roads');
@@ -83,6 +109,11 @@ function get_road_shadow_stats(roads_shadow_stats_url) {
             shadowed_roads.innerHTML = roads_shadow_data['shadowed_kms']
             let total_building_shadow_cont = document.getElementById('building_shadows');
             total_building_shadow_cont.innerHTML = roads_shadow_data['total_shadow_area'];
+            if (roads_shadow_data['job_id']!=='0000'){
+                //  hide the get design shadows control
+                let get_design_shadows = document.getElementById('get_shadows_control');
+                get_design_shadows.classList.add('d-none');
+            }
 
         }).catch((error) => {
 

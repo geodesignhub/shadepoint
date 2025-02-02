@@ -112,52 +112,13 @@ def get_diagram_shadow():
         s = redis.get(shadow_key)
         shadow = json.loads(s)
     else:
-        shadow = {"type": "FeatureCollection", "features": []}
+        shadow = json.dumps({"type": "FeatureCollection", "features": []})
+    
     return Response(shadow, status=200, mimetype=MIMETYPE)
 
 
-@app.route("/existing_buildings_generated_shadow", methods=["GET"])
-def get_existing_buildings_shadow():
-    shadow_key = request.args.get("shadow_key", "0")
-    shadow_exists = redis.exists(shadow_key)
-    if shadow_exists:
-        s = redis.get(shadow_key)
-        shadow = json.loads(s)
-    else:
-        shadow = {"type": "FeatureCollection", "features": []}
-    return Response(json.dumps(shadow), status=200, mimetype=MIMETYPE)
-
-@app.route("/get_downloaded_trees", methods=["GET"])
-def get_downloaded_trees():
-    trees_key = request.args.get("trees_key", "0")
-    trees_session_exists = redis.exists(trees_key)
-    if trees_session_exists:
-        trees_data_key = redis.get(trees_key)
-        r_raw = redis.get(trees_data_key)
-        trees = json.loads(r_raw.decode("utf-8"))
-    else:
-        trees = {"type": "FeatureCollection", "features": []}
-
-    trs = json.dumps(trees)
-
-    return Response(trs, status=200, mimetype=MIMETYPE)
 
 
-@app.route("/existing_buildings_shadow_roads_stats", methods=["GET"])
-def get_existing_buildings_shadow_roads_stats():
-    roads_shadow_stats_key = request.args.get("roads_shadow_stats_key", "0")
-    roads_shadow_stats_exists = redis.exists(roads_shadow_stats_key)
-
-    if roads_shadow_stats_exists:
-        s = redis.get(roads_shadow_stats_key)
-        shadow_stats = json.loads(s)
-    else:
-        default_shadow = RoadsShadowOverlap(
-            total_roads_kms=0.0, shadowed_kms=0.0, job_id="0000", total_shadow_area=0.0
-        )
-        shadow_stats = asdict(default_shadow)
-
-    return Response(json.dumps(shadow_stats), status=200, mimetype=MIMETYPE)
 
 
 @app.route("/get_shadow_roads_stats", methods=["GET"])
@@ -174,7 +135,7 @@ def generate_shadow_road_stats():
             total_roads_kms=0.0, shadowed_kms=0.0, job_id="0000", total_shadow_area=0.0
         )
         shadow_stats = asdict(default_shadow)
-
+    print(shadow_stats)
     return Response(json.dumps(shadow_stats), status=200, mimetype=MIMETYPE)
 
 

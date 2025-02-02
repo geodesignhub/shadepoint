@@ -574,7 +574,7 @@ class ShadowComputationHelper:
                 on_failure=notify_roads_download_failure,
                 job_id=self.session_id + ":" + self.shadow_date_time + ":roads",
             )
-
+            print('h343')
             gdh_buildings_shadow_dependency = Dependency(
                 jobs=[roads_download_result], allow_failure=False, enqueue_at_front=True
             )

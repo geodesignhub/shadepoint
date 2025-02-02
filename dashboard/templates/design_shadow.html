@@ -29,10 +29,10 @@
                 <span class="visually-hidden">Loading...</span>
             </div>
            
-            <button class="btn btn-outline-info d-none" id="get_shadows_control" type="button"
-                onclick="design_shadow_helper.get_all_generated_data()" class="btn btn-outline-secondary"data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Get generated shadows">Get Design Shadows
+            <button class="btn btn-info d-none" id="get_shadows_control" type="button"
+                onclick="design_shadow_helper.get_all_generated_data()" class="btn btn-secondary" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Get generated shadows">Show Design Shadows & Analysis
             </button>
-           
+            <p>&nbsp;</p>
         </div>
     </div>
     <div class="row">
@@ -534,24 +534,13 @@
     // document.addEventListener('DOMContentLoaded', () => {
     //     process_trees();
 
-    // });
-    setTimeout(
-            function() {
-                // hide the spinner container
-            let spinner_cont = document.getElementById('spinner');
-            spinner_cont.classList.add('d-none');
-            // show get_design_shadows_control
-            let get_design_shadows_cont = document.getElementById('get_shadows_control');
-            get_design_shadows_cont.classList.remove('d-none');
-            }, 350);
-    
     let DesignShadowFactory = function () {
         let session_id = "{{op['session_id']}}";
         let current_year = new Date().getFullYear();
         let august_6th_datetime= current_year+ "-08-06T10:10:00";
 
         this.get_generated_design_shadows = function () {
-            let shadow_key = session_id+':'+august_6th_datetime;
+            let shadow_key = session_id+':'+august_6th_datetime+'_gdh_buildings_canopy_shadow';
             let shadow_download_url = window.location.origin + '/gdh_generated_shadow?shadow_key=' + shadow_key;
             get_building_shadow(shadow_download_url);
         }
@@ -564,10 +553,24 @@
 
         this.get_all_generated_data = function(){
             this.get_generated_design_shadows();            
-            // this.get_roads_shadow_analysis();
+            this.get_roads_shadow_analysis();
         }
     }
     let design_shadow_helper = new DesignShadowFactory();
+    // });
+    setTimeout(
+            function() {
+                // hide the spinner container
+            let spinner_cont = document.getElementById('spinner');
+            spinner_cont.classList.add('d-none');
+            // show get_design_shadows_control
+            let get_design_shadows_cont = document.getElementById('get_shadows_control');
+            get_design_shadows_cont.classList.remove('d-none');
+
+            design_shadow_helper.get_generated_design_shadows();            
+            design_shadow_helper.get_roads_shadow_analysis();
+            }, 25000);
+    
 
 </script>
 {% endif %}

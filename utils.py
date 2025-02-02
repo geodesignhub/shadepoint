@@ -21,10 +21,14 @@ from dacite import from_dict
 from pyproj import Geod
 import geopandas as gpd
 import pybdshadow
-from shapely.geometry import Polygon, LineString, MultiLineString
+
+
+from shapely.geometry import LineString as ShapelyLineString
+from shapely.geometry import MultiLineString as ShapelyMultiLineString
+
 from shapely.geometry import shape
-from shapely.geometry.polygon import Polygon
-from shapely.geometry.polygon import orient
+from shapely.geometry import Polygon as ShapelyPolygon
+from shapely.geometry.polygon import orient 
 import json
 import uuid
 from typing import List
@@ -113,6 +117,7 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
             r_url = roads_url.replace("__bounds__", bounds)
         else:
             r_url = roads_url
+            
         download_request = requests.get(r_url)
         if download_request.status_code == 200:
             fc = download_request.json()
@@ -445,8 +450,8 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
     logger.info("Job Completed")
 
 
-def compute_polygon_area(polygon: Polygon):
-    geod = Geod(ellps="WGS84")
+def compute_polygon_area(polygon: ShapelyPolygon):
+    geod = Geod(ellps="WGS84")    
     poly_area_m2, poly_perimeter = geod.geometry_area_perimeter(polygon)
     poly_area_hectares = poly_area_m2 / 10000  # convert from m^2 to hectares
     return poly_area_hectares
@@ -474,11 +479,13 @@ def compute_road_shadow_overlap(
     shadowed_kms = 0
 
     for line_feature in roads["features"]:
+        
         if line_feature["geometry"]["type"] == "LineString":
-            line = LineString(coordinates=line_feature["geometry"]["coordinates"])
+            line = ShapelyLineString(coordinates=line_feature["geometry"]["coordinates"])
         elif line_feature["geometry"]["type"] == "MultiLineString":
-            line = MultiLineString(line_feature["geometry"]["coordinates"])
+            line = ShapelyMultiLineString(line_feature["geometry"]["coordinates"])
         all_roads.append(line)
+        
         segment_length = geod.geometry_length(line)
         logger.info(
             "Segment Length {segment_length:.3f}".format(segment_length=segment_length)
@@ -486,7 +493,8 @@ def compute_road_shadow_overlap(
         total_length += segment_length
     total_shadow_area = 0
     for shadow_feature in shadows["features"]:
-        s: Polygon = shape(shadow_feature["geometry"])
+        
+        s = shape(shadow_feature["geometry"])
 
         poly_area = 0
         if s.geom_type == "MultiPolygon":
@@ -497,10 +505,12 @@ def compute_road_shadow_overlap(
                 a = compute_polygon_area(oriented)
                 poly_area += a
         elif s.geom_type == "Polygon":
-            poly_area = compute_polygon_area(s)
+            oriented = orient(s)
+            poly_area = compute_polygon_area(oriented)
         else:
             raise IOError("Shape is not a polygon.")
         logger.info("Shadow Area {poly_area:.3f}".format(poly_area=poly_area))
+        
         total_shadow_area += poly_area
 
         all_shadows.append(s)
@@ -526,7 +536,9 @@ def compute_road_shadow_overlap(
 
             intersections.append(intersection)
             shadowed_kms += intersection_length
+    
     total_shadow_area_rounded = round(total_shadow_area, 2)
+    
     road_shadow_overlap = RoadsShadowOverlap(
         total_roads_kms=round(total_length, 2),
         shadowed_kms=round(shadowed_kms, 2),
