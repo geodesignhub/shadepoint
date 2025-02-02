@@ -4,6 +4,7 @@
 {% block headercss %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/notifications/simple-notify.css') }}">
 
 {% endblock %}
 {% block body %}
@@ -42,7 +43,7 @@
                 {% endfor %}
                 {% for fgb_layer in op['fgb_layers'] %}
                 <input type="checkbox" class="btn-check" id="{{fgb_layer['dom_id']}}" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="{{fgb_layer['dom_id']}}">{{ fgb_layer['name']}}</label>
+                <label class="btn btn-outline-primary" for="{{fgb_layer['dom_id']}}">{{ fgb_layer['name']}}</label> 
                 {% endfor %}
                 {% for pmtiles_layer in op['pmtiles_layers'] %}
                 <input type="checkbox" class="btn-check" id="{{pmtiles_layer['dom_id']}}" autocomplete="off" checked>
@@ -104,13 +105,11 @@
                     <button class="btn btn-outline-info btn-sm d-none" id="clear_shadows_control" type="button"
                         onclick="tree_editing_control.clear_generated_shadows()" class="btn btn-outline-secondary"data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Clear generated shadows">Clear Tree Shadows
                     </button>&nbsp;
+                    <button class="btn btn-outline-info btn-sm d-none" id="get_shadows_control" type="button"
+                        onclick="tree_editing_control.get_generated_shadows('{{ op['session_id'] }}')" class="btn btn-outline-info"data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Get generated shadows">Get generated shadows
+                    </button>&nbsp;
                 </div>
             
-                <div class="btn-group" role="group" aria-label="Add Diagram tools">
-                    <button id="add_as_diagram_button" type="button" class="btn btn-outline-success d-none" data-bs-toggle="modal"
-                        data-bs-target="#addDiagramModal"><i class="bi bi-arrow-bar-up"></i>&nbsp;{{ gettext('Add as a diagram') }}</button>
-                    
-                </div>
             </div>
 
         </div>
@@ -118,8 +117,22 @@
     <br><br>
     <div class="row">
         <div class="col-md-10">
-            <h5>{{ gettext('Shadows added') }}&nbsp;<small class="text-muted">{{ gettext('The shadows are generated based on the trees drawn on the map') }}</small></h5>
+            <h5>{{ gettext('Shadow Detail') }}&nbsp;<small class="text-muted">{{ gettext('The shadows are generated based on the trees drawn on the map') }}</small></h5>
             <p id="drawn_trees_shadow_area" class="lead"><small class="text-muted">{{ gettext('Additional shadowed area in m2') }}</small></p>
+            
+        </div>
+    </div><br>
+    <div class="row">
+        <div class="col-md-10">
+            <h5>{{ gettext('Add as a new diagram') }}&nbsp;<small class="text-muted">{{ gettext('Add your trees as a diagram in Geodesignhub') }}</small></h5>
+                       
+            <br>
+
+            <div class="btn-group" role="group" aria-label="Add Diagram tools">
+                <button id="add_as_diagram_button" type="button" class="btn btn-outline-success d-none" data-bs-toggle="modal"
+                    data-bs-target="#addDiagramModal"><i class="bi bi-arrow-bar-up"></i>&nbsp;{{ gettext('Add as a diagram') }}</button>
+                
+            </div>
         </div>
     </div>
 
@@ -169,6 +182,7 @@
 
 <script type="text/javascript" src="{{ url_for('static', filename='js/turf.min.js') }}"></script>
 
+<script type="text/javascript" src="{{ url_for('static', filename='js/notifications/simple-notify.min.js') }}"></script>
 <script type="text/javascript">
     let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
     let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -278,7 +292,8 @@
 
     draw.start();
     let TreeEditingFactory = function () {
-        let session_id = uuidv4()
+        let session_id = "{{op['session_id']}}";
+        let state_id = uuidv4();
 
         this.add_tree = function () {
             draw.setMode("point");
@@ -363,8 +378,27 @@
                 let clear_shadows_control = document.getElementById('clear_shadows_control');
                 clear_shadows_control.classList.add('d-none');
                 this.send_generate_shadow_request(snapshot);
+                // after 20 seconds remove spinner and add a get shadows button
+                setTimeout(
+                function() {
+                    // hide the spinner container
+                    spinner_cont.classList.add('d-none');
+                    // show the get shadows button
+                    let get_shadows_control = document.getElementById('get_shadows_control');
+                    get_shadows_control.classList.remove('d-none');
+
+                }, 30000);
+
             }
 
+        }
+
+        this.get_generated_shadows = function (session_id){
+
+            let drawn_trees_shadow_key = session_id + '_'+ state_id+'_drawn_trees_shadow';
+                // The message is for the current sesion, download the data...
+                let drawn_trees_download_url = window.location.origin + '/get_drawn_trees_shadows?drawn_trees_shadows_key=' + drawn_trees_shadow_key;
+                get_drawn_trees_shadows(drawn_trees_download_url);
         }
         this.clear_generated_shadows = function () {
             // hide generate shadows button
@@ -389,16 +423,15 @@
 
 
         }
-        this.update_session_id = function () {
-            session_id = uuidv4();
+        this.update_state_id = function () {
+            state_id = uuidv4();
         }
-        this.get_session_id = function () {
-            return session_id;
+        this.get_state_id = function () {
+            return state_id;
         }
 
         this.send_generate_shadow_request = function (snapshot) {
-
-            let post_shadow_url = window.location.origin + '/generate_drawn_trees_shadow?session_id=' + session_id;
+            let post_shadow_url = window.location.origin + '/generate_drawn_trees_shadow?session_id=' + session_id+'&state_id='+state_id;
             fetch(post_shadow_url, {
                 method: "post",
                 headers: {
@@ -410,6 +443,8 @@
                 //make sure to serialize your JSON body
                 body: JSON.stringify({
                     unprocessed_tree_geojson: snapshot,
+                    session_id:session_id,
+                    state_id:state_id
                 })
             })
                 .then((response) => {
@@ -419,6 +454,29 @@
         }
 
 
+        this.empty_shadows_loaded = function () {
+            console.log("Shadow computation ongoing...");
+
+            new Notify ({
+                status: 'info',
+                title: 'Not completed',
+                text: 'Shadows are still being generated, check after 10 - 30 seconds',
+                effect: 'fade',
+                speed: 300,
+                customClass: '',
+                customIcon: '',
+                showIcon: true,
+                showCloseButton: true,
+                autoclose: true,
+                autotimeout: 3000,
+                notificationsGap: null,
+                notificationsPadding: null,
+                type: 'outline',
+                position: 'center',
+                customWrapper: '',
+            });
+
+        }
         this.shadows_loaded = function () {
 
             // hide generate shadows button
@@ -430,6 +488,10 @@
             // show the clear shadows button
             let clear_shadows_control = document.getElementById('clear_shadows_control');
             clear_shadows_control.classList.remove('d-none');
+
+            // hide get generated shadows button
+            let get_shadows_control = document.getElementById('get_shadows_control');
+            get_shadows_control.classList.add('d-none');
         }
     }
     let tree_editing_control = new TreeEditingFactory();
@@ -442,7 +504,7 @@
 
         if (['create', 'delete', 'move'].includes(type)) {
             tree_editing_control.update_tree_count();
-            tree_editing_control.update_session_id();
+            tree_editing_control.update_state_id();
         }
     });
     draw.on('select', (id) => {
@@ -639,39 +701,7 @@
 
     });
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const room = project_detail.session_id;
-        var source = new EventSource("{{ url_for('sse.stream') }}");
-        source.addEventListener('roads_download_success', function (event) {
-            var data = JSON.parse(event.data);
-            // do what you want with this data
-            let roads_key = data['roads_key'];
-            let session_id = roads_key.split(':')[0]
-            if (session_id === room) {
-                // The message is for the current sesion, download the data...
-                let roads_download_url = window.location.origin + '/get_downloaded_roads?roads_key=' + roads_key;
-                get_downloaded_roads(roads_download_url);
-            }
-        }, false);
-        source.addEventListener('drawn_trees_shadow_success', function (event) {
-            let room = tree_editing_control.get_session_id();
-
-            var data = JSON.parse(event.data);
-            // do what you want with this data
-
-            let drawn_trees_shadow_job_id = data['drawn_trees_shadow_job_id'];
-
-            let session_id = drawn_trees_shadow_job_id.split(':')[0];
-
-            if (session_id === room) {
-                let drawn_trees_shadow_key = session_id + '_drawn_trees_shadow';
-                // The message is for the current sesion, download the data...
-                let drawn_trees_download_url = window.location.origin + '/get_drawn_trees_shadows?drawn_trees_shadows_key=' + drawn_trees_shadow_key;
-                get_drawn_trees_shadows(drawn_trees_download_url);
-            }
-        }, false);
-    });
-
+    
     
 </script>
 {% endif %}

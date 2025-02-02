@@ -5,14 +5,12 @@ import enum
 
 
 class GeometryType(str, enum.Enum):
-
     line = "line"
     point = "point"
     polygon = "polygon"
 
 
 class RasterOrVector(str, enum.Enum):
-
     raster = "raster"
     vector = "vector"
 
@@ -140,7 +138,6 @@ class AllSystemDetails:
 
 @dataclass
 class GeodesignhubProjectBounds:
-
     bounds: str
 
 
@@ -165,7 +162,6 @@ class DiagramUploadDetails:
 
 @dataclass
 class GeodesignhubProjectTags:
-
     tags: List[GeodesignhubProjectTag]
 
 
@@ -325,6 +321,7 @@ class GeodesignhubDataShadowGenerationRequest:
 class DrawnTreesShadowGenerationRequest:
     trees: list
     session_id: str
+    state_id: str
     request_date_time: str
     processed_trees: dict
 
