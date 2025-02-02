@@ -135,7 +135,6 @@ def generate_shadow_road_stats():
             total_roads_kms=0.0, shadowed_kms=0.0, job_id="0000", total_shadow_area=0.0
         )
         shadow_stats = asdict(default_shadow)
-    print(shadow_stats)
     return Response(json.dumps(shadow_stats), status=200, mimetype=MIMETYPE)
 
 
@@ -368,7 +367,6 @@ def generate_drawn_trees_shadow():
     unprocessed_tree_geojson = geojson_payload["unprocessed_tree_geojson"]
     session_id = request.args.get("session_id")
     state_id = request.args.get("state_id")
-    print(session_id,state_id)
     kickoff_drawn_trees_shadow_job(
         unprocessed_drawn_trees=unprocessed_tree_geojson, session_id=session_id, state_id=state_id
     )

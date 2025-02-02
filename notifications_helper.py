@@ -33,7 +33,7 @@ def notify_roads_download_complete(job, connection, result, *args, **kwargs):
     # with app.app_context():
     #     time.sleep(3)
     #     sse.publish({"roads_key": job_id}, type="roads_download_success")
-    print("Job with id %s downloaded roads data successfully.." % str(job_id))
+
     logger.info("Job with id %s downloaded roads data successfully.." % str(job_id))
 
 
