@@ -43,7 +43,7 @@ from download_helper import (
 import arrow
 import uuid
 import geojson
-
+from flask_sqlalchemy import SQLAlchemy
 import logging
 
 logger = logging.getLogger("local-climate-response")
@@ -79,6 +79,9 @@ babel.init_app(app, locale_selector=get_locale)
 
 csrf = CSRFProtect(app)
 bootstrap = Bootstrap5(app)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
 
 
 @app.route("/", methods=["GET"])

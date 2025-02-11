@@ -13,6 +13,7 @@ class Config(object):
     )
     REDIS_URL = environ.get("REDIS_URL", "redis://localhost:6379")
     LANGUAGES = {"en": "English", "he": "עִברִית", "ar": "عربي"}
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL','')
 
 
 apisettings = {
