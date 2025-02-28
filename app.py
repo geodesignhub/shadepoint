@@ -37,14 +37,13 @@ import os
 from download_helper import (
     GeodesignhubDataDownloader,
     ShadowComputationHelper,
-    
     kickoff_drawn_trees_shadow_job,
 )
 import arrow
 import uuid
 import geojson
-from flask_sqlalchemy import SQLAlchemy
 import logging
+
 
 logger = logging.getLogger("local-climate-response")
 
@@ -77,16 +76,14 @@ app.secret_key = os.getenv("SECRET_KEY", "My Secret key")
 app.config["BABEL_TRANSLATION_DIRECTORIES"] = os.path.join(base_dir, "translations")
 babel.init_app(app, locale_selector=get_locale)
 
+
 csrf = CSRFProtect(app)
 bootstrap = Bootstrap5(app)
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-
 
 
 @app.route("/", methods=["GET"])
 def home():
-    return render_template("home.html",op={})
+    return render_template("home.html", op={})
 
 
 @app.context_processor
@@ -116,12 +113,8 @@ def get_diagram_shadow():
         shadow = json.loads(s)
     else:
         shadow = json.dumps({"type": "FeatureCollection", "features": []})
-    
+
     return Response(shadow, status=200, mimetype=MIMETYPE)
-
-
-
-
 
 
 @app.route("/get_shadow_roads_stats", methods=["GET"])
@@ -216,7 +209,6 @@ class DiagramUploadForm(FlaskForm):
 
 @app.route("/diagram_upload_result/", methods=["GET"])
 def redirect_upload_diagram():
-
     status = int(request.args.get("status"))
     apitoken = request.args["apitoken"]
     project_id = request.args["project_id"]
@@ -274,7 +266,9 @@ def generate_design_shadow():
 
     fgb_layers: FGBDataSourceList = my_view_helper.generate_fgb_layers_list()
     cog_layers: COGDataSourceList = my_view_helper.generate_cog_layers_list()
-    pmtiles_layers: PMTilesDataSourceList = my_view_helper.generate_pmtiles_layers_list()
+    pmtiles_layers: PMTilesDataSourceList = (
+        my_view_helper.generate_pmtiles_layers_list()
+    )
     wms_layers: WMSDataSourceList = my_view_helper.generate_wms_layers_list()
 
     session_id = uuid.uuid4()
@@ -327,7 +321,7 @@ def generate_design_shadow():
 
     # Download Data
     maptiler_key = os.getenv("maptiler_key", "00000000000000")
-    
+
     success_response = ShadowViewSuccessResponse(
         status=1,
         message="Data from Geodesignhub retrieved",
@@ -349,8 +343,8 @@ def generate_design_shadow():
 @app.route("/get_drawn_trees_shadows", methods=["GET"])
 def get_drawn_trees_shadows():
     trees_key = request.args.get("drawn_trees_shadows_key", "0")
-    
-    trees_session_exists = redis.exists(trees_key) 
+
+    trees_session_exists = redis.exists(trees_key)
 
     if trees_session_exists:
         trees_data_raw = redis.get(trees_key)
@@ -371,7 +365,9 @@ def generate_drawn_trees_shadow():
     session_id = request.args.get("session_id")
     state_id = request.args.get("state_id")
     kickoff_drawn_trees_shadow_job(
-        unprocessed_drawn_trees=unprocessed_tree_geojson, session_id=session_id, state_id=state_id
+        unprocessed_drawn_trees=unprocessed_tree_geojson,
+        session_id=session_id,
+        state_id=state_id,
     )
 
     return Response({}, status=200, mimetype=MIMETYPE)
@@ -392,7 +388,7 @@ def generate_diagram_shadow():
             code=400,
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
-    
+
     diagram_view_details = ToolboxDiagramViewDetails(
         api_token=apitoken,
         project_id=projectid,
@@ -518,7 +514,9 @@ def draw_trees_view():
 
     fgb_layers: FGBDataSourceList = my_view_helper.generate_fgb_layers_list()
     cog_layers: COGDataSourceList = my_view_helper.generate_cog_layers_list()
-    pmtiles_layers: PMTilesDataSourceList = my_view_helper.generate_pmtiles_layers_list()
+    pmtiles_layers: PMTilesDataSourceList = (
+        my_view_helper.generate_pmtiles_layers_list()
+    )
     wms_layers: WMSDataSourceList = my_view_helper.generate_wms_layers_list()
 
     project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
@@ -535,7 +533,6 @@ def draw_trees_view():
     diagram_upload_form = DiagramUploadForm(
         project_id=projectid, apitoken=apitoken, gi_system_id=gi_system_id
     )
-    
 
     if diagram_upload_form.validate_on_submit():
         diagram_upload_form_data = diagram_upload_form.data
@@ -589,7 +586,7 @@ def draw_trees_view():
         apitoken=apitoken,
         project_id=projectid,
     )
-    
+
     return render_template(
         "add_diagram/draw_trees.html",
         op=asdict(success_response),
