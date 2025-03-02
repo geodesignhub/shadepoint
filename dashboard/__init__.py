@@ -20,7 +20,7 @@ def create_app(config_class=Config):
 
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    db = SQLAlchemy()
+    db = SQLAlchemy(model_class=Base)
     db.init_app(app)
     migrate = Migrate(app, db)
 
