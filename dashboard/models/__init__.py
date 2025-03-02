@@ -1,8 +1,8 @@
 
 from sqlalchemy.orm import declarative_base
+from dashboard import db
 
-
-Base = declarative_base()  # model base class
+Base = db.Model  # model base class
 from .adaptation_target import AdaptationTarget
 from .apiversion import ApiVersion
 from .impact import Impact

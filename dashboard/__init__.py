@@ -12,6 +12,7 @@ from sqlalchemy.orm import DeclarativeBase
 class Base(DeclarativeBase):
   pass
 
+db = SQLAlchemy(model_class=Base)
 
 def create_app(config_class=Config):   
     app = Flask(__name__) 
@@ -20,7 +21,6 @@ def create_app(config_class=Config):
 
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    db = SQLAlchemy(model_class=Base)
     db.init_app(app)
     migrate = Migrate(app, db)
 

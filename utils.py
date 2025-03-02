@@ -28,7 +28,7 @@ from shapely.geometry import MultiLineString as ShapelyMultiLineString
 
 from shapely.geometry import shape
 from shapely.geometry import Polygon as ShapelyPolygon
-from shapely.geometry.polygon import orient 
+from shapely.geometry.polygon import orient
 import json
 import uuid
 from typing import List
@@ -63,7 +63,6 @@ class DrawnTreesProcessor:
     def process_drawn_trees_data(
         self, unprocessed_tree_geojson
     ) -> Union[ErrorResponse, FeatureCollection]:
-        
         """This method buffers the drawn trees GeoJSON as polygon and height"""
 
         my_geometry_helper = GeometryHelper()
@@ -118,7 +117,7 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
             r_url = roads_url.replace("__bounds__", bounds)
         else:
             r_url = roads_url
-            
+
         download_request = requests.get(r_url)
         if download_request.status_code == 200:
             fc = download_request.json()
@@ -136,7 +135,6 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
 
 
 def download_trees(trees_download_request: TreesDownloadRequest):
-
     _trees_download_request = from_dict(
         data_class=TreesDownloadRequest, data=trees_download_request
     )
@@ -158,7 +156,9 @@ def download_trees(trees_download_request: TreesDownloadRequest):
         fc = json.loads(fc_str)
     else:
         bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)
-        t_url = trees_url.replace("__bounds__", bounds) if bounds_filtering else trees_url
+        t_url = (
+            trees_url.replace("__bounds__", bounds) if bounds_filtering else trees_url
+        )
 
         download_request = requests.get(t_url)
         if download_request.status_code == 200:
@@ -173,7 +173,6 @@ def download_trees(trees_download_request: TreesDownloadRequest):
 
 
 def download_existing_buildings(buildings_download_request: BuildingsDownloadRequest):
-
     _buildings_download_request = from_dict(
         data_class=BuildingsDownloadRequest, data=buildings_download_request
     )
@@ -195,7 +194,11 @@ def download_existing_buildings(buildings_download_request: BuildingsDownloadReq
         fc = json.loads(fc_str)
     else:
         bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)
-        b_url = buildings_url.replace("__bounds__", bounds) if bounds_filtering else buildings_url
+        b_url = (
+            buildings_url.replace("__bounds__", bounds)
+            if bounds_filtering
+            else buildings_url
+        )
 
         download_request = requests.get(b_url)
         if download_request.status_code == 200:
@@ -212,14 +215,15 @@ def download_existing_buildings(buildings_download_request: BuildingsDownloadReq
             r.set(storage_key, json.dumps(fc))
         else:
             logger.error("Error")
-            r.set(storage_key, json.dumps({"type": "FeatureCollection", "features": []}))
+            r.set(
+                storage_key, json.dumps({"type": "FeatureCollection", "features": []})
+            )
         r.expire(storage_key, time=60000)
 
     return fc
 
 
 class GeometryHelper:
-
     def buffer_tree_points(self, drawn_tree_geojson_features):
         df = gpd.GeoDataFrame.from_features(drawn_tree_geojson_features)
         df["geometry"] = df["geometry"].buffer(0.00005)
@@ -264,7 +268,6 @@ class GeometryHelper:
 
 
 def kickoff_gdh_roads_shadows_stats(roads_shadow_computation_start):
-
     _roads_shadow_computation_details = from_dict(
         data_class=RoadsShadowsComputationStartRequest,
         data=roads_shadow_computation_start,
@@ -326,7 +329,7 @@ def drawn_trees_compute_shadow(tree_processing_payload: dict):
         + _drawn_trees_shadow_request.state_id
         + "_drawn_trees_shadow"
     )
-    
+
     r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
     r.expire(redis_key, time=6000)
     time.sleep(7)
@@ -429,7 +432,7 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
 
 
 def compute_polygon_area(polygon: ShapelyPolygon):
-    geod = Geod(ellps="WGS84")    
+    geod = Geod(ellps="WGS84")
     poly_area_m2, poly_perimeter = geod.geometry_area_perimeter(polygon)
     poly_area_hectares = poly_area_m2 / 10000  # convert from m^2 to hectares
     return poly_area_hectares
@@ -465,7 +468,7 @@ def compute_road_shadow_overlap(
 
     roads_tree = STRtree(all_roads)
     shadowed_kms = sum(
-        geod.geometry_length(relevant_road.intersection(current_s))
+        geod.geometry_length(all_roads[relevant_road].intersection(current_s))
         for current_s in all_shadows
         for relevant_road in roads_tree.query(current_s, predicate="intersects")
     )
