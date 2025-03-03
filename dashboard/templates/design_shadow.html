@@ -219,13 +219,35 @@
     //     return true;
     // }
 
+    const zeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height === 0);
+    const nonZeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height !== 0);
 
+
+    const zeroHeightGeojson = {
+        type: "FeatureCollection",
+        features: zeroHeightFeatures
+    };
+
+    const nonZeroHeightGeojson = {
+        type: "FeatureCollection",
+        features: nonZeroHeightFeatures
+    };
+    console.log(zeroHeightGeojson)
     map.on('load', async () => {
+       
+        map.addSource('design_non_extruded', {
+            // GeoJSON Data source used in vector tiles, documented at
+            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+            'type': 'geojson',
+            'data': zeroHeightGeojson
+        });
+
+        
         map.addSource('buildings', {
             // GeoJSON Data source used in vector tiles, documented at
             // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
             'type': 'geojson',
-            'data': design_geojson
+            'data': nonZeroHeightGeojson
         });
         map.addSource('building_shadows', {
             // GeoJSON Data source used in vector tiles, documented at
@@ -268,6 +290,40 @@
                 'fill-extrusion-opacity': 0.5
             }
         });
+        
+        map.addLayer({
+            'id': 'design_non_extruded_lines',
+            'type': 'line',
+            'source': 'design_non_extruded',
+            'paint': {
+                'line-color': ['get', 'color'],
+                'line-width': 3,
+                'line-opacity':0.5
+            },
+            'filter': ['==', '$type', 'LineString']
+        });
+
+        map.addLayer({
+            'id': 'design_non_extruded_polygon',
+            'type': 'fill',
+            'source': 'design_non_extruded',
+            'layout': {},
+            'paint': {
+                'fill-color': '#696969',
+                'fill-opacity': 0.2
+            },
+            'filter': ['==', '$type', 'Polygon']
+        });
+        // map.addLayer({
+        //     'id': 'design_non_extruded_point',
+        //     'type': 'circle',
+        //     'source': 'design_non_extruded',
+        //     'paint': {
+        //         'circle-radius': 6,
+        //         'circle-color': ['get', 'color']
+        //     },
+        //     'filter': ['==', '$type', 'Point']
+        // });
         map.addLayer({
             'id': 'building_shadows',
             'type': 'fill',
@@ -275,7 +331,7 @@
             'layout': {},
             'paint': {
                 'fill-color': '#808080',
-                'fill-opacity': 0.7
+                'fill-opacity': 0.5
             }
         });
         map.addLayer({

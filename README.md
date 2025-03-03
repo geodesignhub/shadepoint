@@ -7,10 +7,9 @@ This plugin can be added to your project in the Administration interface or at t
 ### Details
 This plugin provides analytical capability for any diagram and design from Geodesignhub as a one-click integration, we use the API to download all the data. 
 
-
 ## Initial Database setup
 
-Create a initial database.
+Create an initial database.
 
 Log in to the database as user `postgres`, from command line:
 
@@ -18,7 +17,7 @@ Log in to the database as user `postgres`, from command line:
 psql -U postgres
 ```
 
-Create the new database via commands below.
+Then create the new database via commands below.
 
 ```sql
 CREATE DATABASE localclimateresponse;
@@ -51,3 +50,9 @@ Analysis of generated shadows
 ### Local Flood analysis
 
 TBC
+
+## Compatible with NBSAPI
+
+![nbsapi-logo](images/nbsapi-logo.png)
+
+This application is fully compatible with NBSAPI, allowing seamless integration and data exchange. For more information, please visit the [NBSAPI website](https://nbsapi.org).

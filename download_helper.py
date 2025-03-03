@@ -313,7 +313,7 @@ class GeodesignhubDataDownloader:
                         message="Building shadows can only be computed for polygon features, you are trying to compute shadows for .",
                         code=400,
                     )
-                    return None
+                    return error_msg
                 _feature = Feature(
                     geometry=_geometry, properties=asdict(_feature_properties)
                 )
