@@ -176,12 +176,20 @@ def generate_design_flooding_analysis():
         )
         return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
 
-    _design_feature_collection = (
+    _unprocessed_design_geojson = (
         my_geodesignhub_downloader.download_design_data_from_geodesignhub()
+    )
+
+    _design_feature_collection = (
+        my_geodesignhub_downloader.process_design_data_from_geodesignhub(
+            unprocessed_design_geojson=_unprocessed_design_geojson
+        )
     )
     gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
 
     design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
+
+
 
     maptiler_key = os.getenv("maptiler_key", "00000000000000")
 

@@ -562,12 +562,7 @@ class ShadowComputationHelper:
             )
             % 10**8
         )
-        try:
-            assert r_url != "0"
-
-        except AssertionError:
-            logger.info("A Roads GeoJSON as a URL is expected")
-        else:
+        if r_url: 
             # first download the trees and then compute design shadow
 
             roads_download_job = RoadsDownloadRequest(
@@ -621,3 +616,5 @@ class ShadowComputationHelper:
                 job_id=self.session_id + "@gdh_roads_shadow",
                 depends_on=[gdh_shadow_result],
             )
+        else: 
+            logger.error("Roads URL not found, existing Roads as GeoJSON must be present to compute shadows") 

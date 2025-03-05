@@ -232,7 +232,7 @@
         type: "FeatureCollection",
         features: nonZeroHeightFeatures
     };
-    console.log(zeroHeightGeojson)
+    
     map.on('load', async () => {
        
         map.addSource('design_non_extruded', {
@@ -309,8 +309,8 @@
             'source': 'design_non_extruded',
             'layout': {},
             'paint': {
-                'fill-color': '#696969',
-                'fill-opacity': 0.2
+                'fill-color': ['coalesce', ['get', 'color'], '#696969'],
+                'fill-opacity': 0.5
             },
             'filter': ['==', '$type', 'Polygon']
         });
@@ -411,7 +411,7 @@
         if (pmtiles_layers.length > 0) {
             for (let index = 0; index < pmtiles_layers.length; index++) {
                 const pmtiles_layer = pmtiles_layers[index];
-                console.log(pmtiles_layer);
+                
                 let source_str = pmtiles_layer.dom_id + "_source";
                 if (pmtiles_layer.layer_type == 'raster') {
                     map.addSource(source_str, {
