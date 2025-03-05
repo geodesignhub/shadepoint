@@ -1,9 +1,10 @@
 import logging
 from logging.config import fileConfig
-
+from geoalchemy2 import alembic_helpers
 from flask import current_app
-from dashboard.models import Base
+from dashboard.nbsapi.models import Base
 from alembic import context
+from psycopg import Connection
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -66,7 +67,21 @@ def run_migrations_offline():
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url, target_metadata=get_metadata(), literal_binds=True
+        url=url, target_metadata=get_metadata(), literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def do_run_migrations(connection: Connection) -> None:
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=alembic_helpers.include_object,
+        process_revision_directives=alembic_helpers.writer,
+        render_item=alembic_helpers.render_item,
     )
 
     with context.begin_transaction():
@@ -105,7 +120,7 @@ def run_migrations_online():
         )
 
         with context.begin_transaction():
-            context.run_migrations()
+            do_run_migrations(connection)
 
 
 if context.is_offline_mode():

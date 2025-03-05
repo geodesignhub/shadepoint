@@ -43,7 +43,7 @@ import arrow
 import uuid
 import geojson
 import logging
-
+from dashboard.nbsapi.views import nbsapi_blueprint
 
 logger = logging.getLogger("local-climate-response")
 
@@ -80,6 +80,7 @@ babel.init_app(app, locale_selector=get_locale)
 csrf = CSRFProtect(app)
 bootstrap = Bootstrap5(app)
 
+app.register_blueprint(nbsapi_blueprint)
 
 @app.route("/", methods=["GET"])
 def home():
