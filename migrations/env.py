@@ -108,7 +108,7 @@ def run_migrations_online():
 
     conf_args = current_app.extensions['migrate'].configure_args
     if conf_args.get("process_revision_directives") is None:
-        conf_args["process_revision_directives"] = process_revision_directives
+        conf_args["process_revision_directives"] = alembic_helpers.writer
 
     connectable = get_engine()
 
@@ -116,6 +116,8 @@ def run_migrations_online():
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
+            include_object=alembic_helpers.include_object,
+            render_item=alembic_helpers.render_item,
             **conf_args
         )
 

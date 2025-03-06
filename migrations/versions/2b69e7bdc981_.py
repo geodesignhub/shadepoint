@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 983ca4a2d0eb
+Revision ID: 2b69e7bdc981
 Revises: 
-Create Date: 2025-03-05 13:18:37.923624
+Create Date: 2025-03-06 09:27:21.157174
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from geoalchemy2 import Geometry
 
 # revision identifiers, used by Alembic.
-revision = '983ca4a2d0eb'
+revision = '2b69e7bdc981'
 down_revision = None
 branch_labels = None
 depends_on = None

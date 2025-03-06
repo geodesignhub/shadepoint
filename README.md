@@ -21,7 +21,7 @@ Then create the new database via commands below.
 
 ```sql
 CREATE DATABASE localclimateresponse;
-ALTER DATABASE nbsapi SET search_path=public,postgis,contrib;
+ALTER DATABASE localclimateresponse SET search_path=public,postgis,contrib;
 \connect localclimateresponse;
 CREATE SCHEMA postgis;
 CREATE EXTENSION postgis SCHEMA postgis;
