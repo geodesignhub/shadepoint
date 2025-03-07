@@ -68,6 +68,9 @@ def run_migrations_offline():
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url, target_metadata=get_metadata(), literal_binds=True,
+        include_object=alembic_helpers.include_object,
+        render_item=alembic_helpers.render_item,
+        process_revision_directives= alembic_helpers.writer,
         dialect_opts={"paramstyle": "named"},
     )
 

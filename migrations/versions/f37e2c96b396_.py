@@ -1,16 +1,16 @@
 """empty message
 
-Revision ID: 2b69e7bdc981
+Revision ID: f37e2c96b396
 Revises: 
-Create Date: 2025-03-06 09:27:21.157174
+Create Date: 2025-03-07 10:12:06.427798
 
 """
 from alembic import op
 import sqlalchemy as sa
-from geoalchemy2 import Geometry
+
 
 # revision identifiers, used by Alembic.
-revision = '2b69e7bdc981'
+revision = 'f37e2c96b396'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -44,17 +44,15 @@ def upgrade():
     )
     op.create_index(op.f('ix_impact_unit_description'), 'impact_unit', ['description'], unique=False)
     op.create_index(op.f('ix_impact_unit_unit'), 'impact_unit', ['unit'], unique=True)
-    op.create_geospatial_table('naturebasedsolution',
+    op.create_table('naturebasedsolution',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('definition', sa.String(), nullable=False),
     sa.Column('cobenefits', sa.String(), nullable=False),
     sa.Column('specificdetails', sa.String(), nullable=False),
     sa.Column('location', sa.String(), nullable=False),
-    sa.Column('geometry', Geometry(srid=4326, spatial_index=False, from_text='ST_GeomFromEWKT', name='geometry'), nullable=True, spatial_index=True),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_geospatial_index('idx_naturebasedsolution_geometry', 'naturebasedsolution', ['geometry'], unique=False, postgresql_using='gist', postgresql_ops={})
     op.create_index(op.f('ix_naturebasedsolution_cobenefits'), 'naturebasedsolution', ['cobenefits'], unique=False)
     op.create_index(op.f('ix_naturebasedsolution_definition'), 'naturebasedsolution', ['definition'], unique=False)
     op.create_index(op.f('ix_naturebasedsolution_location'), 'naturebasedsolution', ['location'], unique=False)
@@ -93,8 +91,7 @@ def downgrade():
     op.drop_index(op.f('ix_naturebasedsolution_location'), table_name='naturebasedsolution')
     op.drop_index(op.f('ix_naturebasedsolution_definition'), table_name='naturebasedsolution')
     op.drop_index(op.f('ix_naturebasedsolution_cobenefits'), table_name='naturebasedsolution')
-    op.drop_geospatial_index('idx_naturebasedsolution_geometry', table_name='naturebasedsolution', postgresql_using='gist', column_name='geometry')
-    op.drop_geospatial_table('naturebasedsolution')
+    op.drop_table('naturebasedsolution')
     op.drop_index(op.f('ix_impact_unit_unit'), table_name='impact_unit')
     op.drop_index(op.f('ix_impact_unit_description'), table_name='impact_unit')
     op.drop_table('impact_unit')
