@@ -2,7 +2,7 @@
 from flask import render_template
 from flask import request, Response
 from flask import session, redirect, url_for
-from conn import get_redis
+from dashboard.conn import get_redis
 from dotenv import load_dotenv, find_dotenv
 from dashboard import create_app
 from dashboard.configurations.data_helper import ViewDataGenerator

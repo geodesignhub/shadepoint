@@ -32,7 +32,7 @@ from dacite import from_dict
 from typing import List, Optional, Union
 from geojson import Feature, FeatureCollection, Polygon, LineString, Point
 import GeodesignHub, config
-from conn import get_redis
+from dashboard.conn import get_redis
 from dotenv import load_dotenv, find_dotenv
 from dataclasses import asdict
 from notifications_helper import (

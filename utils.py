@@ -35,7 +35,7 @@ from typing import List
 import requests
 import numpy as np
 from dataclasses import asdict
-from conn import get_redis
+from dashboard.conn import get_redis
 from shapely import STRtree
 import os
 import hashlib
