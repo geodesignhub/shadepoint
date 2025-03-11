@@ -7,6 +7,31 @@ This plugin can be added to your project in the Administration interface or at t
 ### Details
 This plugin provides analytical capability for any diagram and design from Geodesignhub as a one-click integration, we use the API to download all the data. 
 
+## Initial Database setup
+
+Create an initial database.
+
+Log in to the database as user `postgres`, from command line:
+
+```bash
+psql -U postgres
+```
+
+Then create the new database via commands below.
+
+```sql
+CREATE DATABASE localclimateresponse;
+ALTER DATABASE localclimateresponse SET search_path=public,postgis,contrib;
+\connect localclimateresponse;
+CREATE SCHEMA postgis;
+CREATE EXTENSION postgis SCHEMA postgis;
+CREATE USER localclimateresponse;
+ALTER ROLE localclimateresponse WITH PASSWORD 'localclimateresponse';
+GRANT all privileges ON DATABASE localclimateresponse TO localclimateresponse;
+ALTER DATABASE localclimateresponse OWNER TO localclimateresponse;
+```
+
+
 ### Motivation
 The overall objective of this project is to develop a set of tools to focus on heat and flood response at a local scale. This dashboard will be flexible and will be used as a plugin to Geodesignhub and will analyze data provided by Geodesignhub. In addition, it will connect to external data platforms to download layers and data. 
 
@@ -25,3 +50,9 @@ Analysis of generated shadows
 ### Local Flood analysis
 
 TBC
+
+## Compatible with NBSAPI
+
+![nbsapi-logo](images/nbsapi-logo.png)
+
+This application is fully compatible with NBSAPI, allowing seamless integration and data exchange. For more information, please visit the [NBSAPI website](https://nbsapi.org).

@@ -28,14 +28,14 @@ from shapely.geometry import MultiLineString as ShapelyMultiLineString
 
 from shapely.geometry import shape
 from shapely.geometry import Polygon as ShapelyPolygon
-from shapely.geometry.polygon import orient 
+from shapely.geometry.polygon import orient
 import json
 import uuid
 from typing import List
 import requests
 import numpy as np
 from dataclasses import asdict
-from conn import get_redis
+from dashboard.conn import get_redis
 from shapely import STRtree
 import os
 import hashlib
@@ -117,7 +117,7 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
             r_url = roads_url.replace("__bounds__", bounds)
         else:
             r_url = roads_url
-            
+
         download_request = requests.get(r_url)
         if download_request.status_code == 200:
             fc = download_request.json()
@@ -141,42 +141,32 @@ def download_trees(trees_download_request: TreesDownloadRequest):
     bounds = _trees_download_request.bounds
     trees_url = _trees_download_request.trees_url
     session_trees_key = (
-        _trees_download_request.session_id
-        + ":"
-        + _trees_download_request.request_date_time
-        + ":"
-        + "trees"
+        f"{_trees_download_request.session_id}:"
+        f"{_trees_download_request.request_date_time}:trees"
     )
     bounds_hash = hashlib.sha512(bounds.encode("utf-8")).hexdigest()
-
-    """A function to download roads GeoJSON from GDH data server for the given bounds,  """
-    fc = {"type": "FeatureCollection", "features": []}
-    trees_storage_key = bounds_hash[:15] + ":trees"
+    trees_storage_key = f"{bounds_hash[:15]}:trees"
 
     r.set(session_trees_key, trees_storage_key)
     r.expire(session_trees_key, time=6000)
 
+    fc = {"type": "FeatureCollection", "features": []}
     if r.exists(trees_storage_key):
         fc_str = r.get(trees_storage_key)
         fc = json.loads(fc_str)
     else:
         bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)
-        if bounds_filtering:
-            # If bounds filtering is enabled, the bounds parameter in the URL is replaced with the current bounds
-            t_url = trees_url.replace("__bounds__", bounds)
-        else:
-            t_url = trees_url
+        t_url = (
+            trees_url.replace("__bounds__", bounds) if bounds_filtering else trees_url
+        )
 
         download_request = requests.get(t_url)
         if download_request.status_code == 200:
             fc = download_request.json()
             r.set(trees_storage_key, json.dumps(fc))
         else:
-            logger.error("Error")
-            r.set(
-                trees_storage_key,
-                json.dumps({"type": "FeatureCollection", "features": []}),
-            )
+            logger.error("Error in setting downloaded trees to local memory")
+            r.set(trees_storage_key, json.dumps(fc))
         r.expire(trees_storage_key, time=60000)
 
     return fc
@@ -187,57 +177,48 @@ def download_existing_buildings(buildings_download_request: BuildingsDownloadReq
         data_class=BuildingsDownloadRequest, data=buildings_download_request
     )
     bounds = _buildings_download_request.bounds
-    _buildings_url = _buildings_download_request.buildings_url
-    session_existing_buildings_key = (
-        _buildings_download_request.session_id
-        + ":"
-        + _buildings_download_request.request_date_time
-        + ":"
-        + "existing_buildings"
+    buildings_url = _buildings_download_request.buildings_url
+    session_key = (
+        f"{_buildings_download_request.session_id}:"
+        f"{_buildings_download_request.request_date_time}:"
+        "existing_buildings"
     )
     bounds_hash = hashlib.sha512(bounds.encode("utf-8")).hexdigest()
+    storage_key = f"{bounds_hash[:15]}:existing_buildings"
 
-    """A function to download roads GeoJSON from GDH data server for the given bounds,  """
-    fc = {"type": "FeatureCollection", "features": []}
-    buildings_storage_key = bounds_hash[:15] + ":existing_buildings"
+    r.set(session_key, storage_key)
+    r.expire(session_key, time=6000)
 
-    r.set(session_existing_buildings_key, buildings_storage_key)
-    r.expire(session_existing_buildings_key, time=6000)
-
-    if r.exists(buildings_storage_key):
-        fc_str = r.get(buildings_storage_key)
+    if r.exists(storage_key):
+        fc_str = r.get(storage_key)
         fc = json.loads(fc_str)
     else:
         bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)
-        if bounds_filtering:
-            # If bounds filtering is enabled, the bounds parameter in the URL is replaced with the current bounds
-            b_url = _buildings_url.replace("__bounds__", bounds)
-        else:
-            b_url = _buildings_url
+        b_url = (
+            buildings_url.replace("__bounds__", bounds)
+            if bounds_filtering
+            else buildings_url
+        )
 
         download_request = requests.get(b_url)
         if download_request.status_code == 200:
             fc = {"type": "FeatureCollection", "features": []}
             raw_fc = download_request.json()
-            # Check the FC
             for f in raw_fc["features"]:
-                _f_prop = f["properties"]
                 new_prop = ExistingBuildingsFeatureProperties(
-                    height=_f_prop["max_height"],
+                    height=f["properties"]["max_height"],
                     base_height=0,
                     building_id=str(uuid.uuid4()),
                 )
                 f["properties"] = asdict(new_prop)
                 fc["features"].append(f)
-
-            r.set(buildings_storage_key, json.dumps(fc))
+            r.set(storage_key, json.dumps(fc))
         else:
             logger.error("Error")
             r.set(
-                buildings_storage_key,
-                json.dumps({"type": "FeatureCollection", "features": []}),
+                storage_key, json.dumps({"type": "FeatureCollection", "features": []})
             )
-        r.expire(buildings_storage_key, time=60000)
+        r.expire(storage_key, time=60000)
 
     return fc
 
@@ -348,7 +329,7 @@ def drawn_trees_compute_shadow(tree_processing_payload: dict):
         + _drawn_trees_shadow_request.state_id
         + "_drawn_trees_shadow"
     )
-    
+
     r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
     r.expire(redis_key, time=6000)
     time.sleep(7)
@@ -451,7 +432,7 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
 
 
 def compute_polygon_area(polygon: ShapelyPolygon):
-    geod = Geod(ellps="WGS84")    
+    geod = Geod(ellps="WGS84")
     poly_area_m2, poly_perimeter = geod.geometry_area_perimeter(polygon)
     poly_area_hectares = poly_area_m2 / 10000  # convert from m^2 to hectares
     return poly_area_hectares
@@ -471,79 +452,32 @@ def compute_road_shadow_overlap(
     roads = json.loads(roads_str)
     shadows = json.loads(shadows_str)
 
-    intersections: List[LineString] = []
-    all_roads: List[Union[LineString, MultiLineString]] = []
-    all_shadows: List[Polygon] = []
+    all_roads = [
+        ShapelyLineString(coordinates=feature["geometry"]["coordinates"])
+        if feature["geometry"]["type"] == "LineString"
+        else ShapelyMultiLineString(feature["geometry"]["coordinates"])
+        for feature in roads["features"]
+    ]
 
-    total_length = 0
-    shadowed_kms = 0
+    total_length = sum(geod.geometry_length(line) for line in all_roads)
+    logger.info(f"Total Roads Length: {total_length:.3f}")
 
-    for line_feature in roads["features"]:
-        
-        if line_feature["geometry"]["type"] == "LineString":
-            line = ShapelyLineString(coordinates=line_feature["geometry"]["coordinates"])
-        elif line_feature["geometry"]["type"] == "MultiLineString":
-            line = ShapelyMultiLineString(line_feature["geometry"]["coordinates"])
-        all_roads.append(line)
-        
-        segment_length = geod.geometry_length(line)
-        logger.info(
-            "Segment Length {segment_length:.3f}".format(segment_length=segment_length)
-        )
-        total_length += segment_length
-    total_shadow_area = 0
-    for shadow_feature in shadows["features"]:
-        
-        s = shape(shadow_feature["geometry"])
-
-        poly_area = 0
-        if s.geom_type == "MultiPolygon":
-            # do multipolygon things.
-            all_polygons = list(s.geoms)
-            for p in all_polygons:
-                oriented = orient(p)
-                a = compute_polygon_area(oriented)
-                poly_area += a
-        elif s.geom_type == "Polygon":
-            oriented = orient(s)
-            poly_area = compute_polygon_area(oriented)
-        else:
-            raise IOError("Shape is not a polygon.")
-        logger.info("Shadow Area {poly_area:.3f}".format(poly_area=poly_area))
-        
-        total_shadow_area += poly_area
-
-        all_shadows.append(s)
+    all_shadows = [shape(feature["geometry"]) for feature in shadows["features"]]
+    total_shadow_area = sum(compute_polygon_area(orient(s)) for s in all_shadows)
+    logger.info(f"Total Shadow Area: {total_shadow_area:.3f}")
 
     roads_tree = STRtree(all_roads)
+    shadowed_kms = sum(
+        geod.geometry_length(all_roads[relevant_road].intersection(current_s))
+        for current_s in all_shadows
+        for relevant_road in roads_tree.query(current_s, predicate="intersects")
+    )
 
-    for current_s in all_shadows:
-        relevant_roads = [
-            all_roads[idx]
-            for idx in roads_tree.query(current_s, predicate="intersects")
-        ]
-
-        for relevant_road in relevant_roads:
-            # line_buffered = relevant_road.buffer(0.0001)
-            intersection = relevant_road.intersection(current_s)
-            intersection_length = geod.geometry_length(intersection)
-
-            logger.info(
-                "Intersection Length {intersection_length:.3f}".format(
-                    intersection_length=intersection_length
-                )
-            )
-
-            intersections.append(intersection)
-            shadowed_kms += intersection_length
-    
-    total_shadow_area_rounded = round(total_shadow_area, 2)
-    
     road_shadow_overlap = RoadsShadowOverlap(
         total_roads_kms=round(total_length, 2),
         shadowed_kms=round(shadowed_kms, 2),
         job_id=job_id,
-        total_shadow_area=total_shadow_area_rounded,
+        total_shadow_area=round(total_shadow_area, 2),
     )
 
     r.set(job_id, json.dumps(asdict(road_shadow_overlap)))

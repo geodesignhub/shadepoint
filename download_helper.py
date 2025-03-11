@@ -32,7 +32,7 @@ from dacite import from_dict
 from typing import List, Optional, Union
 from geojson import Feature, FeatureCollection, Polygon, LineString, Point
 import GeodesignHub, config
-from conn import get_redis
+from dashboard.conn import get_redis
 from dotenv import load_dotenv, find_dotenv
 from dataclasses import asdict
 from notifications_helper import (
@@ -49,6 +49,7 @@ from notifications_helper import (
     notify_buildings_download_complete,
     notify_buildings_download_failure,
 )
+import hashlib
 from uuid import uuid4
 import uuid
 from json import encoder
@@ -96,13 +97,14 @@ def kickoff_drawn_trees_shadow_job(
         request_date_time=request_date_time,
         processed_trees={},
     )
+    job_id = session_id + "@drawn_trees_shadow_job"
 
     tree_processing_job_result = q.enqueue(
         utils.drawn_trees_compute_shadow,
         asdict(tree_processing_payload),
         on_success=notify_drawn_trees_shadow_complete,
         on_failure=notify_drawn_trees_shadow_failure,
-        job_id=session_id + ":" + "drawn_trees_shadow_job",
+        job_id=job_id,
     )
 
 
@@ -311,7 +313,7 @@ class GeodesignhubDataDownloader:
                         message="Building shadows can only be computed for polygon features, you are trying to compute shadows for .",
                         code=400,
                     )
-                    return None
+                    return error_msg
                 _feature = Feature(
                     geometry=_geometry, properties=asdict(_feature_properties)
                 )
@@ -553,12 +555,14 @@ class ShadowComputationHelper:
         my_url_generator = ViewDataGenerator(view_type=None, project_id=self.project_id)
         r_url = my_url_generator.get_existing_roads_geojson_url()
 
-        try:
-            assert r_url != "0"
-
-        except AssertionError:
-            logger.info("A Roads GeoJSON as a URL is expected")
-        else:
+        hash_of_timestamp = str(
+            int(
+                hashlib.sha256(self.shadow_date_time.encode("utf-8")).hexdigest(),
+                16,
+            )
+            % 10**8
+        )
+        if r_url: 
             # first download the trees and then compute design shadow
 
             roads_download_job = RoadsDownloadRequest(
@@ -567,14 +571,15 @@ class ShadowComputationHelper:
                 request_date_time=self.shadow_date_time,
                 roads_url=r_url.url,
             )
+
             roads_download_result = q.enqueue(
                 utils.download_roads,
                 asdict(roads_download_job),
                 on_success=notify_roads_download_complete,
                 on_failure=notify_roads_download_failure,
-                job_id=self.session_id + ":" + self.shadow_date_time + ":roads",
+                job_id=self.session_id + "@" + hash_of_timestamp + "@roads",
             )
-            
+
             gdh_buildings_shadow_dependency = Dependency(
                 jobs=[roads_download_result], allow_failure=False, enqueue_at_front=True
             )
@@ -586,13 +591,14 @@ class ShadowComputationHelper:
                 request_date_time=self.shadow_date_time,
                 bounds=self.bounds,
             )
+            shadow_canpopy_job_id = self.session_id + "@" + hash_of_timestamp
 
             gdh_shadow_result = q.enqueue(
                 utils.compute_gdh_shadow_with_tree_canopy,
                 asdict(gdh_worker_data),
                 on_success=notify_shadow_complete,
                 on_failure=shadow_generation_failure,
-                job_id=self.session_id + ":" + self.shadow_date_time,
+                job_id=shadow_canpopy_job_id,
                 depends_on=gdh_buildings_shadow_dependency,
             )
 
@@ -607,6 +613,8 @@ class ShadowComputationHelper:
                 asdict(_gdh_roads_shadows_start_processing),
                 on_success=notify_gdh_roads_shadow_intersection_complete,
                 on_failure=notify_gdh_roads_shadow_intersection_failure,
-                job_id=self.session_id + ":gdh_roads_shadow",
+                job_id=self.session_id + "@gdh_roads_shadow",
                 depends_on=[gdh_shadow_result],
             )
+        else: 
+            logger.error("Roads URL not found, existing Roads as GeoJSON must be present to compute shadows") 

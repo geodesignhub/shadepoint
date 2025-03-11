@@ -72,6 +72,19 @@
     const design_geojson = {{op["geometry_data"]["geojson"]|safe}};
     
 
+    const zeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height === 0);
+    const nonZeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height !== 0);
+
+
+    const zeroHeightGeojson = {
+        type: "FeatureCollection",
+        features: zeroHeightFeatures
+    };
+
+    const nonZeroHeightGeojson = {
+        type: "FeatureCollection",
+        features: nonZeroHeightFeatures
+    };
     const bounds = design_detail['project_data']['bounds']['bounds'];
     const session_id = design_detail['session_id']
     var latLngs = bounds.split(',');
@@ -92,13 +105,20 @@
 
     map.on('load', function () {
 
+        map.addSource('design_non_extruded', {
+            // GeoJSON Data source used in vector tiles, documented at
+            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+            'type': 'geojson',
+            'data': zeroHeightGeojson
+        });
+
+        
         map.addSource('buildings', {
             // GeoJSON Data source used in vector tiles, documented at
             // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
             'type': 'geojson',
-            'data': design_geojson
+            'data': nonZeroHeightGeojson
         });
-        
 
         map.addLayer({
             'id': 'buildings-extrusion',
@@ -121,6 +141,30 @@
                 'fill-extrusion-opacity': 0.5
             }
         });
+
+        map.addLayer({
+            'id': 'design_non_extruded_lines',
+            'type': 'line',
+            'source': 'design_non_extruded',
+            'paint': {
+                'line-color': ['get', 'color'],
+                'line-width': 3,
+                'line-opacity':0.5
+            },
+            'filter': ['==', '$type', 'LineString']
+        });
+
+        map.addLayer({
+            'id': 'design_non_extruded_polygon',
+            'type': 'fill',
+            'source': 'design_non_extruded',
+            'layout': {},
+            'paint': {
+                'fill-color':['coalesce', ['get', 'color'], '#696969'],
+                'fill-opacity': 0.5
+            },
+            'filter': ['==', '$type', 'Polygon']
+        });
         const popup = new maplibregl.Popup({
             closeButton: false,
             closeOnClick: false
@@ -129,9 +173,11 @@
         // When a click event occurs on a feature in the states layer, open a popup at the
         // location of the click, with description HTML from its properties.
         map.on('mouseenter', 'buildings-extrusion', (e) => {
+            let tag_codes = e.features[0].properties.tag_codes || "no tags";
+
             map.getCanvas().style.cursor = 'pointer';
             popup.setLngLat(e.lngLat)
-                .setHTML(e.features[0].properties.tag_codes)
+                .setHTML(tag_codes)
                 .addTo(map);
         });
          map.on('click', 'buildings-extrusion', (e) => {
@@ -156,13 +202,6 @@
     });
 
     
-    document.addEventListener('DOMContentLoaded', () => {
-
-        const room = design_detail.session_id;
-        var source = new EventSource("{{ url_for('sse.stream') }}");
-
-
-    });
 </script>
 {% endif %}
 
