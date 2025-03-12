@@ -34,12 +34,12 @@ class NatureBasedSolution(Base):
     definition: Mapped[str] = mapped_column(index=True)
     cobenefits: Mapped[str] = mapped_column(index=True)
     specificdetails: Mapped[str] = mapped_column(index=True)
-    location: Mapped[str] = mapped_column(index=True)
-    geometry: Mapped[WKBElement] = mapped_column(
-        Geometry("GEOMETRY", srid=4326), spatial_index=False, nullable=True
-    )
+    # location: Mapped[str] = mapped_column(index=True)
+    # geometry: Mapped[WKBElement] = mapped_column(
+    #     Geometry("GEOMETRY", srid=4326), spatial_index=False, nullable=True
+    # )
 
-    __table_args__ = (Index("idx_geo_data_geometry", geometry, postgresql_using="gist"),)
+    # __table_args__ = (Index("idx_geo_data_geometry", geometry, postgresql_using="gist"),)
 
     solution_targets = relationship(
         "Association",

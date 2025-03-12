@@ -1,0 +1,43 @@
+[
+  {
+    "id":1,
+    "name": "Tree Planting",
+    "definition": "Urban tree planting involves the strategic planting of trees in urban areas to improve environmental quality, enhance biodiversity, and provide shade.",
+    "cobenefits": "Improved biodiversity",
+    "specificdetails": "Detailed information",
+    "location": "Coastal Area X",
+    "impacts": [
+      {
+        "intensity": {
+          "intensity": "low"
+        },
+        "magnitude": 10.5,
+        "unit": {
+          "description": "shade",
+          "unit": "m2"
+        }
+      }
+    ],
+    "solution_targets": [
+      {
+        "adaptation": {
+          "type": "Heat"
+        },
+        "value": 10
+      },
+      {
+        "adaptation": {
+          "type": "Pluvial Flooding"
+        },
+        "value": 20
+      },
+
+      {
+        "adaptation": {
+          "type": "Fluvial Flooding"
+        },
+        "value": 30
+      }
+    ]
+  }
+]

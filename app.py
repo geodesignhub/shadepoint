@@ -6,6 +6,7 @@ from dashboard.conn import get_redis
 from dotenv import load_dotenv, find_dotenv
 from dashboard import create_app
 from dashboard.configurations.data_helper import ViewDataGenerator
+import click
 import json
 from rq import Queue
 from worker import conn
@@ -602,6 +603,24 @@ def draw_trees_view():
         form=diagram_upload_form,
     )
 
+
+@app.cli.command("create-user")
+@click.argument("name")
+def initialize_db():
+    app, db = create_app()
+    with app.app_context():
+        with open("nbs_definitions.json", "r") as f:
+            all_nbs = json.load(f)
+
+            for nbs in all_nbs:
+                nbs = from_dict(data_class=NatureBasedSolutionRead, data=nbs)
+                print(nbs)
+                # db.session.add(nbs)
+            # db.session.commit()
+
+
+if __name__ == "__main__":
+    initialize_db()
 
 if __name__ == "__main__":
     app.debug = True
