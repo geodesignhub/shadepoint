@@ -3,13 +3,26 @@
 #   timestamp: 2025-03-12T14:03:50+00:00
 
 from __future__ import annotations
-
+from geojson import FeatureCollection
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
 
 @dataclass
-class APIVersionResponse:
+class Contact:
+    """
+    A class to represent a contact.
+    Attributes
+    ----------
+    website : str
+        The website URL of the contact.
+    """
+    
+    website: str
+
+
+@dataclass
+class APIVersion:
     """
     A class to represent the API version response.
     Attributes:
@@ -138,6 +151,18 @@ class NatureBasedSolutionCreate:
 
 @dataclass
 class NatureBasedSolutionRead:
+    name: str
+    definition: str
+    cobenefits: str
+    specificdetails: str
+    location: str
+    geometry: FeatureCollection
+    id: int
+    impacts: Optional[List[ImpactBase]] = None
+    solution_targets: Optional[List[AdaptationTargetRead]] = None
+
+@dataclass
+class NatureBasedSolution:
     name: str
     definition: str
     cobenefits: str
