@@ -1,10 +1,13 @@
 from flask import jsonify
 from dashboard.nbsapi.models.apiversion import ApiVersion
 from dashboard.nbsapi.models.impact_intensity import ImpactIntensity
-from dashboard.nbsapi.models.impact import Impact
+
 from dashboard.nbsapi.models.impact_unit import ImpactUnit
 from dashboard.nbsapi.models.adaptation_target import AdaptationTarget
-from dashboard.nbsapi.models.naturebasedsolution import TreeLocation
+from dashboard.nbsapi.models.naturebasedsolution import (
+    NatureBasedSolution,
+    TreeLocation,
+)
 
 from flask import Blueprint
 from dashboard import db
@@ -63,11 +66,12 @@ def get_impacts_units():
     )
 
 
-@nbsapi_blueprint.route("/v1/adaptation_targets/adaptation_target", methods=["GET"])
+@nbsapi_blueprint.route("/v1/api/adaptation_targets/adaptation_target", methods=["GET"])
 def get_adaptation_targets():
     adaptation_targets = AdaptationTarget.query.all()
     all_adapatation_targets = []
     for adaptation_target in adaptation_targets:
+        print(adaptation_target)
         all_adapatation_targets.append(
             asdict(
                 from_dict(
@@ -82,9 +86,10 @@ def get_adaptation_targets():
     return jsonify(all_adapatation_targets)
 
 
-@nbsapi_blueprint.route("/v1/solutions/solutions/<solution_id>", methods=["GET"])
+@nbsapi_blueprint.route("/v1/api/solutions/solutions/<solution_id>", methods=["GET"])
 def get_stored_solutions(solution_id: int):
     solutions = NatureBasedSolution.query.filter_by(id=solution_id).all()
+
     locations = TreeLocation.query.distinct(TreeLocation.location).all()
 
     all_solutions = []
@@ -99,8 +104,8 @@ def get_stored_solutions(solution_id: int):
                             "definition": solution.definition,
                             "cobenefits": solution.cobenefits,
                             "specificdetails": solution.specificdetails,
-                            "location": location,
-                            "geometry": solution.geometry,
+                            "location": location.location,
+                            "geometry": location.geometry,
                             "id": solution.id,
                         },
                     )
@@ -109,7 +114,7 @@ def get_stored_solutions(solution_id: int):
     return jsonify(all_solutions)
 
 
-@nbsapi_blueprint.route("/v1/solutions/solutions", methods=["POST"])
+@nbsapi_blueprint.route("/v1/api/solutions/solutions", methods=["POST"])
 def get_tree_locations():
     bbox = request.json.get("bbox", None)
     if bbox:
