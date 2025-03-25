@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-from flask import render_template
+from flask import jsonify, render_template
 from flask import request, Response
 from flask import session, redirect, url_for
 from dashboard.conn import get_redis
 from dotenv import load_dotenv, find_dotenv
 from dashboard import create_app
 from dashboard.configurations.data_helper import ViewDataGenerator
+
 import json
 from rq import Queue
 from worker import conn
@@ -26,12 +27,13 @@ from data_definitions import (
     DiagramUploadDetails,
     WMSDataSourceList,
 )
+from dashboard.nbsapi.commands.seed_db import register_cli
+
 from flask import render_template, redirect, url_for
-from flask_bootstrap import Bootstrap5
 from typing import List
 from flask_wtf import FlaskForm, CSRFProtect
 from wtforms import StringField, SubmitField, HiddenField
-from wtforms.validators import DataRequired, Length
+from wtforms.validators import DataRequired
 from wtforms.validators import DataRequired
 import os
 from download_helper import (
@@ -43,7 +45,7 @@ import arrow
 import uuid
 import geojson
 import logging
-from dashboard.nbsapi.views import nbsapi_blueprint
+
 
 logger = logging.getLogger("local-climate-response")
 
@@ -75,12 +77,8 @@ app, babel = create_app()
 app.secret_key = os.getenv("SECRET_KEY", "My Secret key")
 app.config["BABEL_TRANSLATION_DIRECTORIES"] = os.path.join(base_dir, "translations")
 babel.init_app(app, locale_selector=get_locale)
+register_cli(app)
 
-
-csrf = CSRFProtect(app)
-bootstrap = Bootstrap5(app)
-
-app.register_blueprint(nbsapi_blueprint)
 
 @app.route("/", methods=["GET"])
 def home():
@@ -189,8 +187,6 @@ def generate_design_flooding_analysis():
     gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
 
     design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
-
-
 
     maptiler_key = os.getenv("maptiler_key", "00000000000000")
 
@@ -601,6 +597,25 @@ def draw_trees_view():
         op=asdict(success_response),
         form=diagram_upload_form,
     )
+
+
+# def has_no_empty_params(rule):
+#     defaults = rule.defaults if rule.defaults is not None else ()
+#     arguments = rule.arguments if rule.arguments is not None else ()
+#     return len(defaults) >= len(arguments)
+
+
+# @app.route("/site-map")
+# def site_map():
+#     links = []
+#     for rule in app.url_map.iter_rules():
+#         # Filter out rules we can't navigate to in a browser
+#         # and rules that require parameters
+#         if {"GET", "POST"}.intersection(rule.methods) and has_no_empty_params(rule):
+#             url = url_for(rule.endpoint, **(rule.defaults or {}))
+#             links.append((url, rule.endpoint))
+#     return jsonify(links)
+#     # links is now a list of url, endpoint tuples
 
 
 if __name__ == "__main__":
