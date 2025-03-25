@@ -17,7 +17,7 @@ class Contact:
     website : str
         The website URL of the contact.
     """
-    
+
     website: str
 
 
@@ -50,7 +50,7 @@ class BodyLoginForAccessTokenAuthTokenPost:
     username: str
     password: str
     grant_type: Optional[str] = None
-    scope: Optional[str] = ''
+    scope: Optional[str] = ""
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
 
@@ -127,6 +127,11 @@ class AdaptationTargetRead:
 
 
 @dataclass
+class AdapatationTargetResponse:
+    target: str
+
+
+@dataclass
 class HTTPValidationError:
     detail: Optional[List[ValidationError]] = None
 
@@ -160,6 +165,7 @@ class NatureBasedSolutionRead:
     id: int
     impacts: Optional[List[ImpactBase]] = None
     solution_targets: Optional[List[AdaptationTargetRead]] = None
+
 
 @dataclass
 class NatureBasedSolution:

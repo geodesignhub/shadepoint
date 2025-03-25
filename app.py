@@ -30,7 +30,6 @@ from data_definitions import (
 from dashboard.nbsapi.commands.seed_db import register_cli
 
 from flask import render_template, redirect, url_for
-from flask_bootstrap import Bootstrap5
 from typing import List
 from flask_wtf import FlaskForm, CSRFProtect
 from wtforms import StringField, SubmitField, HiddenField
@@ -80,8 +79,6 @@ app.config["BABEL_TRANSLATION_DIRECTORIES"] = os.path.join(base_dir, "translatio
 babel.init_app(app, locale_selector=get_locale)
 register_cli(app)
 
-csrf = CSRFProtect(app)
-bootstrap = Bootstrap5(app)
 
 @app.route("/", methods=["GET"])
 def home():
@@ -190,8 +187,6 @@ def generate_design_flooding_analysis():
     gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
 
     design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
-
-
 
     maptiler_key = os.getenv("maptiler_key", "00000000000000")
 
@@ -616,7 +611,7 @@ def draw_trees_view():
 #     for rule in app.url_map.iter_rules():
 #         # Filter out rules we can't navigate to in a browser
 #         # and rules that require parameters
-#         if "GET" in rule.methods and has_no_empty_params(rule):
+#         if {"GET", "POST"}.intersection(rule.methods) and has_no_empty_params(rule):
 #             url = url_for(rule.endpoint, **(rule.defaults or {}))
 #             links.append((url, rule.endpoint))
 #     return jsonify(links)
