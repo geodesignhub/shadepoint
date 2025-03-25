@@ -53,6 +53,6 @@ TBC
 
 ## Compatible with NBSAPI
 
-![nbsapi-logo](images/nbsapi-logo.png)
+<img src="images/nbsapi-logo.png" alt="nbsapi-logo" style="max-width: 200px;">
 
 This application is fully compatible with NBSAPI, allowing seamless integration and data exchange. For more information, please visit the [NBSAPI website](https://nbsapi.org).
