@@ -41,6 +41,7 @@ from download_helper import (
     ShadowComputationHelper,
     kickoff_drawn_trees_shadow_job,
 )
+from db_helper import TreesDatabaseWriter
 import arrow
 import uuid
 import geojson
@@ -563,10 +564,19 @@ def draw_trees_view():
             funding_type="pu",
             sys_id=gi_system_id,
         )
+        # Write the trees to the database
+        my_trees_database_writer = TreesDatabaseWriter(
+            session_id=str(session_id),
+            location=project_id,
+            trees=_design_trees_feature_collection,
+        )
+        my_trees_database_writer.write_trees_to_database()
+
         upload_response = my_geodesignhub_downloader.upload_diagram(
             diagram_upload_details=diagram_details
         )
         upload_response_dict = asdict(upload_response)
+        
         return redirect(
             url_for(
                 "redirect_upload_diagram",
@@ -599,23 +609,6 @@ def draw_trees_view():
     )
 
 
-# def has_no_empty_params(rule):
-#     defaults = rule.defaults if rule.defaults is not None else ()
-#     arguments = rule.arguments if rule.arguments is not None else ()
-#     return len(defaults) >= len(arguments)
-
-
-# @app.route("/site-map")
-# def site_map():
-#     links = []
-#     for rule in app.url_map.iter_rules():
-#         # Filter out rules we can't navigate to in a browser
-#         # and rules that require parameters
-#         if {"GET", "POST"}.intersection(rule.methods) and has_no_empty_params(rule):
-#             url = url_for(rule.endpoint, **(rule.defaults or {}))
-#             links.append((url, rule.endpoint))
-#     return jsonify(links)
-#     # links is now a list of url, endpoint tuples
 
 
 if __name__ == "__main__":

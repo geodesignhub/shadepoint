@@ -49,6 +49,7 @@ from notifications_helper import (
     notify_buildings_download_complete,
     notify_buildings_download_failure,
 )
+
 import hashlib
 from uuid import uuid4
 import uuid
@@ -507,35 +508,26 @@ class GeodesignhubDataDownloader:
         return project_data
 
 
-# class RoadsDownloadFactory:
-#     def __init__(
-#         self, session_id: str, bounds: str, project_id: str, shadow_date_time: str
-#     ):
-#         self.session_id = session_id
-#         self.shadow_date_time = shadow_date_time
-#         self.bounds = bounds
-#         self.project_id = project_id
 
-#     def start_download_roads_job(self):
-#         my_url_generator = ViewDataGenerator(view_type=None, project_id=self.project_id)
-#         r_url = my_url_generator.get_existing_roads_geojson_url()
-
-#         roads_download_job = RoadsDownloadRequest(
-#             bounds=self.bounds,
-#             session_id=str(self.session_id),
-#             request_date_time=self.shadow_date_time,
-#             roads_url=r_url.url,
-#         )
-#         roads_download_result = q.enqueue(
-#             utils.download_roads,
-#             asdict(roads_download_job),
-#             on_success=notify_roads_download_complete,
-#             on_failure=notify_roads_download_failure,
-#             job_id=self.session_id + ":" + self.shadow_date_time + ":roads",
-#         )
 
 
 class ShadowComputationHelper:
+    """
+    A helper class to compute shadows for Geodesignhub (GDH) buildings and existing roads.
+    Attributes:
+        session_id (str): Unique identifier for the session.
+        shadow_date_time (str): The timestamp for which the shadow computation is performed.
+        bounds (str): The geographical bounds for the computation.
+        project_id (str): The project identifier.
+        gdh_geojson (dict, optional): GeoJSON data for the design diagram buildings.
+    Methods:
+        compute_gdh_buildings_shadow():
+            Computes shadows for GDH buildings and existing roads. This involves downloading
+            road data, generating shadows for GDH buildings, and calculating intersections
+            between shadows and roads. The method uses a queueing system to manage tasks
+            and dependencies.
+    """
+
     def __init__(
         self,
         session_id: str,
@@ -562,7 +554,7 @@ class ShadowComputationHelper:
             )
             % 10**8
         )
-        if r_url: 
+        if r_url:
             # first download the trees and then compute design shadow
 
             roads_download_job = RoadsDownloadRequest(
@@ -616,5 +608,7 @@ class ShadowComputationHelper:
                 job_id=self.session_id + "@gdh_roads_shadow",
                 depends_on=[gdh_shadow_result],
             )
-        else: 
-            logger.error("Roads URL not found, existing Roads as GeoJSON must be present to compute shadows") 
+        else:
+            logger.error(
+                "Roads URL not found, existing Roads as GeoJSON must be present to compute shadows"
+            )

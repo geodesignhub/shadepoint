@@ -5,7 +5,6 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications/simple-notify.css') }}">
-
 {% endblock %}
 {% block body %}
 <div class="container">
@@ -189,7 +188,7 @@
         return new bootstrap.Tooltip(tooltipTriggerEl)
     })
     const csrf_token = "{{ csrf_token() }}";
-    const project_detail = {{ op| safe }};
+    const project_detail = {{ op|safe }};
     var bounds = project_detail['project_data']['bounds']['bounds'];
     var center = project_detail['project_data']['center']['center'];
     var map_center = center.split(',');
