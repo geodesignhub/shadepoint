@@ -358,12 +358,14 @@ def get_drawn_trees_shadows():
     else:
         trees = {"type": "FeatureCollection", "features": []}
 
+    logger.info(f"Trees Key: {trees_key}")
+    logger.debug(f"Trees Session Exists: {trees_session_exists}")
     trs = json.dumps(trees)
 
     return Response(trs, status=200, mimetype=MIMETYPE)
 
 
-@app.route("/generate_drawn_trees_shadow/", methods=["POST"])
+@app.route("/generate_drawn_trees_shadow", methods=["POST"])
 def generate_drawn_trees_shadow():
     geojson_payload = request.get_json()
 
@@ -576,7 +578,7 @@ def draw_trees_view():
             diagram_upload_details=diagram_details
         )
         upload_response_dict = asdict(upload_response)
-        
+
         return redirect(
             url_for(
                 "redirect_upload_diagram",
@@ -607,8 +609,6 @@ def draw_trees_view():
         op=asdict(success_response),
         form=diagram_upload_form,
     )
-
-
 
 
 if __name__ == "__main__":
