@@ -461,17 +461,14 @@ def compute_road_shadow_overlap(
 
     total_length = sum(geod.geometry_length(line) for line in all_roads)
     logger.info(f"Total Roads Length: {total_length:.3f}")
-    all_shadows = []
-    
-    for feature in shadows["features"]:
-        if feature["geometry"]["type"] == "Polygon":
-            shapely_feature = [ShapelyPolygon(feature["geometry"]["coordinates"])]
-            all_shadows.extend(shapely_feature)
-        elif feature["geometry"]["type"] == "MultiPolygon":
-            shapely_feature = [
-                ShapelyPolygon(coords) for coords in feature["geometry"]["coordinates"]
-            ]
-            all_shadows.extend(shapely_feature)
+
+    gdh_sahdows_gpd = gpd.GeoDataFrame.from_features(shadows["features"])
+    exploded_gdh_shadows = gdh_sahdows_gpd.explode()
+    all_shadows = [
+        ShapelyPolygon(shadow.geometry.exterior.coords)
+        for shadow in exploded_gdh_shadows.itertuples()
+        if shadow.geometry.type == "Polygon"
+    ]
 
     total_shadow_area = sum(compute_polygon_area(orient(s)) for s in all_shadows)
     logger.info(f"Total Shadow Area: {total_shadow_area:.3f}")
