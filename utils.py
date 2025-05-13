@@ -467,7 +467,7 @@ def compute_road_shadow_overlap(
     all_shadows = [
         ShapelyPolygon(shadow.geometry.exterior.coords)
         for shadow in exploded_gdh_shadows.itertuples()
-        if shadow.geometry.type == "Polygon"
+        if shadow.geometry.geom_type == "Polygon"
     ]
 
     total_shadow_area = sum(compute_polygon_area(orient(s)) for s in all_shadows)
