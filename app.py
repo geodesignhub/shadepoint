@@ -572,7 +572,17 @@ def draw_trees_view():
             location=project_id,
             trees=_design_trees_feature_collection,
         )
-        my_trees_database_writer.write_trees_to_database()
+        if not my_trees_database_writer.check_db_connection():
+            error_msg = ErrorResponse(
+                status=0,
+                message="Database connection failed. Could not write trees to database.",
+                code=500,
+            )
+            logger.error(
+                "Database connection failed. Could not write trees to database."
+            )
+        else:
+            my_trees_database_writer.write_trees_to_database()
 
         upload_response = my_geodesignhub_downloader.upload_diagram(
             diagram_upload_details=diagram_details

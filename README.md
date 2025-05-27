@@ -47,10 +47,6 @@ Shadows and trees
 Analysis of generated shadows
 ![shadow-analysis](images/shadow-analysis.jpg)
 
-### Local Flood analysis
-
-TBC
-
 ## Compatible with NBSAPI
 
 <img src="images/nbsapi-logo.png" alt="nbsapi-logo" style="max-width: 200px;">

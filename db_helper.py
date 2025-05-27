@@ -26,6 +26,17 @@ class TreesDatabaseWriter:
         self.location = location
         self.session_id = session_id
 
+    def check_db_connection(self):
+        """
+        Checks the connection to the database.
+        Returns:
+            bool: True if the connection is successful, False otherwise.
+        """
+        try:
+            db.session.execute('SELECT 1')
+            return True
+        except Exception:
+            return False
     def write_trees_to_database(self):
         """
         Writes tree data to the database.
