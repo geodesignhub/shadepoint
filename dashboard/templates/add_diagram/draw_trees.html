@@ -1,708 +1,1062 @@
-{% extends "layout.html" %}
-{% from 'bootstrap5/form.html' import render_form %}
-{% from "_formhelpers.html" import render_field %}
-{% block headercss %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/notifications/simple-notify.css') }}">
-{% endblock %}
-{% block body %}
+{% extends "layout.html" %} {% from 'bootstrap5/form.html' import render_form %}
+{% from "_formhelpers.html" import render_field %} {% block headercss %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}"
+/>
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/common.css') }}"
+/>
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/notifications/simple-notify.css') }}"
+/>
+{% endblock %} {% block body %}
 <div class="container">
-    <!-- Example row of columns -->
-    {% if op['status'] == 1 %}
-    <br>
-    <div class="row">
-        <div class="col-md-12">
-            <h3><i class="bi bi-tree"></i>&nbsp;{{ gettext('Draw Trees') }} <small class="text-muted"></small></h3>
-            <p class="text-muted">{{ gettext('Draw new trees by dropping points on a map and submit to be added to a
-                Geodesignhub project') }}</p>
-        </div>
+  <!-- Example row of columns -->
+  {% if op['status'] == 1 %}
+  <br />
+  <div class="row">
+    <div class="col-md-12">
+      <h3>
+        <i class="bi bi-tree"></i>&nbsp;{{ gettext('Draw Trees') }}
+        <small class="text-muted"></small>
+      </h3>
+      <p class="text-muted">
+        {{ gettext('Draw new trees by dropping points on a map and submit to be
+        added to a Geodesignhub project') }}
+      </p>
     </div>
+  </div>
 
-    <div class="row">
-        <div class="col-md-12">
-            <div>
-                <h5>{{ gettext('Analytical Layers') }}&nbsp;<small class="text-muted">{{ gettext('Pre-computed layers for the area') }}</small>
-                </h5>
-            </div>
-        </div>
+  <div class="row">
+    <div class="col-md-12">
+      <div>
+        <h5>
+          {{ gettext('Analytical Layers') }}&nbsp;<small class="text-muted"
+            >{{ gettext('Pre-computed layers for the area') }}</small
+          >
+        </h5>
+      </div>
     </div>
-    <br>
-    <div class="row">
-        <div class="col-md-12">
-            <div id="listing-group" class="btn-group" role="group" aria-label="Layer selection tools">
-                {% for wms_layer in op['wms_layers'] %}
-                <input type="checkbox" class="btn-check" id="{{wms_layer['dom_id']}}" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="{{wms_layer['dom_id']}}">{{ wms_layer['name']}}</label>
-                {% endfor %}
-
-                {% for cog_layer in op['cog_layers'] %}
-                <input type="checkbox" class="btn-check" id="{{cog_layer['dom_id']}}" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="{{cog_layer['dom_id']}}">{{ cog_layer['name']}}</label>
-                {% endfor %}
-                {% for fgb_layer in op['fgb_layers'] %}
-                <input type="checkbox" class="btn-check" id="{{fgb_layer['dom_id']}}" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="{{fgb_layer['dom_id']}}">{{ fgb_layer['name']}}</label> 
-                {% endfor %}
-                {% for pmtiles_layer in op['pmtiles_layers'] %}
-                <input type="checkbox" class="btn-check" id="{{pmtiles_layer['dom_id']}}" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="{{pmtiles_layer['dom_id']}}">{{
-                    pmtiles_layer['name']}}</label>
-                {% endfor %}
-            </div>
-        </div>
+  </div>
+  <br />
+  <div class="row">
+    <div class="col-md-12">
+      <div
+        id="listing-group"
+        class="btn-group"
+        role="group"
+        aria-label="Layer selection tools"
+      >
+        {% for wms_layer in op['wms_layers'] %}
+        <input
+          type="checkbox"
+          class="btn-check"
+          id="{{wms_layer['dom_id']}}"
+          autocomplete="off"
+          checked
+        />
+        <label class="btn btn-outline-primary" for="{{wms_layer['dom_id']}}"
+          >{{ wms_layer['name']}}</label
+        >
+        {% endfor %} {% for cog_layer in op['cog_layers'] %}
+        <input
+          type="checkbox"
+          class="btn-check"
+          id="{{cog_layer['dom_id']}}"
+          autocomplete="off"
+          checked
+        />
+        <label class="btn btn-outline-primary" for="{{cog_layer['dom_id']}}"
+          >{{ cog_layer['name']}}</label
+        >
+        {% endfor %} {% for fgb_layer in op['fgb_layers'] %}
+        <input
+          type="checkbox"
+          class="btn-check"
+          id="{{fgb_layer['dom_id']}}"
+          autocomplete="off"
+          checked
+        />
+        <label class="btn btn-outline-primary" for="{{fgb_layer['dom_id']}}"
+          >{{ fgb_layer['name']}}</label
+        >
+        {% endfor %} {% for pmtiles_layer in op['pmtiles_layers'] %}
+        <input
+          type="checkbox"
+          class="btn-check"
+          id="{{pmtiles_layer['dom_id']}}"
+          autocomplete="off"
+          checked
+        />
+        <label class="btn btn-outline-primary" for="{{pmtiles_layer['dom_id']}}"
+          >{{ pmtiles_layer['name']}}</label
+        >
+        {% endfor %}
+      </div>
     </div>
-    <br>
-    <div id="map"></div>
-    <br>
+  </div>
+  <br />
 
-    {% else %}
-    <div class="row">
-        <div class="col-md-12">
-            <p>{{op['message']}} </p>
-        </div>
+  <div class="row">
+    <div class="col-md-10">
+      <h5>
+        {{ gettext('Measurement Tools') }}&nbsp;<small class="text-muted"
+          >{{ gettext('Measure distances with the tools below') }}</small
+        >
+      </h5>
     </div>
-    {% endif %}
+  </div>
 
-    <div class="row">
-        <div class="col-md-10">
-            <h5>{{ gettext('Drawing Tools') }}&nbsp;<small class="text-muted">{{ gettext('Use the buttons below to draw trees') }}</small></h5>
-        </div>
+  <div class="row">
+    <div class="col-md-8">
+      <div class="btn-group" role="group" aria-label="Measurement tools">
+        <button
+          id="start_measurements_button"
+          type="button"
+          onclick="measurement_control.start_measurements()"
+          class="btn btn-outline-secondary"
+        >
+          <i class="bi bi-plus"></i>&nbsp;{{ gettext('Start Measurement') }}
+        </button>
+        <button
+          id="clear_measurementsS_button"
+          type="button"
+          onclick="measurement_control.clear_measurements()"
+          class="btn btn-outline-secondary"
+        >
+          <i class="bi bi-plus"></i>&nbsp;{{ gettext('Clear Measurements') }}
+        </button>
+      </div>
+      &nbsp;
     </div>
-    <div class="row">
-        <div class="col-md-8">
-            <div class="btn-group" role="group" aria-label="Tree drawing tools">
-                <button id="add_trees_button" type="button" onclick="tree_editing_control.add_tree()" class="btn btn-outline-secondary"><i class="bi bi-plus"></i>&nbsp;{{
-                    gettext('Add Trees') }}</button>
-            </div>&nbsp;
-            <div class="btn-group" role="group" aria-label="Drawn trees editing tools">
-                <button name="" id="drawing_complete_button" type="button" onclick="tree_editing_control.drawing_complete()"
-                    class="btn btn-outline-secondary drawing_mode_controls d-none">{{ gettext('Complete Drawing') }}</button>
-                <button type="button" onclick="tree_editing_control.move_trees()" class="btn btn-outline-secondary drawing_mode_controls d-none">{{
-                    gettext('Move / delete existing trees') }}</button>
-                <button id="single_tree_deletion_button" type="button" onclick=""
-                    class="btn btn-outline-secondary drawing_mode_controls d-none">{{
-                    gettext('Delete selected tree') }}</button>
-                <button type="button" onclick="tree_editing_control.delete_all_trees()"
-                    class="btn btn-outline-secondary drawing_mode_controls d-none">{{
-                    gettext('Delete all trees') }}</button>
-            </div>&nbsp;
-            
-        </div>
-        <div class="col-md-4">
-            <div class="btn-toolbar" role="toolbar" aria-label="Drawn trees toolbar">
-                <div class="btn-group" role="group" aria-label="First group">
-                    <button type="button" class="btn btn-secondary" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Number of trees added" id="number_of_trees_drawn">0
-                    </button>
-                    <button data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Shadow of the trees added" id="generate_shadows_control" type="button" onclick="tree_editing_control.generate_shadows()" class="btn btn-outline-secondary d-none">
-                        Generate Tree Shadows
-                    </button>
+  </div>
+  <div id="map">
 
-                    <div id="shadow_spinner" class="d-none spinner-grow text-secondary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <button class="btn btn-outline-info btn-sm d-none" id="clear_shadows_control" type="button"
-                        onclick="tree_editing_control.clear_generated_shadows()" class="btn btn-outline-secondary"data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Clear generated shadows">Clear Tree Shadows
-                    </button>&nbsp;
-                    <button class="btn btn-outline-info btn-sm d-none" id="get_shadows_control" type="button"
-                        onclick="tree_editing_control.get_generated_shadows('{{ op['session_id'] }}')" class="btn btn-outline-info"data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Get generated shadows">Get generated shadows
-                    </button>&nbsp;
-                </div>
-            
-            </div>
+    <div id="distance" class="distance-container"></div>
+  </div>
+  <br />
 
-        </div>
+  {% else %}
+  <div class="row">
+    <div class="col-md-12">
+      <p>{{op['message']}}</p>
     </div>
-    <br><br>
-    <div class="row">
-        <div class="col-md-10">
-            <h5>{{ gettext('Shadow Detail') }}&nbsp;<small class="text-muted">{{ gettext('The shadows are generated based on the trees drawn on the map') }}</small></h5>
-            <p id="drawn_trees_shadow_area" class="lead"><small class="text-muted">{{ gettext('Additional shadowed area in m2') }}</small></p>
-            
-        </div>
-    </div><br>
-    <div class="row">
-        <div class="col-md-10">
-            <h5>{{ gettext('Add as a new diagram') }}&nbsp;<small class="text-muted">{{ gettext('Add your trees as a diagram in Geodesignhub') }}</small></h5>
-                       
-            <br>
+  </div>
+  {% endif %}
 
-            <div class="btn-group" role="group" aria-label="Add Diagram tools">
-                <button id="add_as_diagram_button" type="button" class="btn btn-outline-success d-none" data-bs-toggle="modal"
-                    data-bs-target="#addDiagramModal"><i class="bi bi-arrow-bar-up"></i>&nbsp;{{ gettext('Add as a diagram') }}</button>
-                
-            </div>
-        </div>
+  <div class="row">
+    <div class="col-md-10">
+      <h5>
+        {{ gettext('Drawing Tools') }}&nbsp;<small class="text-muted"
+          >{{ gettext('Use the buttons below to draw trees') }}</small
+        >
+      </h5>
     </div>
-
-    <!-- Modal -->
-    <div class="modal fade" id="addDiagramModal" tabindex="-1" aria-labelledby="addDiagramModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="addDiagramModalLabel">Add a diagram</h1>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        {{ render_form(form) }}
-                    </div>
-                </div>
-                <div class="modal-footer">
-                </div>
-            </div>
-        </div>
+  </div>
+  <div class="row">
+    <div class="col-md-8">
+      <div class="btn-group" role="group" aria-label="Tree drawing tools">
+        <button
+          id="add_trees_button"
+          type="button"
+          onclick="tree_editing_control.add_tree()"
+          class="btn btn-outline-secondary"
+        >
+          <i class="bi bi-plus"></i>&nbsp;{{ gettext('Add Trees') }}
+        </button>
+      </div>
+      &nbsp;
+      <div
+        class="btn-group"
+        role="group"
+        aria-label="Drawn trees editing tools"
+      >
+        <button
+          name=""
+          id="drawing_complete_button"
+          type="button"
+          onclick="tree_editing_control.drawing_complete()"
+          class="btn btn-outline-secondary drawing_mode_controls d-none"
+        >
+          {{ gettext('Complete Drawing') }}
+        </button>
+        <button
+          type="button"
+          onclick="tree_editing_control.move_trees()"
+          class="btn btn-outline-secondary drawing_mode_controls d-none"
+        >
+          {{ gettext('Move / delete existing trees') }}
+        </button>
+        <button
+          id="single_tree_deletion_button"
+          type="button"
+          onclick=""
+          class="btn btn-outline-secondary drawing_mode_controls d-none"
+        >
+          {{ gettext('Delete selected tree') }}
+        </button>
+        <button
+          type="button"
+          onclick="tree_editing_control.delete_all_trees()"
+          class="btn btn-outline-secondary drawing_mode_controls d-none"
+        >
+          {{ gettext('Delete all trees') }}
+        </button>
+      </div>
+      &nbsp;
     </div>
+    <div class="col-md-4">
+      <div class="btn-toolbar" role="toolbar" aria-label="Drawn trees toolbar">
+        <div class="btn-group" role="group" aria-label="First group">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-toggle="tooltip"
+            data-bs-placement="left"
+            data-bs-title="Number of trees added"
+            id="number_of_trees_drawn"
+          >
+            0
+          </button>
+          <button
+            data-bs-toggle="tooltip"
+            data-bs-placement="left"
+            data-bs-title="Shadow of the trees added"
+            id="generate_shadows_control"
+            type="button"
+            onclick="tree_editing_control.generate_shadows()"
+            class="btn btn-outline-secondary d-none"
+          >
+            Generate Tree Shadows
+          </button>
 
+          <div
+            id="shadow_spinner"
+            class="d-none spinner-grow text-secondary"
+            role="status"
+          >
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <button
+            class="btn btn-outline-info btn-sm d-none"
+            id="clear_shadows_control"
+            type="button"
+            onclick="tree_editing_control.clear_generated_shadows()"
+            class="btn btn-outline-secondary"
+            data-bs-toggle="tooltip"
+            data-bs-placement="left"
+            data-bs-title="Clear generated shadows"
+          >
+            Clear Tree Shadows</button
+          >&nbsp;
+          <button
+            class="btn btn-outline-info btn-sm d-none"
+            id="get_shadows_control"
+            type="button"
+            onclick="tree_editing_control.get_generated_shadows('{{ op['session_id'] }}')"
+            class="btn btn-outline-info"
+            data-bs-toggle="tooltip"
+            data-bs-placement="left"
+            data-bs-title="Get generated shadows"
+          >
+            Get generated shadows</button
+          >&nbsp;
+        </div>
+      </div>
+    </div>
+  </div>
+  <br /><br />
+  <div class="row">
+    <div class="col-md-10">
+      <h5>
+        {{ gettext('Shadow Detail') }}&nbsp;<small class="text-muted"
+          >{{ gettext('Shadows are generated based on the trees drawn on the
+          map') }}</small
+        >
+      </h5>
+      <p id="drawn_trees_shadow_area" class="lead">
+        <small class="text-muted"
+          >{{ gettext('Additional shadowed area in m2') }}</small
+        >
+      </p>
+    </div>
+  </div>
+  <br />
+  <div class="row">
+    <div class="col-md-10">
+      <h5>
+        {{ gettext('Add as a new diagram') }}&nbsp;<small class="text-muted"
+          >{{ gettext('Add your trees as a diagram in Geodesignhub') }}</small
+        >
+      </h5>
 
+      <br />
+
+      <div class="btn-group" role="group" aria-label="Add Diagram tools">
+        <button
+          id="add_as_diagram_button"
+          type="button"
+          class="btn btn-outline-success d-none"
+          data-bs-toggle="modal"
+          data-bs-target="#addDiagramModal"
+        >
+          <i class="bi bi-arrow-bar-up"></i>&nbsp;{{ gettext('Add as a diagram')
+          }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div
+    class="modal fade"
+    id="addDiagramModal"
+    tabindex="-1"
+    aria-labelledby="addDiagramModalLabel"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="addDiagramModalLabel">
+            Add a diagram
+          </h1>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">{{ render_form(form) }}</div>
+        </div>
+        <div class="modal-footer"></div>
+      </div>
+    </div>
+  </div>
 </div>
 <!-- /container -->
-{% endblock %}
-
-{% block footer %}
-
-{% if op['status'] == 1 %}
-<script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', filename='js/terra-draw.umd.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', filename='js/terra-draw-maplibre-gl-adapter.umd.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', filename='js/maplibre-gl-measures.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
+{% endblock %} {% block footer %} {% if op['status'] == 1 %}
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"
+></script>
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/terra-draw.umd.js') }}"
+></script>
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/terra-draw-maplibre-gl-adapter.umd.js') }}"
+></script>
+<script src="{{ url_for('static', filename='js/turf.min.js') }}"></script>
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/common.js') }}"
+></script>
 
 {% if op['cog_layers'] %}
-<script type="text/javascript" src="{{ url_for('static', filename='js/cog/cog-protocol.min.js') }}"></script>
-{% endif %}
-{% if op['fgb_layers'] %}
-<script type="text/javascript" src="{{ url_for('static', filename='js/fgb/flatgeobuf-geojson.min.js') }}"></script>
-{% endif %}
-{% if op['pmtiles_layers'] %}
-<script type="text/javascript" src="{{ url_for('static', filename='js/pmtiles/pmtiles.js') }}"></script>
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/cog/cog-protocol.min.js') }}"
+></script>
+{% endif %} {% if op['fgb_layers'] %}
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/fgb/flatgeobuf-geojson.min.js') }}"
+></script>
+{% endif %} {% if op['pmtiles_layers'] %}
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/pmtiles/pmtiles.js') }}"
+></script>
 {% endif %}
 
-<script type="text/javascript" src="{{ url_for('static', filename='js/turf.min.js') }}"></script>
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/turf.min.js') }}"
+></script>
 
-<script type="text/javascript" src="{{ url_for('static', filename='js/notifications/simple-notify.min.js') }}"></script>
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/notifications/simple-notify.min.js') }}"
+></script>
 <script type="text/javascript">
-    let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl)
-    })
-    const csrf_token = "{{ csrf_token() }}";
-    const project_detail = {{ op|safe }};
-    var bounds = project_detail['project_data']['bounds']['bounds'];
-    var center = project_detail['project_data']['center']['center'];
-    var map_center = center.split(',');
-    var map_center_lat = map_center[0];
-    var map_center_lng = map_center[1];
-    var latLngs = bounds.split(',');
-    var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
-    var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
-    var bounds = new maplibregl.LngLatBounds(southWest, northEast);
+     let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+     let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+         return new bootstrap.Tooltip(tooltipTriggerEl)
+     })
+     const csrf_token = "{{ csrf_token() }}";
+     const project_detail = {{ op|safe }};
+     var bounds = project_detail['project_data']['bounds']['bounds'];
+     var center = project_detail['project_data']['center']['center'];
+     var map_center = center.split(',');
+     var map_center_lat = map_center[0];
+     var map_center_lng = map_center[1];
+     var latLngs = bounds.split(',');
+     var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
+     var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
+     var bounds = new maplibregl.LngLatBounds(southWest, northEast);
 
-    let wms_layers = project_detail['wms_layers'];
-    let cog_layers = project_detail['cog_layers'];
-    let fgb_layers = project_detail['fgb_layers'];
-    let pmtiles_layers = project_detail['pmtiles_layers'];
-    // input nodes map
-    let map = new maplibregl.Map({
-        container: 'map', // container id  
-        style:
-            'https://api.maptiler.com/maps/streets-v2/style.json?key={{op["maptiler_key"]}}',
-        bounds: bounds,
-        zoom: 12, // starting zoom
-        maxZoom: 23,
-    });
-    if (cog_layers.length > 0) {
-        maplibregl.addProtocol('cog', MaplibreCOGProtocol.cogProtocol);
-    }
+     let wms_layers = project_detail['wms_layers'];
+     let cog_layers = project_detail['cog_layers'];
+     let fgb_layers = project_detail['fgb_layers'];
+     let pmtiles_layers = project_detail['pmtiles_layers'];
+     // input nodes map
+     let map = new maplibregl.Map({
+         container: 'map', // container id
+         style:
+             'https://api.maptiler.com/maps/streets-v2/style.json?key={{op["maptiler_key"]}}',
+         bounds: bounds,
+         zoom: 12, // starting zoom
+         maxZoom: 23,
+     });
+     if (cog_layers.length > 0) {
+         maplibregl.addProtocol('cog', MaplibreCOGProtocol.cogProtocol);
+     }
 
-    if (pmtiles_layers.length > 0) {
-        let pmtiles_protocol = new pmtiles.Protocol({ metadata: true });
-        maplibregl.addProtocol("pmtiles", pmtiles_protocol.tile);
+     if (pmtiles_layers.length > 0) {
+         let pmtiles_protocol = new pmtiles.Protocol({ metadata: true });
+         maplibregl.addProtocol("pmtiles", pmtiles_protocol.tile);
 
-    }
+     }
 
-    map.addControl(new maplibreGLMeasures.default({}), 'top-left');
+     map.addControl(
+         new maplibregl.NavigationControl({
+             visualizePitch: true,
+             showZoom: true,
+             showCompass: true
+         })
+     );
+     document.getElementById('listing-group').addEventListener('change', function (e) {
+         var map_layer = e.target.id;
+         let map_layer_line_id = map_layer + "_lines";
+         let map_layer_point_id = map_layer + "_points";
 
-    map.addControl(
-        new maplibregl.NavigationControl({
-            visualizePitch: true,
-            showZoom: true,
-            showCompass: true
-        })
-    );
-    document.getElementById('listing-group').addEventListener('change', function (e) {
-        var map_layer = e.target.id;
-        let map_layer_line_id = map_layer + "_lines";
-        let map_layer_point_id = map_layer + "_points";
+         let all_ids = [map_layer, map_layer_line_id, map_layer_point_id];
 
-        let all_ids = [map_layer, map_layer_line_id, map_layer_point_id];
+         for (let index = 0; index < all_ids.length; index++) {
+             const map_source_id = all_ids[index];
+             if (map.getLayer(map_source_id)) {
+                 if (e.target.checked) {
+                     map.setLayoutProperty(map_source_id, 'visibility', 'visible');
+                 } else {
+                     map.setLayoutProperty(map_source_id, 'visibility', 'none');
+                 }
+             }
+         }
+     });
+     // Create Terra Draw
+     const TerraDraw = terraDraw.TerraDraw
+     const TerraDrawMapLibreGLAdapter = terraDrawMaplibreGlAdapter.TerraDrawMapLibreGLAdapter
 
-        for (let index = 0; index < all_ids.length; index++) {
-            const map_source_id = all_ids[index];
-            if (map.getLayer(map_source_id)) {
-                if (e.target.checked) {
-                    map.setLayoutProperty(map_source_id, 'visibility', 'visible');
+     const distanceContainer = document.getElementById('distance');
+
+     // GeoJSON object to hold our measurement features
+     const measurement_geojson = {
+         'type': 'FeatureCollection',
+         'features': []
+     };
+
+     // Used to draw a line between points
+     const measurement_linestring = {
+         'type': 'Feature',
+         'geometry': {
+             'type': 'LineString',
+             'coordinates': []
+         }
+     };
+     const draw = new TerraDraw({
+         adapter: new TerraDrawMapLibreGLAdapter({
+             map: map,
+             lib: maplibregl,
+         }),
+         modes: [new terraDraw.TerraDrawPointMode({styles: {
+                 // See Styling Guide for more information
+                 // Outline colour (Hex color)
+                 pointColor: "#008000",
+                 pointOutlineColor: "#228b22",
+                 //Outline width (Integer)
+                 pointWidth: 5,
+             }}),
+         new terraDraw.TerraDrawRenderMode({ modeName: "render_trees" }),
+         new terraDraw.TerraDrawSelectMode({
+             flags: {
+                 arbitary: {
+                     feature: {},
+                 },
+                 point: {
+                     feature: {
+                         draggable: true,
+                     },
+                 },
+             }, // Styles go here...
+             styles: {
+                 // See Styling Guide for more information
+                 // Outline colour (Hex color)
+                 selectedPointOutlineColor: "#7cfc00",
+                 selectedPointColor: "#2e8b57 ",
+                 //Outline width (Integer)
+                 selectedPointOutlineWidth: 2,
+             },
+         }),],
+     });
+
+     draw.start();
+
+     let MeasurementControl = function () {
+         this.start_measurements = function () {
+
+             let start_measurements_button = document.getElementById('start_measurements_button');
+             start_measurements_button.classList.add('d-none');
+             let clear_measurements_button = document.getElementById('clear_measurementsS_button');
+             clear_measurements_button.classList.remove('d-none');
+
+            const distanceContainer = document.getElementById('distance');
+
+            const geojson = {
+                'type': 'FeatureCollection',
+                'features': []
+            };
+
+            // Used to draw a line between points
+            const linestring = {
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'LineString',
+                    'coordinates': []
+                }
+            };
+
+            map.on('click', (e) => {
+                const features = map.queryRenderedFeatures(e.point, {
+                    layers: ['measure-points']
+                });
+
+                // Remove the linestring from the group
+                // So we can redraw it based on the points collection
+                if (geojson.features.length > 1) geojson.features.pop();
+
+                // Clear the Distance container to populate it with a new value
+                distanceContainer.innerHTML = '';
+
+                // If a feature was clicked, remove it from the map
+                if (features.length) {
+                    const id = features[0].properties.id;
+                    geojson.features = geojson.features.filter((point) => {
+                        return point.properties.id !== id;
+                    });
                 } else {
-                    map.setLayoutProperty(map_source_id, 'visibility', 'none');
-                }
-            }
-        }
-    });
-    // Create Terra Draw
-    const TerraDraw = terraDraw.TerraDraw
-    const TerraDrawMapLibreGLAdapter = terraDrawMaplibreGlAdapter.TerraDrawMapLibreGLAdapter
-
-    const draw = new TerraDraw({
-        adapter: new TerraDrawMapLibreGLAdapter({
-            map: map,
-            lib: maplibregl,
-        }),
-        modes: [new terraDraw.TerraDrawPointMode({styles: {
-                // See Styling Guide for more information
-                // Outline colour (Hex color)
-                pointColor: "#008000",
-                pointOutlineColor: "#228b22",
-                //Outline width (Integer)
-                pointWidth: 5,
-            }}), 
-        new terraDraw.TerraDrawRenderMode({ modeName: "render_trees" }),
-        new terraDraw.TerraDrawSelectMode({
-            flags: {
-                arbitary: {
-                    feature: {},
-                },
-                point: {
-                    feature: {
-                        draggable: true,
-                    },
-                },
-            }, // Styles go here...
-            styles: {
-                // See Styling Guide for more information
-                // Outline colour (Hex color)
-                selectedPointOutlineColor: "#7cfc00",
-                selectedPointColor: "#2e8b57 ",
-                //Outline width (Integer)
-                selectedPointOutlineWidth: 2,
-            },
-        }),],
-    });
-
-    draw.start();
-    let TreeEditingFactory = function () {
-        let session_id = "{{op['session_id']}}";
-        let state_id = uuidv4();
-
-        this.add_tree = function () {
-            draw.setMode("point");
-            let drawing_controls =  document.getElementsByClassName("drawing_mode_controls");
-            for (var i = drawing_controls.length - 1; i >= 0; i--)
-            {
-                drawing_controls[i].classList.remove('d-none');
-            }
-
-            let add_tree_control =  document.getElementById("add_trees_button");
-            add_tree_control.classList.add('d-none');
-            
-            
-        }
-        this.drawing_complete = function () {
-            draw.setMode("render_trees");
-            let drawing_complete_control = document.getElementById('drawing_complete_button');
-            drawing_complete_control.classList.add('d-none');
-            let drawing_controls =  document.getElementsByClassName("drawing_mode_controls");
-            for (var i = drawing_controls.length - 1; i >= 0; i--)
-            {
-                drawing_controls[i].classList.add('d-none');
-            }
-
-            let add_tree_control =  document.getElementById("add_trees_button");
-            add_tree_control.classList.remove('d-none');
-            
-
-        }
-        this.move_trees = function () {
-            draw.setMode("select");
-        }
-        this.delete_all_trees = function () {
-            draw.clear();
-            this.update_tree_count();
-        }
-        this.delete_single_tree = function (id) {
-            // console.log(id);
-            draw.removeFeatures([id]);
-            let single_tree_deletion_control = document.getElementById('single_tree_deletion_button');
-            single_tree_deletion_control.classList.add('d-none');
-        }
-        // this.move_trees = function(entries) {
-        //     this.entries = entries;
-        // }
-        this.update_tree_count = function () {
-            const store_geojson = draw.getSnapshot();
-            let number_of_trees = store_geojson.length;
-            let tree_count_container = document.getElementById('number_of_trees_drawn');
-            tree_count_container.innerHTML = number_of_trees;
-
-            // if the number of trees is more than 1 , then show the add as diagram button
-            if (number_of_trees > 0) {
-                let add_as_diagram_button = document.getElementById('add_as_diagram_button');
-                add_as_diagram_button.classList.remove('d-none');
-                // show the generate shadows button
-                let show_shadows_control = document.getElementById('generate_shadows_control');
-                show_shadows_control.classList.remove('d-none');
-            }
-            else {
-                let add_as_diagram_button = document.getElementById('add_as_diagram_button');
-                add_as_diagram_button.classList.add('d-none');
-                ;
-                // show the generate shadows button
-                let show_shadows_control = document.getElementById('generate_shadows_control');
-                show_shadows_control.classList.add('d-none');
-            }
-
-
-            // store_geojson.filter((feature) => feature.properties.mode === 'polygon')
-        }
-
-        this.generate_shadows = function () {
-            const snapshot = draw.getSnapshot();
-            if (snapshot.length > 0) {
-                let show_shadows_control = document.getElementById('generate_shadows_control');
-                show_shadows_control.classList.add('d-none');
-
-                let spinner_cont = document.getElementById('shadow_spinner');
-                spinner_cont.classList.remove('d-none');
-
-                let clear_shadows_control = document.getElementById('clear_shadows_control');
-                clear_shadows_control.classList.add('d-none');
-                this.send_generate_shadow_request(snapshot);
-                // after 20 seconds remove spinner and add a get shadows button
-                setTimeout(
-                function() {
-                    // hide the spinner container
-                    spinner_cont.classList.add('d-none');
-                    // show the get shadows button
-                    let get_shadows_control = document.getElementById('get_shadows_control');
-                    get_shadows_control.classList.remove('d-none');
-
-                }, 30000);
-
-            }
-
-        }
-
-        this.get_generated_shadows = function (session_id){
-
-            let drawn_trees_shadow_key = session_id + '_'+ state_id+'_drawn_trees_shadow';
-                // The message is for the current sesion, download the data...
-                let drawn_trees_download_url = window.location.origin + '/get_drawn_trees_shadows?drawn_trees_shadows_key=' + drawn_trees_shadow_key;
-                get_drawn_trees_shadows(drawn_trees_download_url);
-        }
-        this.clear_generated_shadows = function () {
-            // hide generate shadows button
-            let show_shadows_control = document.getElementById('generate_shadows_control');
-            show_shadows_control.classList.remove('d-none');
-            // load the spinner
-            let spinner_cont = document.getElementById('shadow_spinner');
-            spinner_cont.classList.add('d-none');
-            
-            let clear_shadows_control = document.getElementById('clear_shadows_control');
-            clear_shadows_control.classList.add('d-none');
-
-            let empty_fc = { "type": "FeatureCollection", "features": [] };
-            map.getSource('tree_shadows').setData(empty_fc);
-
-            let drawn_trees_shadow_area = document.getElementById('drawn_trees_shadow_area');
-            drawn_trees_shadow_area.innerHTML = "";
-            let small = document.createElement('small');
-            small.classList.add('text-muted');
-            small.innerHTML = "{{ gettext('Additional shadowed area in m2') }}";
-            drawn_trees_shadow_area.appendChild(small);          
-
-
-        }
-        this.update_state_id = function () {
-            state_id = uuidv4();
-        }
-        this.get_state_id = function () {
-            return state_id;
-        }
-
-        this.send_generate_shadow_request = function (snapshot) {
-            let post_shadow_url = window.location.origin + '/generate_drawn_trees_shadow?session_id=' + session_id+'&state_id='+state_id;
-            fetch(post_shadow_url, {
-                method: "post",
-                headers: {
-                    "X-CSRF-Token": csrf_token,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-
-                //make sure to serialize your JSON body
-                body: JSON.stringify({
-                    unprocessed_tree_geojson: snapshot,
-                    session_id:session_id,
-                    state_id:state_id
-                })
-            })
-                .then((response) => {
-                  
-                });
-
-        }
-
-
-        this.empty_shadows_loaded = function () {
-            console.log("Shadow computation ongoing...");
-
-            new Notify ({
-                status: 'info',
-                title: 'Not completed',
-                text: 'Shadows are still being generated, check after 10 - 30 seconds',
-                effect: 'fade',
-                speed: 300,
-                customClass: '',
-                customIcon: '',
-                showIcon: true,
-                showCloseButton: true,
-                autoclose: true,
-                autotimeout: 3000,
-                notificationsGap: null,
-                notificationsPadding: null,
-                type: 'outline',
-                position: 'center',
-                customWrapper: '',
-            });
-
-        }
-        this.shadows_loaded = function () {
-
-            // hide generate shadows button
-            let show_shadows_control = document.getElementById('generate_shadows_control');
-            show_shadows_control.classList.add('d-none');
-            // load the spinner
-            let spinner_cont = document.getElementById('shadow_spinner');
-            spinner_cont.classList.add('d-none');
-            // show the clear shadows button
-            let clear_shadows_control = document.getElementById('clear_shadows_control');
-            clear_shadows_control.classList.remove('d-none');
-
-            // hide get generated shadows button
-            let get_shadows_control = document.getElementById('get_shadows_control');
-            get_shadows_control.classList.add('d-none');
-        }
-    }
-    let tree_editing_control = new TreeEditingFactory();
-    draw.on("change", (ids, type) => {
-        // Possible type values:
-        // 'create'
-        // 'update'
-        // 'delete'
-        // 'styling'
-
-        if (['create', 'delete', 'move'].includes(type)) {
-            tree_editing_control.update_tree_count();
-            tree_editing_control.update_state_id();
-        }
-    });
-    draw.on('select', (id) => {
-        const snapshot = draw.getSnapshot();
-        // Search the snapshot for the selected polygon
-        const selected_point = snapshot.find((feature) => feature.id === id);
-        // Enable delete control
-
-        let single_tree_deletion_control = document.getElementById('single_tree_deletion_button');
-        let single_tree_deletion_string = "tree_editing_control.delete_single_tree('" + id + "')";
-        single_tree_deletion_control.setAttribute('onclick', single_tree_deletion_string);
-        single_tree_deletion_control.classList.remove('d-none');
-    })
-
-    draw.on("deselect", () => {
-        // remove delete control
-        let single_tree_deletion_control = document.getElementById('single_tree_deletion_button');
-        single_tree_deletion_control.classList.add('d-none');
-    });
-    map.on('load', async () => {
-
-        map.setPaintProperty('Minor road', 'line-color', '#000000');
-        map.setPaintProperty('Minor road', 'line-opacity', 0.05);
-        
-        map.addSource('tree_shadows', {
-            'type': 'geojson',
-            'data': { "type": "FeatureCollection", "features": [] }
-        });
-        map.addLayer({
-            'id': 'tree_shadows',
-            'type': 'fill',
-            'source': 'tree_shadows',
-            'layout': {},
-            'paint': {
-                'fill-color': '#808080',
-                'fill-opacity': 0.7
-            }
-        });
-
-        map.addSource('bike_pedestrian_roads', {
-            'type': 'geojson',
-            'data': { "type": "FeatureCollection", "features": [] }
-        });
-        map.addLayer({
-            'id': 'bike_pedestrian_roads',
-            'type': 'line',
-            'source': 'bike_pedestrian_roads',
-            'layout': {
-                'line-join': 'round',
-                'line-cap': 'round'
-            },
-            'paint': {
-                'line-color': '#422518',
-                'line-width': 3,
-                'line-opacity': 0.7
-            }
-        });
-
-        for (let index = 0; index < wms_layers.length; index++) {
-            const wms_layer = wms_layers[index];
-            let source_str = wms_layer.dom_id + "_source";
-            map.addSource(source_str, {
-                'type': 'raster',
-                // use the tiles option to specify a WMS tile source URL
-                // https://maplibre.org/maplibre-style-spec/sources/
-                'tiles': [wms_layer['url']],
-                'tileSize': 256
-            });
-            map.addLayer(
-                {
-                    'id': wms_layer['dom_id'],
-                    'type': 'raster',
-                    'source': source_str,
-                    'paint': {}
-                },
-                'aeroway_fill'
-            );
-
-        }
-
-        if (cog_layers.length > 0) {
-            for (let index = 0; index < cog_layers.length; index++) {
-                const cog_layer = cog_layers[index];
-
-                let source_str = cog_layer.dom_id + "_source";
-                map.addSource(source_str, {
-                    'type': 'raster',
-                    'url': 'cog://' + cog_layer['url'],
-                    'tileSize': 256
-                });
-                map.addLayer(
-                    {
-                        'id': cog_layer['dom_id'],
-                        'source': source_str,
-                        'type': 'raster',
-                        'paint': {}
-                    },
-                    'aeroway_fill'
-                );
-            }
-        }
-        if (pmtiles_layers.length > 0) {
-            for (let index = 0; index < pmtiles_layers.length; index++) {
-                const pmtiles_layer = pmtiles_layers[index];
-               
-                let source_str = pmtiles_layer.dom_id + "_source";
-                if (pmtiles_layer.layer_type == 'raster') {
-                    map.addSource(source_str, {
-                        'type': 'raster',
-                        'url': 'pmtiles://' + pmtiles_layer['url']
-                    });
-                    map.addLayer(
-                        {
-                            'id': pmtiles_layer['dom_id'],
-                            'source': source_str,
-                            'type': 'raster',
-                            'paint': {}
+                    const point = {
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': [e.lngLat.lng, e.lngLat.lat]
                         },
-                        
-                    );
-                }
-            }
-        }
-
-
-        if (fgb_layers.length > 0) {
-            for (let index = 0; index < fgb_layers.length; index++) {
-                const fgb_layer = fgb_layers[index];
-                const geometry_type = fgb_layer['geometry_type'];
-                const response = await fetch(fgb_layer['url']);
-                let source_str = fgb_layer.dom_id + "_source";
-                const fc = { type: "FeatureCollection", features: [] };
-                let i = 0;
-                for await (const f of flatgeobuf.deserialize(response.body, undefined)) {
-                    fc.features.push({ ...f, id: i });
-                    i += 1;
-                }
-
-                map.addSource(source_str, {
-                    type: "geojson",
-                    data: fc,
-                });
-                if (geometry_type == 'polygon') {
-                    map.addLayer({
-                        id: fgb_layer['dom_id'],
-                        type: "fill",
-                        source: source_str,
-                        paint: {
-                            "fill-color": fgb_layer['color'],
-                            "fill-opacity": 0.75,
-                        },
-                    });
-                }
-                else if (geometry_type == 'line') {
-                    map.addLayer({
-                        id: fgb_layer['dom_id'] + "_lines",
-                        type: "line",
-                        source: source_str,
-                        paint: {
-                            "line-color": fgb_layer['color'],
-                            "line-opacity": 0.9,
-                            "line-width": 2,
-                        },
-                    });
-                }
-
-                else if (geometry_type == 'point') {
-                    map.addLayer({
-                        id: fgb_layer['dom_id'] + "_points",
-                        type: 'circle',
-                        source: source_str,
-                        paint: {
-
-                            "circle-blur": 0,
-                            "circle-color": fgb_layer['color'],
-                            "circle-opacity": 0.8,
-                            "circle-radius": 10,
-                            "circle-stroke-color": fgb_layer['color'],
-                            "circle-stroke-opacity": 0.9,
-                            "circle-stroke-width": 1,
-
+                        'properties': {
+                            'id': String(new Date().getTime())
                         }
+                    };
 
-                    });
+                    geojson.features.push(point);
                 }
-            }
-        }
-    });
-    const addDiagramModalEl = document.getElementById('addDiagramModal');
-    addDiagramModalEl.addEventListener('shown.bs.modal', event => {
-        const store_geojson = draw.getSnapshot();
-        const geo_json_element = document.getElementById('drawn_geojson');
-        geo_json_element.value = JSON.stringify(store_geojson);
 
-    });
+                if (geojson.features.length > 1) {
+                    linestring.geometry.coordinates = geojson.features.map(
+                        (point) => {
+                            return point.geometry.coordinates;
+                        }
+                    );
 
-    
-    
+                    geojson.features.push(linestring);
+
+                    // Populate the distanceContainer with total distance
+                    const value = document.createElement('pre');
+                    value.textContent =
+                        `Total distance: ${
+                            turf.length(linestring).toLocaleString()
+                        }km`;
+                    distanceContainer.appendChild(value);
+                }
+
+                map.getSource('measurement_geojson').setData(geojson);
+            });
+
+
+
+             map.on('mousemove', (e) => {
+                 const features = map.queryRenderedFeatures(e.point, {
+                     layers: ['measure-points']
+                 });
+                 // UI indicator for clicking/hovering a point on the map
+                 map.getCanvas().style.cursor = features.length ?
+                     'pointer' :
+                     'crosshair';
+             });
+         }
+         this.clear_measurements = function () {
+             map.off('click');
+             map.off('mousemove');
+
+             let clear_measurement_geojson = {
+                 'type': 'FeatureCollection',
+                 'features': []
+             };
+             map.getSource('measurement_geojson').setData(clear_measurement_geojson);
+             distanceContainer.innerHTML = "";
+             let start_measurements_button = document.getElementById('start_measurements_button');
+             start_measurements_button.classList.remove('d-none');
+             let clear_measurements_button = document.getElementById('clear_measurementsS_button');
+             clear_measurements_button.classList.add('d-none');
+
+         }
+     }
+
+     let TreeEditingFactory = function () {
+         let session_id = "{{op['session_id']}}";
+         let state_id = uuidv4();
+
+         this.add_tree = function () {
+             draw.setMode("point");
+             let drawing_controls =  document.getElementsByClassName("drawing_mode_controls");
+             for (var i = drawing_controls.length - 1; i >= 0; i--)
+             {
+                 drawing_controls[i].classList.remove('d-none');
+             }
+
+             let add_tree_control =  document.getElementById("add_trees_button");
+             add_tree_control.classList.add('d-none');
+
+
+         }
+         this.drawing_complete = function () {
+             draw.setMode("render_trees");
+             let drawing_complete_control = document.getElementById('drawing_complete_button');
+             drawing_complete_control.classList.add('d-none');
+             let drawing_controls =  document.getElementsByClassName("drawing_mode_controls");
+             for (var i = drawing_controls.length - 1; i >= 0; i--)
+             {
+                 drawing_controls[i].classList.add('d-none');
+             }
+
+             let add_tree_control =  document.getElementById("add_trees_button");
+             add_tree_control.classList.remove('d-none');
+
+
+         }
+         this.move_trees = function () {
+             draw.setMode("select");
+         }
+         this.delete_all_trees = function () {
+             draw.clear();
+             this.update_tree_count();
+         }
+         this.delete_single_tree = function (id) {
+             // console.log(id);
+             draw.removeFeatures([id]);
+             let single_tree_deletion_control = document.getElementById('single_tree_deletion_button');
+             single_tree_deletion_control.classList.add('d-none');
+         }
+         // this.move_trees = function(entries) {
+         //     this.entries = entries;
+         // }
+         this.update_tree_count = function () {
+             const store_geojson = draw.getSnapshot();
+             let number_of_trees = store_geojson.length;
+             let tree_count_container = document.getElementById('number_of_trees_drawn');
+             tree_count_container.innerHTML = number_of_trees;
+
+             // if the number of trees is more than 1 , then show the add as diagram button
+             if (number_of_trees > 0) {
+                 let add_as_diagram_button = document.getElementById('add_as_diagram_button');
+                 add_as_diagram_button.classList.remove('d-none');
+                 // show the generate shadows button
+                 let show_shadows_control = document.getElementById('generate_shadows_control');
+                 show_shadows_control.classList.remove('d-none');
+             }
+             else {
+                 let add_as_diagram_button = document.getElementById('add_as_diagram_button');
+                 add_as_diagram_button.classList.add('d-none');
+                 ;
+                 // show the generate shadows button
+                 let show_shadows_control = document.getElementById('generate_shadows_control');
+                 show_shadows_control.classList.add('d-none');
+             }
+
+
+             // store_geojson.filter((feature) => feature.properties.mode === 'polygon')
+         }
+
+         this.generate_shadows = function () {
+             const snapshot = draw.getSnapshot();
+             if (snapshot.length > 0) {
+                 let show_shadows_control = document.getElementById('generate_shadows_control');
+                 show_shadows_control.classList.add('d-none');
+
+                 let spinner_cont = document.getElementById('shadow_spinner');
+                 spinner_cont.classList.remove('d-none');
+
+                 let clear_shadows_control = document.getElementById('clear_shadows_control');
+                 clear_shadows_control.classList.add('d-none');
+                 this.send_generate_shadow_request(snapshot);
+                 // after 20 seconds remove spinner and add a get shadows button
+                 setTimeout(
+                 function() {
+                     // hide the spinner container
+                     spinner_cont.classList.add('d-none');
+                     // show the get shadows button
+                     let get_shadows_control = document.getElementById('get_shadows_control');
+                     get_shadows_control.classList.remove('d-none');
+
+                 }, 30000);
+
+             }
+
+         }
+
+         this.get_generated_shadows = function (session_id){
+
+             let drawn_trees_shadow_key = session_id + '_'+ state_id+'_drawn_trees_shadow';
+                 // The message is for the current sesion, download the data...
+                 let drawn_trees_download_url = window.location.origin + '/get_drawn_trees_shadows?drawn_trees_shadows_key=' + drawn_trees_shadow_key;
+                 get_drawn_trees_shadows(drawn_trees_download_url);
+         }
+         this.clear_generated_shadows = function () {
+             // hide generate shadows button
+             let show_shadows_control = document.getElementById('generate_shadows_control');
+             show_shadows_control.classList.remove('d-none');
+             // load the spinner
+             let spinner_cont = document.getElementById('shadow_spinner');
+             spinner_cont.classList.add('d-none');
+
+             let clear_shadows_control = document.getElementById('clear_shadows_control');
+             clear_shadows_control.classList.add('d-none');
+
+             let empty_fc = { "type": "FeatureCollection", "features": [] };
+             map.getSource('tree_shadows').setData(empty_fc);
+
+             let drawn_trees_shadow_area = document.getElementById('drawn_trees_shadow_area');
+             drawn_trees_shadow_area.innerHTML = "";
+             let small = document.createElement('small');
+             small.classList.add('text-muted');
+             small.innerHTML = "{{ gettext('Additional shadowed area in m2') }}";
+             drawn_trees_shadow_area.appendChild(small);
+
+
+         }
+         this.update_state_id = function () {
+             state_id = uuidv4();
+         }
+         this.get_state_id = function () {
+             return state_id;
+         }
+
+         this.send_generate_shadow_request = function (snapshot) {
+             let post_shadow_url = window.location.origin + '/generate_drawn_trees_shadow?session_id=' + session_id+'&state_id='+state_id;
+             fetch(post_shadow_url, {
+                 method: "post",
+                 headers: {
+                     "X-CSRF-Token": csrf_token,
+                     'Accept': 'application/json',
+                     'Content-Type': 'application/json'
+                 },
+
+                 //make sure to serialize your JSON body
+                 body: JSON.stringify({
+                     unprocessed_tree_geojson: snapshot,
+                     session_id:session_id,
+                     state_id:state_id
+                 })
+             })
+                 .then((response) => {
+
+                 });
+
+         }
+
+
+         this.empty_shadows_loaded = function () {
+             console.log("Shadow computation ongoing...");
+
+             new Notify ({
+                 status: 'info',
+                 title: 'Not completed',
+                 text: 'Shadows are still being generated, check after 10 - 30 seconds',
+                 effect: 'fade',
+                 speed: 300,
+                 customClass: '',
+                 customIcon: '',
+                 showIcon: true,
+                 showCloseButton: true,
+                 autoclose: true,
+                 autotimeout: 3000,
+                 notificationsGap: null,
+                 notificationsPadding: null,
+                 type: 'outline',
+                 position: 'center',
+                 customWrapper: '',
+             });
+
+         }
+         this.shadows_loaded = function () {
+
+             // hide generate shadows button
+             let show_shadows_control = document.getElementById('generate_shadows_control');
+             show_shadows_control.classList.add('d-none');
+             // load the spinner
+             let spinner_cont = document.getElementById('shadow_spinner');
+             spinner_cont.classList.add('d-none');
+             // show the clear shadows button
+             let clear_shadows_control = document.getElementById('clear_shadows_control');
+             clear_shadows_control.classList.remove('d-none');
+
+             // hide get generated shadows button
+             let get_shadows_control = document.getElementById('get_shadows_control');
+             get_shadows_control.classList.add('d-none');
+         }
+     }
+     let tree_editing_control = new TreeEditingFactory();
+     let measurement_control = new MeasurementControl();
+     draw.on("change", (ids, type) => {
+         // Possible type values:
+         // 'create'
+         // 'update'
+         // 'delete'
+         // 'styling'
+
+         if (['create', 'delete', 'move'].includes(type)) {
+             tree_editing_control.update_tree_count();
+             tree_editing_control.update_state_id();
+         }
+     });
+     draw.on('select', (id) => {
+         const snapshot = draw.getSnapshot();
+         // Search the snapshot for the selected polygon
+         const selected_point = snapshot.find((feature) => feature.id === id);
+         // Enable delete control
+
+         let single_tree_deletion_control = document.getElementById('single_tree_deletion_button');
+         let single_tree_deletion_string = "tree_editing_control.delete_single_tree('" + id + "')";
+         single_tree_deletion_control.setAttribute('onclick', single_tree_deletion_string);
+         single_tree_deletion_control.classList.remove('d-none');
+     })
+
+     draw.on("deselect", () => {
+         // remove delete control
+         let single_tree_deletion_control = document.getElementById('single_tree_deletion_button');
+         single_tree_deletion_control.classList.add('d-none');
+     });
+     map.on('load', async () => {
+
+         map.setPaintProperty('Minor road', 'line-color', '#000000');
+         map.setPaintProperty('Minor road', 'line-opacity', 0.05);
+
+         map.addSource('tree_shadows', {
+             'type': 'geojson',
+             'data': { "type": "FeatureCollection", "features": [] }
+         });
+         map.addLayer({
+             'id': 'tree_shadows',
+             'type': 'fill',
+             'source': 'tree_shadows',
+             'layout': {},
+             'paint': {
+                 'fill-color': '#808080',
+                 'fill-opacity': 0.7
+             }
+         });
+          map.addSource('measurement_geojson', {
+             'type': 'geojson',
+             'data': measurement_geojson
+         });
+
+         // Add styles to the map
+         map.addLayer({
+             id: 'measure-points',
+             type: 'circle',
+             source: 'measurement_geojson',
+             paint: {
+                 'circle-radius': 5,
+                 'circle-color': '#000'
+             },
+             filter: ['in', '$type', 'Point']
+         });
+         map.addLayer({
+             id: 'measure-lines',
+             type: 'line',
+             source: 'measurement_geojson',
+             layout: {
+                 'line-cap': 'round',
+                 'line-join': 'round'
+             },
+             paint: {
+                 'line-color': '#000',
+                 'line-width': 2.5
+             },
+             filter: ['in', '$type', 'LineString']
+         });
+
+
+
+         map.addSource('bike_pedestrian_roads', {
+             'type': 'geojson',
+             'data': { "type": "FeatureCollection", "features": [] }
+         });
+         map.addLayer({
+             'id': 'bike_pedestrian_roads',
+             'type': 'line',
+             'source': 'bike_pedestrian_roads',
+             'layout': {
+                 'line-join': 'round',
+                 'line-cap': 'round'
+             },
+             'paint': {
+                 'line-color': '#422518',
+                 'line-width': 3,
+                 'line-opacity': 0.7
+             }
+         });
+
+         for (let index = 0; index < wms_layers.length; index++) {
+             const wms_layer = wms_layers[index];
+             let source_str = wms_layer.dom_id + "_source";
+             map.addSource(source_str, {
+                 'type': 'raster',
+                 // use the tiles option to specify a WMS tile source URL
+                 // https://maplibre.org/maplibre-style-spec/sources/
+                 'tiles': [wms_layer['url']],
+                 'tileSize': 256
+             });
+             map.addLayer(
+                 {
+                     'id': wms_layer['dom_id'],
+                     'type': 'raster',
+                     'source': source_str,
+                     'paint': {}
+                 },
+                 'aeroway_fill'
+             );
+
+         }
+
+         if (cog_layers.length > 0) {
+             for (let index = 0; index < cog_layers.length; index++) {
+                 const cog_layer = cog_layers[index];
+
+                 let source_str = cog_layer.dom_id + "_source";
+                 map.addSource(source_str, {
+                     'type': 'raster',
+                     'url': 'cog://' + cog_layer['url'],
+                     'tileSize': 256
+                 });
+                 map.addLayer(
+                     {
+                         'id': cog_layer['dom_id'],
+                         'source': source_str,
+                         'type': 'raster',
+                         'paint': {}
+                     },
+                     'aeroway_fill'
+                 );
+             }
+         }
+         if (pmtiles_layers.length > 0) {
+             for (let index = 0; index < pmtiles_layers.length; index++) {
+                 const pmtiles_layer = pmtiles_layers[index];
+
+                 let source_str = pmtiles_layer.dom_id + "_source";
+                 if (pmtiles_layer.layer_type == 'raster') {
+                     map.addSource(source_str, {
+                         'type': 'raster',
+                         'url': 'pmtiles://' + pmtiles_layer['url']
+                     });
+                     map.addLayer(
+                         {
+                             'id': pmtiles_layer['dom_id'],
+                             'source': source_str,
+                             'type': 'raster',
+                             'paint': {}
+                         },
+
+                     );
+                 }
+             }
+         }
+
+
+         if (fgb_layers.length > 0) {
+             for (let index = 0; index < fgb_layers.length; index++) {
+                 const fgb_layer = fgb_layers[index];
+                 const geometry_type = fgb_layer['geometry_type'];
+                 const response = await fetch(fgb_layer['url']);
+                 let source_str = fgb_layer.dom_id + "_source";
+                 const fc = { type: "FeatureCollection", features: [] };
+                 let i = 0;
+                 for await (const f of flatgeobuf.deserialize(response.body, undefined)) {
+                     fc.features.push({ ...f, id: i });
+                     i += 1;
+                 }
+
+                 map.addSource(source_str, {
+                     type: "geojson",
+                     data: fc,
+                 });
+                 if (geometry_type == 'polygon') {
+                     map.addLayer({
+                         id: fgb_layer['dom_id'],
+                         type: "fill",
+                         source: source_str,
+                         paint: {
+                             "fill-color": fgb_layer['color'],
+                             "fill-opacity": 0.75,
+                         },
+                     });
+                 }
+                 else if (geometry_type == 'line') {
+                     map.addLayer({
+                         id: fgb_layer['dom_id'] + "_lines",
+                         type: "line",
+                         source: source_str,
+                         paint: {
+                             "line-color": fgb_layer['color'],
+                             "line-opacity": 0.9,
+                             "line-width": 2,
+                         },
+                     });
+                 }
+
+                 else if (geometry_type == 'point') {
+                     map.addLayer({
+                         id: fgb_layer['dom_id'] + "_points",
+                         type: 'circle',
+                         source: source_str,
+                         paint: {
+
+                             "circle-blur": 0,
+                             "circle-color": fgb_layer['color'],
+                             "circle-opacity": 0.8,
+                             "circle-radius": 10,
+                             "circle-stroke-color": fgb_layer['color'],
+                             "circle-stroke-opacity": 0.9,
+                             "circle-stroke-width": 1,
+
+                         }
+
+                     });
+                 }
+             }
+         }
+     });
+     const addDiagramModalEl = document.getElementById('addDiagramModal');
+     addDiagramModalEl.addEventListener('shown.bs.modal', event => {
+         const store_geojson = draw.getSnapshot();
+         const geo_json_element = document.getElementById('drawn_geojson');
+         geo_json_element.value = JSON.stringify(store_geojson);
+
+     });
 </script>
-{% endif %}
-
-{% endblock %}
+{% endif %} {% endblock %}
