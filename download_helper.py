@@ -442,7 +442,7 @@ class GeodesignhubDataDownloader:
         interesting_system = [
             d
             for d in geodesignhub_project_data["systems"]
-            if d["name"] in ["TREE", "GI"]
+            if d["name"].lower() in ["tree", "gi"]
         ]
         return interesting_system[0]["id"]
 
