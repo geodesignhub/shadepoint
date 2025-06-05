@@ -296,6 +296,25 @@
 
         this.add_tree = function () {
             draw.setMode("point");
+
+            new Notify ({
+                status: 'info',
+                title: 'Drawing started',
+                text: 'Click on the map to add trees, click on the "Complete Drawing" button when done',
+                effect: 'fade',
+                speed: 400,
+                customClass: '',
+                customIcon: '',
+                showIcon: true,
+                showCloseButton: true,
+                autoclose: true,
+                autotimeout: 4000,
+                notificationsGap: null,
+                notificationsPadding: null,
+                type: 'outline',
+                position: 'top-right',
+                customWrapper: '',
+            });
             let drawing_controls =  document.getElementsByClassName("drawing_mode_controls");
             for (var i = drawing_controls.length - 1; i >= 0; i--)
             {
@@ -309,6 +328,25 @@
         }
         this.drawing_complete = function () {
             draw.setMode("render_trees");
+
+            new Notify ({
+                status: 'info',
+                title: 'Drawing completed',
+                text: 'Click on the "Move / delete existing trees" button to edit the trees you have drawn, or click on "Add Trees" to add more trees',
+                effect: 'fade',
+                speed: 400,
+                customClass: '',
+                customIcon: '',
+                showIcon: true,
+                showCloseButton: true,
+                autoclose: true,
+                autotimeout: 4000,
+                notificationsGap: null,
+                notificationsPadding: null,
+                type: 'outline',
+                position: 'top-right',
+                customWrapper: '',
+            });
             let drawing_complete_control = document.getElementById('drawing_complete_button');
             drawing_complete_control.classList.add('d-none');
             let drawing_controls =  document.getElementsByClassName("drawing_mode_controls");
@@ -377,9 +415,29 @@
                 let clear_shadows_control = document.getElementById('clear_shadows_control');
                 clear_shadows_control.classList.add('d-none');
                 this.send_generate_shadow_request(snapshot);
+
+                new Notify ({
+                    status: 'info',
+                    title: 'Shadows generation started',
+                    text: 'Shadows are being generated, this may take a while depending on the number of trees drawn. You can check back after 10 - 30 seconds',
+                    effect: 'fade',
+                    speed: 400,
+                    customClass: '',
+                    customIcon: '',
+                    showIcon: true,
+                    showCloseButton: true,
+                    autoclose: true,
+                    autotimeout: 4000,
+                    notificationsGap: null,
+                    notificationsPadding: null,
+                    type: 'outline',
+                    position: 'top-right',
+                    customWrapper: '',
+                });
                 // after 20 seconds remove spinner and add a get shadows button
                 setTimeout(
                 function() {
+                  
                     // hide the spinner container
                     spinner_cont.classList.add('d-none');
                     // show the get shadows button
@@ -420,6 +478,24 @@
             small.innerHTML = "{{ gettext('Additional shadowed area in m2') }}";
             drawn_trees_shadow_area.appendChild(small);          
 
+            new Notify ({
+                status: 'suceess',
+                title: 'Shadows cleared',
+                text: 'Shadows have been cleared, you can generate new shadows by clicking on the "Generate Tree Shadows" button',
+                effect: 'fade',
+                speed: 400,
+                customClass: '',
+                customIcon: '',
+                showIcon: true,
+                showCloseButton: true,
+                autoclose: true,
+                autotimeout: 4000,
+                notificationsGap: null,
+                notificationsPadding: null,
+                type: 'outline',
+                position: 'top-right',
+                customWrapper: '',
+            });
 
         }
         this.update_state_id = function () {
@@ -458,7 +534,7 @@
 
             new Notify ({
                 status: 'info',
-                title: 'Not completed',
+                title: 'Shadows generation ongoing',
                 text: 'Shadows are still being generated, check after 10 - 30 seconds',
                 effect: 'fade',
                 speed: 300,
@@ -471,13 +547,31 @@
                 notificationsGap: null,
                 notificationsPadding: null,
                 type: 'outline',
-                position: 'center',
+                position: 'top-left',
                 customWrapper: '',
             });
 
         }
         this.shadows_loaded = function () {
 
+            new Notify ({
+                status: 'success',
+                title: 'Shadows ready',
+                text: 'Shadows are generated, you can now view them on the map',
+                effect: 'fade',
+                speed: 400,
+                customClass: '',
+                customIcon: '',
+                showIcon: true,
+                showCloseButton: true,
+                autoclose: true,
+                autotimeout: 4000,
+                notificationsGap: null,
+                notificationsPadding: null,
+                type: 'outline',
+                position: 'top-right',
+                customWrapper: '',
+            });
             // hide generate shadows button
             let show_shadows_control = document.getElementById('generate_shadows_control');
             show_shadows_control.classList.add('d-none');
