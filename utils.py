@@ -398,8 +398,9 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
         exploded_gdh_buildings.geometry.type != "LineString"
     ]
     logger.info(
-        f"Exploded GDH Buildings: {_exploded_gdh_building_polygons.shape[0]} polygons"
+        f"Exploded GDH Buildings: {_exploded_gdh_building_polygons} polygons"
     )
+    print(_exploded_gdh_building_polygons)
     _pd_date_time = pd.to_datetime(_date_time).tz_convert("UTC")
     shadows = pybdshadow.bdshadow_sunlight(
         _exploded_gdh_building_polygons, _pd_date_time
