@@ -86,8 +86,7 @@
                 <button type="button" onclick="tree_editing_control.delete_all_trees()"
                     class="btn btn-outline-secondary drawing_mode_controls d-none">{{
                     gettext('Delete all trees') }}</button>
-            </div>&nbsp;
-            
+            </div>&nbsp;            
         </div>
         <div class="col-md-3">
             <div class="btn-toolbar" role="toolbar" aria-label="Drawn trees toolbar">
@@ -107,23 +106,15 @@
                     <button class="btn btn-outline-info btn-sm d-none" id="get_shadows_control" type="button"
                         onclick="tree_editing_control.get_generated_shadows('{{ op['session_id'] }}')" class="btn btn-outline-info"data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Get generated shadows">Get generated shadows
                     </button>&nbsp;
-                </div>
-            
+                     <p class="text-muted"><i class="bi bi-shadows"></i> {{ gettext('By default the shadow is computed for August 6 at 10AM when radiation is not strong') }}
+            </p>      
+                </div>            
             </div>
 
         </div>
     </div>
     <br>
-    <div class="row">
-        <div class="col-md-12">
-            <h3>{{ gettext('Shadow Analysis') }}</h3>
-            <p class="text-muted"><i class="bi bi-shadows"></i> {{ gettext('By default the shadow is computed for August 6 at 10AM when radiation is not strong') }}
-            </p>
-            <br>
-            <div id="map"></div>
-        </div>
-    </div>
-    <br>
+    
     <div class="row">
         <div class="col-md-10">
             <h5>{{ gettext('Shadow Detail') }}&nbsp;<small class="text-muted">{{ gettext('The shadows are generated based on the trees drawn on the map') }}</small></h5>
