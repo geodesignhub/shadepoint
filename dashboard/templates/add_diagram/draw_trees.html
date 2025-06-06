@@ -70,7 +70,7 @@
         </div>
     </div>
     <div class="row">
-        <div class="col-md-8">
+        <div class="col-md-9">
             <div class="btn-group" role="group" aria-label="Tree drawing tools">
                 <button id="add_trees_button" type="button" onclick="tree_editing_control.add_tree()" class="btn btn-outline-secondary"><i class="bi bi-plus"></i>&nbsp;{{
                     gettext('Add Trees') }}</button>
@@ -89,7 +89,7 @@
             </div>&nbsp;
             
         </div>
-        <div class="col-md-4">
+        <div class="col-md-9">
             <div class="btn-toolbar" role="toolbar" aria-label="Drawn trees toolbar">
                 <div class="btn-group" role="group" aria-label="First group">
                     <button type="button" class="btn btn-secondary" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Number of trees added" id="number_of_trees_drawn">0
@@ -113,15 +113,7 @@
 
         </div>
     </div>
-    <br><br>
-    <div class="row">
-        <div class="col-md-10">
-            <h5>{{ gettext('Shadow Detail') }}&nbsp;<small class="text-muted">{{ gettext('The shadows are generated based on the trees drawn on the map') }}</small></h5>
-            <p id="drawn_trees_shadow_area" class="lead"><small class="text-muted">{{ gettext('Additional shadowed area in m2') }}</small></p>
-            
-        </div>
-    </div>
-
+    <br>
     <div class="row">
         <div class="col-md-12">
             <h3>{{ gettext('Shadow Analysis') }}</h3>
@@ -130,17 +122,22 @@
             <br>
             <div id="map"></div>
         </div>
-    </div><br>
+    </div>
+    <br>
     <div class="row">
         <div class="col-md-10">
-            <h5>{{ gettext('Add as a new diagram') }}&nbsp;<small class="text-muted">{{ gettext('Add your trees as a diagram in Geodesignhub') }}</small></h5>
-                       
+            <h5>{{ gettext('Shadow Detail') }}&nbsp;<small class="text-muted">{{ gettext('The shadows are generated based on the trees drawn on the map') }}</small></h5>
+            <p id="drawn_trees_shadow_area" class="lead"><small class="text-muted">{{ gettext('Additional shadowed area in m2') }}</small></p>
+            
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-10">
+            <h5>{{ gettext('Add as a new diagram') }}&nbsp;<small class="text-muted">{{ gettext('Add your trees as a diagram in Geodesignhub') }}</small></h5>                       
             <br>
-
             <div class="btn-group" role="group" aria-label="Add Diagram tools">
                 <button id="add_as_diagram_button" type="button" class="btn btn-outline-success d-none" data-bs-toggle="modal"
-                    data-bs-target="#addDiagramModal"><i class="bi bi-arrow-bar-up"></i>&nbsp;{{ gettext('Add as a diagram') }}</button>
-                
+                    data-bs-target="#addDiagramModal"><i class="bi bi-arrow-bar-up"></i>&nbsp;{{ gettext('Add as a diagram') }}</button>                
             </div>
         </div>
     </div>
