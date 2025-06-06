@@ -286,7 +286,6 @@ def kickoff_gdh_roads_shadows_stats(roads_shadow_computation_start):
     roads_storage_key = bounds_hash[:15] + ":roads"
     roads_str = r.get(roads_storage_key)
     roads = json.loads(roads_str.decode("utf-8"))
-
     shadow_roads_intersection_data = ShadowsRoadsIntersectionRequest(
         roads=json.dumps(roads),
         shadows=shadows,
@@ -397,10 +396,6 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
     _exploded_gdh_building_polygons = exploded_gdh_buildings[
         exploded_gdh_buildings.geometry.type != "LineString"
     ]
-    logger.info(
-        f"Exploded GDH Buildings: {_exploded_gdh_building_polygons} polygons"
-    )
-    print(_exploded_gdh_building_polygons.to_json())
     _pd_date_time = pd.to_datetime(_date_time).tz_convert("UTC")
     shadows = pybdshadow.bdshadow_sunlight(
         _exploded_gdh_building_polygons, _pd_date_time
@@ -456,9 +451,11 @@ def compute_road_shadow_overlap(
     shadows = json.loads(shadows_str)
 
     all_roads = [
-        ShapelyLineString(coordinates=feature["geometry"]["coordinates"])
-        if feature["geometry"]["type"] == "LineString"
-        else ShapelyMultiLineString(feature["geometry"]["coordinates"])
+        (
+            ShapelyLineString(coordinates=feature["geometry"]["coordinates"])
+            if feature["geometry"]["type"] == "LineString"
+            else ShapelyMultiLineString(feature["geometry"]["coordinates"])
+        )
         for feature in roads["features"]
     ]
 

@@ -265,12 +265,16 @@ class GeodesignhubDataDownloader:
         for _single_diagram_feature in unprocessed_design_geojson["features"]:
             _diagram_properties = _single_diagram_feature["properties"]
             _project_or_policy = _diagram_properties["areatype"]
-            _diagram_properties["height"] = _diagram_properties["volume_information"][
-                "max_height"
-            ]
-            _diagram_properties["base_height"] = _diagram_properties[
-                "volume_information"
-            ]["min_height"]
+            _diagram_properties["height"] = (
+                6
+                if _diagram_properties["volume_information"]["max_height"] == 0
+                else _diagram_properties["volume_information"]["max_height"]
+            )
+            _diagram_properties["base_height"] = (
+                0
+                if _diagram_properties["volume_information"]["min_height"] == 0
+                else _diagram_properties["volume_information"]["min_height"]
+            )
             _diagram_properties["diagram_id"] = _diagram_properties["diagramid"]
             _diagram_properties["building_id"] = str(uuid.uuid4())
             _feature_properties = from_dict(
@@ -508,9 +512,6 @@ class GeodesignhubDataDownloader:
         return project_data
 
 
-
-
-
 class ShadowComputationHelper:
     """
     A helper class to compute shadows for Geodesignhub (GDH) buildings and existing roads.
@@ -571,7 +572,7 @@ class ShadowComputationHelper:
                 on_failure=notify_roads_download_failure,
                 job_id=self.session_id + "@" + hash_of_timestamp + "@roads",
             )
-
+            
             gdh_buildings_shadow_dependency = Dependency(
                 jobs=[roads_download_result], allow_failure=False, enqueue_at_front=True
             )
@@ -584,7 +585,7 @@ class ShadowComputationHelper:
                 bounds=self.bounds,
             )
             shadow_canpopy_job_id = self.session_id + "@" + hash_of_timestamp
-
+            
             gdh_shadow_result = q.enqueue(
                 utils.compute_gdh_shadow_with_tree_canopy,
                 asdict(gdh_worker_data),
