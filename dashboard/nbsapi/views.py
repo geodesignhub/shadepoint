@@ -5,6 +5,8 @@ from dashboard.nbsapi.models.impact_intensity import ImpactIntensity
 from dashboard.nbsapi.models.impact import Impact
 from dashboard.nbsapi.models.impact_unit import ImpactUnit
 
+from dashboard.nbsapi.models.measure_type import MeasureType
+
 from dashboard.nbsapi.models.naturebasedsolution import (
     NatureBasedSolution,
     TreeLocation,
@@ -21,6 +23,8 @@ from .data_definitions import (
     Contact,
     ImpactBase,
 )
+from .data_definitions import EnhancedImpactBaseInput, SpecializedImpacts, ClimateImpact
+from .data_definitions import MeasureTypeRead
 from .data_definitions import ImpactIntensity as ImpactIntensityResponse
 from .data_definitions import ImpactUnit as ImpactUnitResponse
 from .data_definitions import (
@@ -48,7 +52,27 @@ def get_apiversion():
     )
 
 
-@nbsapi_blueprint.route("/v1/api/impacts/impacts", methods=["GET"])
+@nbsapi_blueprint.route("/v2/measure_types/", methods=["GET"])
+def get_measure_types():
+    measure_types = MeasureType.query.all()
+    all_measure_types: list[MeasureTypeRead] = []
+    for measure_type in measure_types:
+        cur_measure_type = MeasureTypeRead(
+            id=measure_type.id,
+            name=measure_type.name,
+            description=measure_type.description,
+            default_color=measure_type.default_color,
+            default_inflow=measure_type.default_inflow,
+            default_depth=measure_type.default_depth,
+            default_width=measure_type.default_width,
+            default_radius=measure_type.default_radius,
+        )
+        all_measure_types.append(cur_measure_type)
+
+    return jsonify([asdict(measure_type) for measure_type in all_measure_types])
+
+
+@nbsapi_blueprint.route("/v2/api/impacts/impacts", methods=["GET"])
 def get_impacts():
     impacts = Impact.query.all()
     all_impacts: list[ImpactBase] = []
@@ -65,7 +89,7 @@ def get_impacts():
     return jsonify([asdict(impact) for impact in all_impacts])
 
 
-@nbsapi_blueprint.route("/v1/api/impacts/intensities", methods=["GET"])
+@nbsapi_blueprint.route("/v2/api/impacts/intensities", methods=["GET"])
 def get_impacts_intensities():
     impact_intentities = ImpactIntensity.query.all()
     return jsonify(
@@ -76,7 +100,7 @@ def get_impacts_intensities():
     )
 
 
-@nbsapi_blueprint.route("/v1/api/impacts/units", methods=["GET"])
+@nbsapi_blueprint.route("/v2/api/impacts/units", methods=["GET"])
 def get_impacts_units():
     impact_units = ImpactUnit.query.all()
     return jsonify(
@@ -91,7 +115,9 @@ def get_impacts_units():
     )
 
 
-@nbsapi_blueprint.route("/v1/api/solutions/solutions/<solution_id>/impacts", methods=["GET"])
+@nbsapi_blueprint.route(
+    "/v2/api/solutions/solutions/<solution_id>/impacts", methods=["GET"]
+)
 def get_solution_impacts(solution_id: int):
     solutions = NatureBasedSolution.query.filter_by(id=solution_id).all()
 
@@ -100,6 +126,7 @@ def get_solution_impacts(solution_id: int):
     all_solutions = []
     for location in locations:
         for solution in solutions:
+            print(solution.impacts)
             all_solutions.append(
                 asdict(
                     from_dict(
@@ -126,7 +153,7 @@ def get_solution_impacts(solution_id: int):
     return jsonify(all_solutions)
 
 
-@nbsapi_blueprint.route("/v1/api/solutions/solutions", methods=["POST"])
+@nbsapi_blueprint.route("/v2/api/solutions/solutions", methods=["POST"])
 @csrf.exempt
 def filter_tree_locations():
 
@@ -182,7 +209,7 @@ def filter_tree_locations():
     return jsonify(all_solutions)
 
 
-@nbsapi_blueprint.route("/v1/api/solutions/solutions/<solution_id>", methods=["GET"])
+@nbsapi_blueprint.route("/v2/api/solutions/solutions/<solution_id>", methods=["GET"])
 def get_stored_solutions(solution_id: int):
     solutions = NatureBasedSolution.query.filter_by(id=solution_id).all()
 
@@ -191,6 +218,38 @@ def get_stored_solutions(solution_id: int):
     all_solutions = []
     for location in locations:
         for solution in solutions:
+            all_impacts = solution.impacts
+            all_impact_objs = []
+            for impact in all_impacts:
+
+                cur_impact = EnhancedImpactBaseInput(
+                    magnitude=impact.magnitude,
+                    unit=ImpactUnitResponse(
+                        unit=impact.unit.unit, description=impact.unit.description
+                    ),
+                    intensity=ImpactIntensityResponse(
+                        intensity=impact.intensity.intensity
+                    ),
+                )
+                if impact.specialized:
+                    _climate_data = impact.specialized.climate_data
+
+                    cur_impact.specialized = SpecializedImpacts(
+                        climate=ClimateImpact(
+                            temp_reduction=_climate_data.get("temp_reduction", None),
+                            cool_spot=_climate_data.get("cool_spot", None),
+                            evapotranspiration=_climate_data.get(
+                                "evapotranspiration", None
+                            ),
+                            groundwater_recharge=_climate_data.get(
+                                "groundwater_recharge", None
+                            ),
+                            storage_capacity=_climate_data.get(
+                                "storage_capacity", None
+                            ),
+                        )
+                    )
+                    
             all_solutions.append(
                 asdict(
                     from_dict(
@@ -209,7 +268,9 @@ def get_stored_solutions(solution_id: int):
                             "area": solution.area,
                             "length": solution.length,
                             "measure_type": solution.measure_type,
-                            "impacts": [asdict(impact) for impact in solution.impacts],
+                            "impacts": [
+                                asdict(impact_obj) for impact_obj in all_impact_objs
+                            ],
                         },
                     )
                 )

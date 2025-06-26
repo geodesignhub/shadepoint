@@ -11,16 +11,18 @@ from dashboard.nbsapi.data_definitions import (
     ProjectTargetsOutput,
     EnhancedImpactBaseInput,
     ClimateImpact,
+    MeasureTypeCreate,
 )
 from dashboard.nbsapi.data_definitions import TargetValue as TargetValueDataDefinition
 from dashboard.extension import db
 from dashboard.nbsapi.models.naturebasedsolution import (
-    NatureBasedSolution,    
+    NatureBasedSolution,
     TreeLocation,
 )
 from dashboard.nbsapi.models.impact import Impact
 from dashboard.nbsapi.models.impact_intensity import ImpactIntensity
 from dashboard.nbsapi.models.specialized_impact import SpecializedImpact
+from dashboard.nbsapi.models.measure_type import MeasureType
 from dashboard.nbsapi.models.apiversion import ApiVersion
 from dashboard.nbsapi.models.impact_unit import ImpactUnit
 from dashboard.nbsapi.models.project import Project, TargetValue
@@ -70,14 +72,14 @@ def register_cli(app: Flask):
                 nbs_data = from_dict(data_class=NatureBasedSolutionRead, data=nbs)
 
                 impacts = nbs_data.impacts
-                
+
                 all_db_impact_targets = []
                 for _impact in impacts:
                     _impact_intensity = _impact.intensity.intensity
                     impact = Impact(magnitude=_impact.magnitude)
-                    
+                    print(_impact.specialized)
                     _speciaized_climate_impact_db = SpecializedImpact(
-                        impact=impact, climate_data=asdict(_impact.specialized)
+                        impact=impact, climate_data=asdict(_impact.specialized.climate)
                     )
 
                     db.session.add(_speciaized_climate_impact_db)
@@ -106,7 +108,7 @@ def register_cli(app: Flask):
                     cobenefits=nbs_data.cobenefits,
                     specificdetails=nbs_data.specificdetails,
                     impacts=all_db_impact_targets,
-                    location =  nbs_data.location,
+                    location=nbs_data.location,
                 )
 
                 db.session.add(nature_based_solution)
@@ -120,6 +122,29 @@ def register_cli(app: Flask):
                         session_id=session_id,
                     )
                     db.session.add(tree_location)
+
+            mesaure_type_fixture_path = os.path.join(
+                os.path.dirname(__file__), "measure_type_definitions.json"
+            )
+
+            with open(mesaure_type_fixture_path, "r", encoding="utf-8") as f:
+                measure_types = json.load(f)
+
+            for measure_type in measure_types:
+                _measure_type = from_dict(
+                    data_class=MeasureTypeCreate, data=measure_type
+                )
+                measure_type_db = MeasureType(
+                    id=str(uuid.uuid4()),
+                    name=_measure_type.name,
+                    description=_measure_type.description,
+                    default_color= _measure_type.default_color,
+                    default_inflow= _measure_type.default_inflow,
+                    default_depth= _measure_type.default_depth,
+                    default_width= _measure_type.default_width,
+                    default_radius= _measure_type.default_radius,
+                )
+                db.session.add(measure_type_db)
 
             project_fixture_path = os.path.join(
                 os.path.dirname(__file__), "project_definitions.json"
@@ -145,8 +170,8 @@ def register_cli(app: Flask):
                     ]
 
                     _climate_target_value = TargetValueDataDefinition(
-                        value=_climate_key_details['value'],
-                        include=_climate_key_details['include'],
+                        value=_climate_key_details["value"],
+                        include=_climate_key_details["include"],
                         _type=climate_key,
                     )
 
@@ -164,8 +189,8 @@ def register_cli(app: Flask):
                     _cost_key_details = project_detail["targets"]["cost"][cost_key]
 
                     _cost_target_value = TargetValueDataDefinition(
-                        value=_cost_key_details['value'],
-                        include=_cost_key_details['include'],
+                        value=_cost_key_details["value"],
+                        include=_cost_key_details["include"],
                         _type=cost_key,
                     )
 
@@ -180,13 +205,13 @@ def register_cli(app: Flask):
                     db.session.add(_cost_target_value_db)
 
                 for water_quaility_key in project_detail["targets"]["water_quality"]:
-                    _water_quaility_key_details = project_detail["targets"]["water_quality"][
-                        water_quaility_key
-                    ]
+                    _water_quaility_key_details = project_detail["targets"][
+                        "water_quality"
+                    ][water_quaility_key]
 
                     _water_quality_target_value = TargetValueDataDefinition(
-                        value=_water_quaility_key_details['value'],
-                        include=_water_quaility_key_details['include'],
+                        value=_water_quaility_key_details["value"],
+                        include=_water_quaility_key_details["include"],
                         _type=water_quaility_key,
                     )
 
