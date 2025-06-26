@@ -7,7 +7,14 @@ This plugin can be added to your project in the Administration interface or at t
 ### Details
 This plugin provides analytical capability for any diagram and design from Geodesignhub as a one-click integration, we use the API to download all the data. 
 
-## Initial Database setup
+
+### Motivation
+The overall objective of this project is to develop a set of tools to focus on heat and flood response at a local scale. This dashboard will be flexible and will be used as a plugin to Geodesignhub and will analyze data provided by Geodesignhub. In addition, it will connect to external data platforms to download layers and data. 
+
+In addition to the metrics, a summary page would be generated for a design that presents a summary analysis of the metrics developed. 
+
+
+#### Initial Database setup
 
 Create an initial database.
 
@@ -30,12 +37,13 @@ ALTER ROLE localclimateresponse WITH PASSWORD 'localclimateresponse';
 GRANT all privileges ON DATABASE localclimateresponse TO localclimateresponse;
 ALTER DATABASE localclimateresponse OWNER TO localclimateresponse;
 ```
+#### Run migrations 
+This will create the tables in the database created earlier
+``` 
+python -m flask db upgrade head
 
-
-### Motivation
-The overall objective of this project is to develop a set of tools to focus on heat and flood response at a local scale. This dashboard will be flexible and will be used as a plugin to Geodesignhub and will analyze data provided by Geodesignhub. In addition, it will connect to external data platforms to download layers and data. 
-
-In addition to the metrics, a summary page would be generated for a design that presents a summary analysis of the metrics developed. 
+python -m flask initialize_db
+```
 
 ### Shadow Analysis / Heat Response
 We focus on heat / shadow response first and then to flooding mitigation response.
