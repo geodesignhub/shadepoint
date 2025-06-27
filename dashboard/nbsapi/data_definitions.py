@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from turtle import title
 from typing import List, Optional, Union, Dict, Any
-from geojson import FeatureCollection
+from geojson import FeatureCollection, Feature
 
 
 @dataclass
@@ -233,7 +233,7 @@ class StylingProperties:
 @dataclass
 class TargetValue:
     value: str
-    _type:str
+    _type: str
     include: Optional[bool] = True
 
 
@@ -320,8 +320,6 @@ class GeometryCollectionInput:
     type: str = "GeometryCollection"
 
 
-
-
 @dataclass
 class GeometryCollectionOutput:
     geometries: List[
@@ -353,7 +351,12 @@ class NatureBasedSolutionCreate:
     location: str
     geometry: Optional[
         Union[
-            PointGeometry, LineStringGeometry, PolygonGeometry, GeometryCollectionInput, FeatureCollection
+            PointGeometry,
+            LineStringGeometry,
+            PolygonGeometry,
+            GeometryCollectionInput,
+            FeatureCollection,
+            dict,
         ]
     ] = None
     styling: Optional[StylingProperties] = None
@@ -374,7 +377,12 @@ class NatureBasedSolutionReadInput:
     id: int
     geometry: Optional[
         Union[
-            PointGeometry, LineStringGeometry, PolygonGeometry, GeometryCollectionInput, FeatureCollection
+            PointGeometry,
+            LineStringGeometry,
+            PolygonGeometry,
+            GeometryCollectionInput,
+            FeatureCollection,
+            dict,
         ]
     ] = None
     styling: Optional[StylingProperties] = None
@@ -395,7 +403,12 @@ class NatureBasedSolutionReadOutput:
     id: int
     geometry: Optional[
         Union[
-            PointGeometry, LineStringGeometry, PolygonGeometry, GeometryCollectionOutput, FeatureCollection
+            PointGeometry,
+            LineStringGeometry,
+            PolygonGeometry,
+            GeometryCollectionOutput,
+            FeatureCollection,
+            dict,
         ]
     ] = None
     styling: Optional[StylingProperties] = None
@@ -415,7 +428,12 @@ class NatureBasedSolutionUpdate:
     location: Optional[str] = None
     geometry: Optional[
         Union[
-            PointGeometry, LineStringGeometry, PolygonGeometry, GeometryCollectionInput, FeatureCollection
+            PointGeometry,
+            LineStringGeometry,
+            PolygonGeometry,
+            GeometryCollectionInput,
+            FeatureCollection,
+            dict,
         ]
     ] = None
     styling: Optional[StylingProperties] = None
@@ -482,11 +500,21 @@ class EnhancedImpactBaseOutput:
 @dataclass
 class NatureBasedSolutionFeature:
     geometry: Union[
-        PointGeometry, LineStringGeometry, PolygonGeometry, GeometryCollectionOutput, FeatureCollection
+        PointGeometry,
+        LineStringGeometry,
+        PolygonGeometry,
+        GeometryCollectionOutput,
+        Feature,
     ]
     properties: NatureBasedSolutionReadOutput
     type: str = "Feature"
     id: Optional[Union[str, int]] = None
+
+
+@dataclass
+class NatureBasedSolutionFeatureCollection:
+    features: List[dict]
+    type: str = "FeatureCollection"
 
 
 @dataclass

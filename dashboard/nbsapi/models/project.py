@@ -47,19 +47,6 @@ project_targetvalue_association = Table(
 )
 
 
-class TargetValue(Base):
-
-    __tablename__ = "target_value"
-    id: Mapped[str] = mapped_column(String(50), primary_key=True)
-    type: Mapped[str] = mapped_column(
-        String(20),
-        nullable=False,
-        comment="Type of target value: storage_capacity, groundwater_recharge, evapotranspiration, temp_reduction, cool_spot, construction_cost, maintenance_cost, filtering_unit, capture_unit, settling_unit ",
-    )
-    value: Mapped[float | None] = mapped_column(nullable=True)
-
-    include: Mapped[bool] = mapped_column(nullable=False, default=True)
-
 
 class Project(Base):
     """
@@ -95,3 +82,16 @@ class Project(Base):
         backref="projects",
         lazy="selectin",
     )
+
+class TargetValue(Base):
+
+    __tablename__ = "target_value"
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        comment="Type of target value: storage_capacity, groundwater_recharge, evapotranspiration, temp_reduction, cool_spot, construction_cost, maintenance_cost, filtering_unit, capture_unit, settling_unit ",
+    )
+    value: Mapped[float | None] = mapped_column(nullable=True)
+
+    include: Mapped[bool] = mapped_column(nullable=False, default=True)
