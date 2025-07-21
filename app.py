@@ -538,6 +538,13 @@ def draw_trees_view():
     gi_system_id = my_geodesignhub_downloader.filter_to_get_gi_system(
         geodesignhub_project_data=project_data
     )
+    if not gi_system_id:
+        error_msg = ErrorResponse(
+            status=0,
+            message="The project in Geodesignhub is setup incorrectly, there is no system with the name 'TREE' or 'GI', this tool needs one system with that name so that it can add diagrams there",
+            code=400,
+        )
+        return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
     diagram_upload_form = DiagramUploadForm(
         project_id=projectid, apitoken=apitoken, gi_system_id=gi_system_id
     )

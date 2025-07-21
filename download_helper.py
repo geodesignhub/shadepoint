@@ -441,14 +441,21 @@ class GeodesignhubDataDownloader:
 
     def filter_to_get_gi_system(
         self, geodesignhub_project_data: GeodesignhubProjectData
-    ) -> int:
+    ) -> int| None:
         geodesignhub_project_data = asdict(geodesignhub_project_data)
-        interesting_system = [
+        interesting_systems = [
             d
             for d in geodesignhub_project_data["systems"]
             if d["name"].lower() in ["tree", "gi"]
         ]
-        return interesting_system[0]["id"]
+        
+        if not interesting_systems:
+            return None
+        # Prefer 'tree' if both 'tree' and 'gi' exist
+        for system in interesting_systems:
+            if system["name"].lower() == "tree":
+                return system["id"]
+        return interesting_systems[0]["id"]
 
     def download_project_data_from_geodesignhub(
         self,
