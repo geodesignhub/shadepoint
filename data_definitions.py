@@ -299,17 +299,6 @@ class DrawViewSuccessResponse:
 
 
 @dataclass
-class FloodingViewSuccessResponse:
-    message: str
-    session_id: str
-    status: int
-    project_data: GeodesignhubProjectData
-    geometry_data: GeodesignhubDiagramGeoJSON
-    maptiler_key: str
-    view_details: Union[ToolboxDesignViewDetails, ToolboxDiagramViewDetails]
-
-
-@dataclass
 class GeodesignhubDataShadowGenerationRequest:
     buildings: dict
     session_id: str
