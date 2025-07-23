@@ -21,19 +21,14 @@ from data_definitions import (
     RoadsShadowOverlap,
     ToolboxDesignViewDetails,
     ToolboxDiagramViewDetails,
-    FloodingViewSuccessResponse,
     DrawViewSuccessResponse,
     ToolboxDrawDiagramViewDetails,
     DiagramUploadDetails,
     WMSDataSourceList,
 )
 from dashboard.nbsapi.commands.seed_db import register_cli
-
-from flask import render_template, redirect, url_for
-from typing import List
-from flask_wtf import FlaskForm, CSRFProtect
+from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, HiddenField
-from wtforms.validators import DataRequired
 from wtforms.validators import DataRequired
 import os
 from download_helper import (
@@ -132,76 +127,6 @@ def generate_shadow_road_stats():
         )
         shadow_stats = asdict(default_shadow)
     return Response(json.dumps(shadow_stats), status=200, mimetype=MIMETYPE)
-
-
-@app.route("/design_flooding_analysis/", methods=["GET"])
-def generate_design_flooding_analysis():
-    try:
-        projectid = request.args.get("projectid")
-        apitoken = request.args.get("apitoken")
-        synthesisid = request.args.get("synthesisid")
-        cteamid = request.args.get("cteamid")
-
-    except KeyError:
-        error_msg = ErrorResponse(
-            status=0,
-            message="Could not parse Project ID, Design Team ID / Design ID or API Token ID. One or more of these were not found in your request.",
-            code=400,
-        )
-        return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
-    design_view_details = ToolboxDesignViewDetails(
-        project_id=projectid,
-        cteam_id=cteamid,
-        synthesis_id=synthesisid,
-        api_token=apitoken,
-        view_type="flood",
-    )
-
-    if projectid and cteamid and apitoken and synthesisid:
-        session_id = uuid.uuid4()
-        my_geodesignhub_downloader = GeodesignhubDataDownloader(
-            session_id=session_id,
-            project_id=projectid,
-            synthesis_id=synthesisid,
-            cteam_id=cteamid,
-            apitoken=apitoken,
-        )
-
-    project_data = my_geodesignhub_downloader.download_project_data_from_geodesignhub()
-    if not project_data:
-        error_msg = ErrorResponse(
-            status=0,
-            message="Could not parse Project ID, Diagram ID or API Token ID. One or more of these were not found in your JSON request.",
-            code=400,
-        )
-        return Response(asdict(error_msg), status=400, mimetype=MIMETYPE)
-
-    _unprocessed_design_geojson = (
-        my_geodesignhub_downloader.download_design_data_from_geodesignhub()
-    )
-
-    _design_feature_collection = (
-        my_geodesignhub_downloader.process_design_data_from_geodesignhub(
-            unprocessed_design_geojson=_unprocessed_design_geojson
-        )
-    )
-    gj_serialized = json.loads(geojson.dumps(_design_feature_collection))
-
-    design_geojson = GeodesignhubDiagramGeoJSON(geojson=gj_serialized)
-
-    maptiler_key = os.getenv("maptiler_key", "00000000000000")
-
-    success_response = FloodingViewSuccessResponse(
-        status=1,
-        message="Data from Geodesignhub retrieved",
-        geometry_data=design_geojson,
-        project_data=project_data,
-        maptiler_key=maptiler_key,
-        session_id=str(session_id),
-        view_details=design_view_details,
-    )
-
-    return render_template("design_flooding_analysis.html", op=asdict(success_response))
 
 
 class DiagramUploadForm(FlaskForm):
