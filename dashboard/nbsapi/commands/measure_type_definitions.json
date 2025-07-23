@@ -1,0 +1,12 @@
+[
+    {
+  "id": "39",
+  "name": "Green Roof",
+  "description": "string",
+  "default_color": "#31D336",
+  "default_inflow": 1,
+  "default_depth": 0.05,
+  "default_width": 5,
+  "default_radius": 1
+}
+]

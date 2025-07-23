@@ -36,6 +36,8 @@ async def create_target(db_session: AsyncSession, itarget: TargetBase):
         await db_session.commit()
         await db_session.refresh(db_target)
     except IntegrityError:
-        db_session.rollback()
-        raise HTTPException(status_code=403, detail="Target already exists")
+        await db_session.rollback()
+        raise HTTPException(
+            status_code=409, detail=f"Target '{itarget.type}' already exists"
+        )
     return itarget
