@@ -237,17 +237,6 @@ class GeodesignhubDataDownloader:
     def download_design_data_from_geodesignhub(
         self,
     ) -> Union[ErrorResponse, FeatureCollection]:
-        
-        """
-        Downloads design data from Geodesignhub for a specified team and synthesis.
-        This method uses the API helper to retrieve synthesis data based on the provided
-        team and synthesis IDs. If the API call is unsuccessful (i.e., status code is not 200),
-        it returns an ErrorResponse indicating that one or more required identifiers were not found.
-        On success, it returns the design details as a FeatureCollection.
-        Returns:
-            Union[ErrorResponse, FeatureCollection]: An ErrorResponse if the API call fails,
-            otherwise the design details as a FeatureCollection.
-        """
         r = self.api_helper.get_single_synthesis(
             teamid=int(self.cteam_id), synthesisid=self.synthesis_id
         )
@@ -269,25 +258,6 @@ class GeodesignhubDataDownloader:
     def process_design_data_from_geodesignhub(
         self, unprocessed_design_geojson
     ) -> Union[ErrorResponse, FeatureCollection]:
-        
-        """
-        Processes unprocessed design GeoJSON data from Geodesignhub and converts it into a FeatureCollection
-        with enriched properties and appropriate geometry types.
-        Args:
-            unprocessed_design_geojson (dict): A GeoJSON-like dictionary containing design features from Geodesignhub.
-        Returns:
-            Union[ErrorResponse, FeatureCollection]: Returns a FeatureCollection of processed features if successful,
-            or an ErrorResponse if an unsupported geometry type is encountered.
-        Workflow:
-            - Iterates through each feature in the input GeoJSON.
-            - Populates default building data (height, base_height) if not available.
-            - Assigns unique building IDs and diagram IDs.
-            - Converts feature properties to GeodesignhubDesignFeatureProperties dataclass.
-            - For "policy" areatype, generates a point grid and creates features with zero height.
-            - For other types, processes geometry as Polygon, LineString, or buffered Point.
-            - Returns an error if geometry type is unsupported.
-            - Collects all processed features into a FeatureCollection and returns it.
-        """
         _all_features: List[Feature] = []
 
         my_geometry_helper = GeometryHelper()

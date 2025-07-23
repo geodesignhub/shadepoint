@@ -1,6 +1,6 @@
 [
   {
-    "id": 1,
+    "id":1,
     "name": "Tree Planting",
     "definition": "Urban tree planting involves the strategic planting of trees in urban areas to improve environmental quality, enhance biodiversity, and provide shade.",
     "cobenefits": "Improved biodiversity",
@@ -13,7 +13,10 @@
           "type": "Feature",
           "properties": {},
           "geometry": {
-            "coordinates": [-6.258405034024179, 53.34023338849602],
+            "coordinates": [
+              -6.258405034024179,
+              53.34023338849602
+            ],
             "type": "Point"
           }
         },
@@ -21,7 +24,10 @@
           "type": "Feature",
           "properties": {},
           "geometry": {
-            "coordinates": [-6.258378429485248, 53.34031748313669],
+            "coordinates": [
+              -6.258378429485248,
+              53.34031748313669
+            ],
             "type": "Point"
           }
         },
@@ -29,7 +35,10 @@
           "type": "Feature",
           "properties": {},
           "geometry": {
-            "coordinates": [-6.258362779756737, 53.340447362310954],
+            "coordinates": [
+              -6.258362779756737,
+              53.340447362310954
+            ],
             "type": "Point"
           }
         },
@@ -37,25 +46,14 @@
           "type": "Feature",
           "properties": {},
           "geometry": {
-            "coordinates": [-6.25835025997327, 53.34038849625935],
+            "coordinates": [
+              -6.25835025997327,
+              53.34038849625935
+            ],
             "type": "Point"
           }
         }
       ]
-    },
-    "styling": {
-      "color": "#31a354",
-      "hidden": false
-    },
-    "physical_properties": {
-      "default_inflow": 0,
-      "default_depth": 1.5,
-      "default_width": 2,
-      "default_radius": 3.5,
-      "area_inflow": 7.2,
-      "area_depth": 2.1,
-      "area_width": 3.8,
-      "area_radius": 5
     },
     "impacts": [
       {
@@ -63,15 +61,6 @@
           "intensity": "low"
         },
         "magnitude": 10.5,
-        "specialized": {
-          "climate": {
-            "cool_spot": 0,
-            "evapotranspiration": 0.04105408115726775,
-            "groundwater_recharge": -0.04348092339316535,
-            "storage_capacity": 142.33955129172907,
-            "temp_reduction": 0.05763750310256802
-          }
-        },
         "unit": {
           "description": "shade",
           "unit": "m2"

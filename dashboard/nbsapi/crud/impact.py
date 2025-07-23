@@ -4,8 +4,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from nbsapi.models.impact import Impact
-from nbsapi.models.impact_intensity import ImpactIntensity as IIM  # noqa: N814
-from nbsapi.models.impact_unit import ImpactUnit as IIU  # noqa: N814
+from nbsapi.models.impact_intensity import ImpactIntensity as IIM
+from nbsapi.models.impact_unit import ImpactUnit as IIU
 from nbsapi.schemas.impact import ImpactBase, ImpactIntensity, ImpactUnit
 
 
@@ -51,11 +51,8 @@ async def create_impact_intensity(
         await db_session.commit()
         await db_session.refresh(db_target)
     except IntegrityError:
-        await db_session.rollback()
-        raise HTTPException(
-            status_code=409,
-            detail=f"Intensity '{i_intensity.intensity}' already exists",
-        )
+        db_session.rollback()
+        raise HTTPException(status_code=403, detail="Intensity already exists")
     return i_intensity
 
 
@@ -67,8 +64,6 @@ async def create_impact_unit(db_session: AsyncSession, i_unit: ImpactUnit):
         await db_session.commit()
         await db_session.refresh(db_target)
     except IntegrityError:
-        await db_session.rollback()
-        raise HTTPException(
-            status_code=409, detail=f"Unit '{i_unit.unit}' already exists"
-        )
+        db_session.rollback()
+        raise HTTPException(status_code=403, detail="Unit already exists")
     return i_unit
