@@ -1,51 +1,79 @@
-{% extends "layout.html" %}
-{% block headercss %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/notifications/simple-notify.css') }}">
+{% extends "layout.html" %} {% block headercss %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/maplibre/maplibre-gl.css') }}"
+/>
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/common.css') }}"
+/>
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/notifications/simple-notify.css') }}"
+/>
 
-{% endblock %}
-{% block body %}
+{% endblock %} {% block body %}
 <div class="container">
-    <!-- Example row of columns -->
-    {% if op['status'] == 1 %}
-    <br>
-    <div class="row">
-        <div class="col-md-12">
-            <div>
-                <h6>{{ gettext('Project Theme details') }}</h6>
-                <ul class="list-group list-group-horizontal">
-                    {% for system in op.project_data.system_details %}
-                        <li class="list-group-item"><b>{{ system.name }}&nbsp;<i class="bi bi-info-square-fill" style="color: {{system.color}}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{system.verbose_description}}"></i></b></li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
+  <!-- Example row of columns -->
+  {% if op['status'] == 1 %}
+  <br />
+  <div class="row">
+    <div class="col-md-12">
+      <div>
+        <h6>{{ gettext('Project Theme details') }}</h6>
+        <ul class="list-group list-group-horizontal">
+          {% for system in op.project_data.system_details %}
+          <li class="list-group-item">
+            <b
+              >{{ system.name }}&nbsp;<i
+                class="bi bi-info-square-fill"
+                style="color: {{system.color}}"
+                data-bs-toggle="tooltip"
+                data-bs-placement="bottom"
+                title="{{system.verbose_description}}"
+              ></i
+            ></b>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
     </div>
-    <br>
-    <div class="row">
-        <div class="col-md-12">
-            <div id="spinner" class="spinner-border text-secondary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-           
-            <button class="btn btn-info d-none" id="get_shadows_control" type="button"
-                onclick="design_shadow_helper.get_all_generated_data()" class="btn btn-secondary" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Get generated shadows">Show Design Shadows & Analysis
-            </button>
-            <p>&nbsp;</p>
-        </div>
+  </div>
+  <br />
+  <div class="row">
+    <div class="col-md-12">
+      <div id="spinner" class="spinner-border text-secondary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+
+      <button
+        class="btn btn-info d-none"
+        id="get_shadows_control"
+        type="button"
+        onclick="design_shadow_helper.get_all_generated_data()"
+        class="btn btn-secondary"
+        data-bs-toggle="tooltip"
+        data-bs-placement="bottom"
+        data-bs-title="Get generated shadows"
+      >
+        Show Design Shadows & Analysis
+      </button>
+      <p>&nbsp;</p>
     </div>
-    <div class="row">
-        <div class="col-md-12">
-            <h3>{{ gettext('Shadow Analysis') }}</h3>
-            <p class="text-muted"><i class="bi bi-shadows"></i> {{ gettext('By default the shadow is computed for August 6 at 10AM when radiation is not strong') }}
-            </p>
-            <br>
-            <div id="map"></div>
-        </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+      <h3>{{ gettext('Shadow Analysis') }}</h3>
+      <p class="text-muted">
+        <i class="bi bi-shadows"></i> {{ gettext('By default the shadow is
+        computed for August 6 at 10AM when radiation is not strong') }}
+      </p>
+      <br />
+      <div id="map"></div>
     </div>
-    <br>
-    <!-- <div class="row">
+  </div>
+  <br />
+  <!-- <div class="row">
         <div class="col-md-12">
             <div>
                 <label for="shadow_date_time">{{ gettext('Select new (date and time)') }}:</label>
@@ -54,581 +82,625 @@
             </div>
         </div>
     </div> -->
-    <br>
+  <br />
 
-    <div class="row">
-        <div class="col-md-12">
-            <div id="listing-group" class="btn-group" role="group" aria-label="Layer selection tools">
-                {% for wms_layer in op['wms_layers'] %}
-                <input type="checkbox" class="btn-check" id="{{wms_layer['dom_id']}}" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="{{wms_layer['dom_id']}}">{{ wms_layer['name']}}</label>
-                {% endfor %}
-
-                {% for cog_layer in op['cog_layers'] %}
-                <input type="checkbox" class="btn-check" id="{{cog_layer['dom_id']}}" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="{{cog_layer['dom_id']}}">{{ cog_layer['name']}}</label>
-                {% endfor %}
-                {% for fgb_layer in op['fgb_layers'] %}
-                <input type="checkbox" class="btn-check" id="{{fgb_layer['dom_id']}}" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="{{fgb_layer['dom_id']}}">{{ fgb_layer['name']}}</label>
-                {% endfor %}
-                {% for pmtiles_layer in op['pmtiles_layers'] %}
-                <input type="checkbox" class="btn-check" id="{{pmtiles_layer['dom_id']}}" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="{{pmtiles_layer['dom_id']}}">{{
-                    pmtiles_layer['name']}}</label>
-                {% endfor %}
-            </div>
-        </div>
+  <div class="row">
+    <div class="col-md-12">
+      <div
+        id="listing-group"
+        class="btn-group"
+        role="group"
+        aria-label="Layer selection tools"
+      >
+        {% for wms_layer in op['wms_layers'] %}
+        <input
+          type="checkbox"
+          class="btn-check"
+          id="{{wms_layer['dom_id']}}"
+          autocomplete="off"
+          checked
+        />
+        <label class="btn btn-outline-primary" for="{{wms_layer['dom_id']}}"
+          >{{ wms_layer['name']}}</label
+        >
+        {% endfor %} {% for cog_layer in op['cog_layers'] %}
+        <input
+          type="checkbox"
+          class="btn-check"
+          id="{{cog_layer['dom_id']}}"
+          autocomplete="off"
+          checked
+        />
+        <label class="btn btn-outline-primary" for="{{cog_layer['dom_id']}}"
+          >{{ cog_layer['name']}}</label
+        >
+        {% endfor %} {% for fgb_layer in op['fgb_layers'] %}
+        <input
+          type="checkbox"
+          class="btn-check"
+          id="{{fgb_layer['dom_id']}}"
+          autocomplete="off"
+          checked
+        />
+        <label class="btn btn-outline-primary" for="{{fgb_layer['dom_id']}}"
+          >{{ fgb_layer['name']}}</label
+        >
+        {% endfor %} {% for pmtiles_layer in op['pmtiles_layers'] %}
+        <input
+          type="checkbox"
+          class="btn-check"
+          id="{{pmtiles_layer['dom_id']}}"
+          autocomplete="off"
+          checked
+        />
+        <label class="btn btn-outline-primary" for="{{pmtiles_layer['dom_id']}}"
+          >{{ pmtiles_layer['name']}}</label
+        >
+        {% endfor %}
+      </div>
     </div>
-    <br>
-    <div class="row">
-        <div class="col-md-12">
-            <h6>{{ gettext('Design Shadow') }}&nbsp;<small class="text-muted">{{ gettext('Area of the shadow generated by buildings') }}</small></h6>
-        </div>
-        
+  </div>
+  <br />
+  <div class="row">
+    <div class="col-md-12">
+      <h6>
+        {{ gettext('Design Shadow') }}&nbsp;<small class="text-muted"
+          >{{ gettext('Area of the shadow generated by buildings') }}</small
+        >
+      </h6>
     </div>
-    <div class="row">
-        <div class="col-md-8">
-            <h4>
-                <span id='building_shadows'></span>
-                <small class="text-muted">{{ gettext('in hectares') }}</small>
-            </h4>
-        </div>
+  </div>
+  <div class="row">
+    <div class="col-md-8">
+      <h4>
+        <span id="building_shadows"></span>
+        <small class="text-muted">{{ gettext('in hectares') }}</small>
+      </h4>
     </div>
-    <br>
-    <div class="row">
-        <div class="col-md-12">
-            <h6>{{ gettext('Design Shadow Analysis') }}</h6>
-        </div>
+  </div>
+  <br />
+  <div class="row">
+    <div class="col-md-12">
+      <h6>{{ gettext('Design Shadow Analysis') }}</h6>
     </div>
-    <div id="shadow_stats" class="row d-none">
-        <div class="col-md-6">
-            <h4>
-                <span id='total_roads'></span>
-                <small class="text-muted">{{ gettext('Total Roads (meters)') }}</small>
-            </h4>
-        </div>
-        <div class="col-md-6">
-            <h4>
-                <span id='shadowed_roads'></span>
-                <small class="text-muted">{{ gettext('Shadowed Roads (meters)') }}</small>
-            </h4>
-
-        </div>
+  </div>
+  <div id="shadow_stats" class="row d-none">
+    <div class="col-md-6">
+      <h4>
+        <span id="total_roads"></span>
+        <small class="text-muted">{{ gettext('Total Roads (meters)') }}</small>
+      </h4>
     </div>
-    <br>
-    {% else %}
-    <div class="row">
-        <div class="col-md-12">
-            <p>{{op['message']}}</p>
-        </div>
+    <div class="col-md-6">
+      <h4>
+        <span id="shadowed_roads"></span>
+        <small class="text-muted"
+          >{{ gettext('Shadowed Roads (meters)') }}</small
+        >
+      </h4>
     </div>
-    {% endif %}
-    <br>
-    <br>
+  </div>
+  <br />
+  {% else %}
+  <div class="row">
+    <div class="col-md-12">
+      <p>{{op['message']}}</p>
+    </div>
+  </div>
+  {% endif %}
+  <br />
+  <br />
 </div>
 <!-- /container -->
-{% endblock %}
-
-{% block footer %}
-
-{% if op['status'] == 1 %}
-<script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
+{% endblock %} {% block footer %} {% if op['status'] == 1 %}
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"
+></script>
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/common.js') }}"
+></script>
 <script src="{{ url_for('static', filename='js/threejs/three.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/threejs/GLTFLoader.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', filename='js/notifications/simple-notify.min.js') }}"></script>
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/notifications/simple-notify.min.js') }}"
+></script>
 
 {% if op['cog_layers'] %}
-<script type="text/javascript" src="{{ url_for('static', filename='js/cog/cog-protocol.min.js') }}"></script>
-{% endif %}
-{% if op['fgb_layers'] %}
-<script type="text/javascript" src="{{ url_for('static', filename='js/fgb/flatgeobuf-geojson.min.js') }}"></script>
-{% endif %}
-{% if op['pmtiles_layers'] %}
-<script type="text/javascript" src="{{ url_for('static', filename='js/pmtiles/pmtiles.js') }}"></script>
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/cog/cog-protocol.min.js') }}"
+></script>
+{% endif %} {% if op['fgb_layers'] %}
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/fgb/flatgeobuf-geojson.min.js') }}"
+></script>
+{% endif %} {% if op['pmtiles_layers'] %}
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/pmtiles/pmtiles.js') }}"
+></script>
 {% endif %}
 
 <script type="text/javascript">
-    let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-    return new bootstrap.Tooltip(tooltipTriggerEl)
-    })
-    const design_detail = {{ op|safe}};
+  let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+  let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+  return new bootstrap.Tooltip(tooltipTriggerEl)
+  })
+  const design_detail = {{ op|safe}};
 
-    const design_geojson = {{ op["geometry_data"]["geojson"]|safe }};
-    const trees_geojson = {{ op["trees_feature_collection"]["geojson"]|safe }};
-    const bounds = design_detail['project_data']['bounds']['bounds'];
-    const session_id = design_detail['session_id']
-    var latLngs = bounds.split(',');
-    var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
-    var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
-    var map_bounds = new maplibregl.LngLatBounds(southWest, northEast);
-    let wms_layers = design_detail['wms_layers'];
-    let cog_layers = design_detail['cog_layers'];
-    let fgb_layers = design_detail['fgb_layers'];
-    let pmtiles_layers = design_detail['pmtiles_layers'];
-    
-    var map = new maplibregl.Map({
-        container: 'map', // container id  
-        style:
-            'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
-        bounds: map_bounds,
-        zoom: 10 // starting zoom
-    });
+  const design_geojson = {{ op["geometry_data"]["geojson"]|safe }};
+  const trees_geojson = {{ op["trees_feature_collection"]["geojson"]|safe }};
+  const bounds = design_detail['project_data']['bounds']['bounds'];
+  const session_id = design_detail['session_id']
+  var latLngs = bounds.split(',');
+  var southWest = new maplibregl.LngLat(latLngs[0], latLngs[1]);
+  var northEast = new maplibregl.LngLat(latLngs[2], latLngs[3]);
+  var map_bounds = new maplibregl.LngLatBounds(southWest, northEast);
+  let wms_layers = design_detail['wms_layers'];
+  let cog_layers = design_detail['cog_layers'];
+  let fgb_layers = design_detail['fgb_layers'];
+  let pmtiles_layers = design_detail['pmtiles_layers'];
 
-    if (cog_layers.length > 0) {
-        maplibregl.addProtocol('cog', MaplibreCOGProtocol.cogProtocol);
-    }
+  var map = new maplibregl.Map({
+      container: 'map', // container id
+      style:
+          'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
+      bounds: map_bounds,
+      zoom: 10 // starting zoom
+  });
 
-    if (pmtiles_layers.length > 0) {
-        let pmtiles_protocol = new pmtiles.Protocol({ metadata: true });
-        maplibregl.addProtocol("pmtiles", pmtiles_protocol.tile);
+  if (cog_layers.length > 0) {
+      maplibregl.addProtocol('cog', MaplibreCOGProtocol.cogProtocol);
+  }
 
-    }
+  if (pmtiles_layers.length > 0) {
+      let pmtiles_protocol = new pmtiles.Protocol({ metadata: true });
+      maplibregl.addProtocol("pmtiles", pmtiles_protocol.tile);
 
-    document.getElementById('listing-group').addEventListener('change', function (e) {
-        var map_layer = e.target.id;
-        let map_layer_line_id = map_layer + "_lines";
-        let map_layer_point_id = map_layer + "_points";
+  }
 
-        let all_ids = [map_layer, map_layer_line_id, map_layer_point_id];
+  document.getElementById('listing-group').addEventListener('change', function (e) {
+      var map_layer = e.target.id;
+      let map_layer_line_id = map_layer + "_lines";
+      let map_layer_point_id = map_layer + "_points";
 
-        for (let index = 0; index < all_ids.length; index++) {
-            const map_source_id = all_ids[index];
-            if (map.getLayer(map_source_id)) {
-                if (e.target.checked) {
-                    map.setLayoutProperty(map_source_id, 'visibility', 'visible');
-                } else {
-                    map.setLayoutProperty(map_source_id, 'visibility', 'none');
-                }
-            }
-        }
-    });
-    // function update_date_time() {
-    //     let new_url = new URL(window.location.href);
+      let all_ids = [map_layer, map_layer_line_id, map_layer_point_id];
 
-    //     let date_time = new_url.searchParams.delete('date_time');
+      for (let index = 0; index < all_ids.length; index++) {
+          const map_source_id = all_ids[index];
+          if (map.getLayer(map_source_id)) {
+              if (e.target.checked) {
+                  map.setLayoutProperty(map_source_id, 'visibility', 'visible');
+              } else {
+                  map.setLayoutProperty(map_source_id, 'visibility', 'none');
+              }
+          }
+      }
+  });
+  // function update_date_time() {
+  //     let new_url = new URL(window.location.href);
 
-    //     const dateControl = document.querySelector('input[type="datetime-local"]');
-    //     let new_date = dateControl.value;
-    //     if (new_date) {
-    //         new_url.searchParams.append('date_time', new_date);
-    //         window.location.href = new_url;
-    //     }
-    //     return true;
-    // }
+  //     let date_time = new_url.searchParams.delete('date_time');
 
-    const zeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height === 0);
-    const nonZeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height !== 0);
+  //     const dateControl = document.querySelector('input[type="datetime-local"]');
+  //     let new_date = dateControl.value;
+  //     if (new_date) {
+  //         new_url.searchParams.append('date_time', new_date);
+  //         window.location.href = new_url;
+  //     }
+  //     return true;
+  // }
 
-
-    const zeroHeightGeojson = {
-        type: "FeatureCollection",
-        features: zeroHeightFeatures
-    };
-
-    const nonZeroHeightGeojson = {
-        type: "FeatureCollection",
-        features: nonZeroHeightFeatures
-    };
-    
-    map.on('load', async () => {
-       
-        map.addSource('design_non_extruded', {
-            // GeoJSON Data source used in vector tiles, documented at
-            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
-            'type': 'geojson',
-            'data': zeroHeightGeojson
-        });
-
-        
-        map.addSource('buildings', {
-            // GeoJSON Data source used in vector tiles, documented at
-            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
-            'type': 'geojson',
-            'data': nonZeroHeightGeojson
-        });
-        map.addSource('building_shadows', {
-            // GeoJSON Data source used in vector tiles, documented at
-            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
-            'type': 'geojson',
-            'data': { "type": "FeatureCollection", "features": [] }
-        });
-        map.addSource('existing_building_shadows', {
-            // GeoJSON Data source used in vector tiles, documented at
-            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
-            'type': 'geojson',
-            'data': { "type": "FeatureCollection", "features": [] }
-        });
-        
-        map.addSource('bike_pedestrian_roads', {
-            // GeoJSON Data source used in vector tiles, documented at
-            // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
-            'type': 'geojson',
-            'data': { "type": "FeatureCollection", "features": [] }
-        });
-        
-        map.addLayer({
-            'id': 'buildings-extrusion',
-            'type': 'fill-extrusion',
-            'source': 'buildings',
-            'paint': {
-                // See the MapLibre Style Specification for details on data expressions.
-                // https://maplibre.org/maplibre-gl-js-docs/style-spec/expressions/
-
-                // Get the fill-extrusion-color from the source 'color' property.
-                'fill-extrusion-color': ['get', 'color'],
-
-                // Get fill-extrusion-height from the source 'height' property.
-                'fill-extrusion-height': ['get', 'height'],
-
-                // Get fill-extrusion-base from the source 'base_height' property.
-                'fill-extrusion-base': ['get', 'base_height'],
-
-                // Make extrusions slightly opaque for see through indoor walls.
-                'fill-extrusion-opacity': 0.5
-            }
-        });
-        
-        map.addLayer({
-            'id': 'design_non_extruded_lines',
-            'type': 'line',
-            'source': 'design_non_extruded',
-            'paint': {
-                'line-color': ['get', 'color'],
-                'line-width': 3,
-                'line-opacity':0.5
-            },
-            'filter': ['==', '$type', 'LineString']
-        });
-
-        map.addLayer({
-            'id': 'design_non_extruded_polygon',
-            'type': 'fill',
-            'source': 'design_non_extruded',
-            'layout': {},
-            'paint': {
-                'fill-color': ['coalesce', ['get', 'color'], '#696969'],
-                'fill-opacity': 0.5
-            },
-            'filter': ['==', '$type', 'Polygon']
-        });
-        // map.addLayer({
-        //     'id': 'design_non_extruded_point',
-        //     'type': 'circle',
-        //     'source': 'design_non_extruded',
-        //     'paint': {
-        //         'circle-radius': 6,
-        //         'circle-color': ['get', 'color']
-        //     },
-        //     'filter': ['==', '$type', 'Point']
-        // });
-        map.addLayer({
-            'id': 'building_shadows',
-            'type': 'fill',
-            'source': 'building_shadows',
-            'layout': {},
-            'paint': {
-                'fill-color': '#808080',
-                'fill-opacity': 0.5
-            }
-        });
-        map.addLayer({
-            'id': 'existing_building_shadows',
-            'type': 'fill',
-            'source': 'existing_building_shadows',
-            'layout': {},
-            'paint': {
-                'fill-color': '#a9a9a9',
-                'fill-opacity': 0.4
-            }
-        });
-        map.addLayer({
-            'id': 'bike_pedestrian_roads',
-            'type': 'line',
-            'source': 'bike_pedestrian_roads',
-            'layout': {
-                'line-join': 'round',
-                'line-cap': 'round'
-            },
-            'paint': {
-                'line-color': '#422518',
-                'line-width': 3,
-                'line-opacity': 0.4
-            }
-        });
-        map.addControl(
-            new maplibregl.NavigationControl({
-                visualizePitch: true,
-                showZoom: true,
-                showCompass: true
-            })
-        );
-        for (let index = 0; index < wms_layers.length; index++) {
-            const wms_layer = wms_layers[index];
-            let source_str = wms_layer.dom_id + "_source";
-            map.addSource(source_str, {
-                'type': 'raster',
-                // use the tiles option to specify a WMS tile source URL
-                // https://maplibre.org/maplibre-style-spec/sources/
-                'tiles': [wms_layer['url']],
-                'tileSize': 256
-            });
-            map.addLayer(
-                {
-                    'id': wms_layer['dom_id'],
-                    'type': 'raster',
-                    'source': source_str,
-                    'paint': {}
-                },
-                'aeroway_fill'
-            );
-
-        }
-
-        if (cog_layers.length > 0) {
-            for (let index = 0; index < cog_layers.length; index++) {
-                const cog_layer = cog_layers[index];
-
-                let source_str = cog_layer.dom_id + "_source";
-                map.addSource(source_str, {
-                    'type': 'raster',
-                    'url': 'cog://' + cog_layer['url'],
-                    'tileSize': 256
-                });
-                map.addLayer(
-                    {
-                        'id': cog_layer['dom_id'],
-                        'source': source_str,
-                        'type': 'raster',
-                        'paint': {}
-                    },
-                    'aeroway_fill'
-                );
-            }
-        }
-        if (pmtiles_layers.length > 0) {
-            for (let index = 0; index < pmtiles_layers.length; index++) {
-                const pmtiles_layer = pmtiles_layers[index];
-                
-                let source_str = pmtiles_layer.dom_id + "_source";
-                if (pmtiles_layer.layer_type == 'raster') {
-                    map.addSource(source_str, {
-                        'type': 'raster',
-                        'url': 'pmtiles://' + pmtiles_layer['url']
-                    });
-                    map.addLayer(
-                        {
-                            'id': pmtiles_layer['dom_id'],
-                            'source': source_str,
-                            'type': 'raster',
-                            'paint': {}
-                        },
-                        'aeroway_fill'
-                    );
-                }
-            }
-        }
+  const zeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height === 0);
+  const nonZeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height !== 0);
 
 
-        if (fgb_layers.length > 0) {
-            for (let index = 0; index < fgb_layers.length; index++) {
-                const fgb_layer = fgb_layers[index];
-                const geometry_type = fgb_layer['geometry_type'];
-                const response = await fetch(fgb_layer['url']);
-                let source_str = fgb_layer.dom_id + "_source";
-                const fc = { type: "FeatureCollection", features: [] };
-                let i = 0;
-                for await (const f of flatgeobuf.deserialize(response.body, undefined)) {
-                    fc.features.push({ ...f, id: i });
-                    i += 1;
-                }
+  const zeroHeightGeojson = {
+      type: "FeatureCollection",
+      features: zeroHeightFeatures
+  };
 
-                map.addSource(source_str, {
-                    type: "geojson",
-                    data: fc,
-                });
-                if (geometry_type == 'polygon') {
-                    map.addLayer({
-                        id: fgb_layer['dom_id'],
-                        type: "fill",
-                        source: source_str,
-                        paint: {
-                            "fill-color": fgb_layer['color'],
-                            "fill-opacity": 0.75,
-                        },
-                    });
-                }
-                else if (geometry_type == 'line') {
-                    map.addLayer({
-                        id: fgb_layer['dom_id'] + "_lines",
-                        type: "line",
-                        source: source_str,
-                        paint: {
-                            "line-color": fgb_layer['color'],
-                            "line-opacity": 0.9,
-                            "line-width": 2,
-                        },
-                    });
-                }
+  const nonZeroHeightGeojson = {
+      type: "FeatureCollection",
+      features: nonZeroHeightFeatures
+  };
 
-                else if (geometry_type == 'point') {
-                    map.addLayer({
-                        id: fgb_layer['dom_id'] + "_points",
-                        type: 'circle',
-                        source: source_str,
-                        paint: {
+  map.on('load', async () => {
 
-                            "circle-blur": 0,
-                            "circle-color": fgb_layer['color'],
-                            "circle-opacity": 0.8,
-                            "circle-radius": 10,
-                            "circle-stroke-color": fgb_layer['color'],
-                            "circle-stroke-opacity": 0.9,
-                            "circle-stroke-width": 1,
+      map.addSource('design_non_extruded', {
+          // GeoJSON Data source used in vector tiles, documented at
+          // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+          'type': 'geojson',
+          'data': zeroHeightGeojson
+      });
 
-                        }
 
-                    });
-                }
-            }
-        }
-        process_trees();
-    });
+      map.addSource('buildings', {
+          // GeoJSON Data source used in vector tiles, documented at
+          // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+          'type': 'geojson',
+          'data': nonZeroHeightGeojson
+      });
+      map.addSource('building_shadows', {
+          // GeoJSON Data source used in vector tiles, documented at
+          // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+          'type': 'geojson',
+          'data': { "type": "FeatureCollection", "features": [] }
+      });
+      map.addSource('existing_building_shadows', {
+          // GeoJSON Data source used in vector tiles, documented at
+          // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+          'type': 'geojson',
+          'data': { "type": "FeatureCollection", "features": [] }
+      });
 
-    async function process_trees() {
-            /*
-            * Helper function used to get threejs-scene-coordinates from mercator coordinates.
-            * This is just a quick and dirty solution - it won't work if points are far away from each other
-            * because a meter near the north-pole covers more mercator-units
-            * than a meter near the equator.
-            */
-                
-            const results = await Promise.all([loadModel()]);
-            const model = results[0];
-            
-            function calculateDistanceMercatorToMeters(from, to) {
-                const mercatorPerMeter = from.meterInMercatorCoordinateUnits();
-                // mercator x: 0=west, 1=east
-                const dEast = to.x - from.x;
-                const dEastMeter = dEast / mercatorPerMeter;
-                // mercator y: 0=north, 1=south
-                const dNorth = from.y - to.y;
-                const dNorthMeter = dNorth / mercatorPerMeter;
-                return {dEastMeter, dNorthMeter};
-            }
+      map.addSource('bike_pedestrian_roads', {
+          // GeoJSON Data source used in vector tiles, documented at
+          // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d
+          'type': 'geojson',
+          'data': { "type": "FeatureCollection", "features": [] }
+      });
 
-            
-            async function loadModel() {
-                const loader = new THREE.GLTFLoader();
-                const gltf = await loader.loadAsync(
-                "{{ url_for('static', filename='assets/low_poly_tree.glb') }}");
-                const model = gltf.scene;
-                return model;
-            }
-            const project_center = design_detail['project_data']['center']['center'].split(',');            
-            const sceneOrigin = new maplibregl.LngLat(parseFloat(project_center[0]), parseFloat(project_center[1]));
-            
-            const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(sceneOrigin);
-            const three_d_tree_layer = {
-                id: '3d-model',
-                type: 'custom',
-                renderingMode: '3d',
-                onAdd(map, gl) {
-                    this.camera = new THREE.Camera();
-                    this.scene = new THREE.Scene();
-                    this.scene.rotateX(Math.PI / 2);
-                    this.scene.scale.multiply(new THREE.Vector3(1, 1, -1));
-                    const light = new THREE.DirectionalLight(0xffffff);
-                    light.position.set(50, 70, -30).normalize();
-                    this.scene.add(light);
+      map.addLayer({
+          'id': 'buildings-extrusion',
+          'type': 'fill-extrusion',
+          'source': 'buildings',
+          'paint': {
+              // See the MapLibre Style Specification for details on data expressions.
+              // https://maplibre.org/maplibre-gl-js-docs/style-spec/expressions/
 
-                    for (var x = 0; x < trees_geojson.features.length; x++){
-                        const curmodel = model.clone();
-                        const tree_coordinates = trees_geojson.features[x].geometry.coordinates;
-                        const tree_location = new maplibregl.LngLat(parseFloat(tree_coordinates[0]),parseFloat(tree_coordinates[1]));
-                        const model_mercator = maplibregl.MercatorCoordinate.fromLngLat(tree_location);
-                        const {dEastMeter: model1east, dNorthMeter: model1north} = calculateDistanceMercatorToMeters(sceneOriginMercator, model_mercator);
-                        curmodel.position.set(model1east-8.75, 0, model1north+0.75);
-                        this.scene.add(curmodel);
-                    }
-                    this.renderer = new THREE.WebGLRenderer({
-                        canvas: map.getCanvas(),
-                        context: gl,
-                        antialias: true
-                    });
-                    this.renderer.autoClear = false;
-                },
+              // Get the fill-extrusion-color from the source 'color' property.
+              'fill-extrusion-color': ['get', 'color'],
 
-                render(gl, mercatorMatrix) {
+              // Get fill-extrusion-height from the source 'height' property.
+              'fill-extrusion-height': ['get', 'height'],
 
-                    const offsetFromCenterElevation = map.queryTerrainElevation(sceneOrigin) || 0;
-                    const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(sceneOrigin, offsetFromCenterElevation);
+              // Get fill-extrusion-base from the source 'base_height' property.
+              'fill-extrusion-base': ['get', 'base_height'],
 
-                    const sceneTransform = {
-                        translateX: sceneOriginMercator.x,
-                        translateY: sceneOriginMercator.y,
-                        translateZ: sceneOriginMercator.z,
-                        scale: sceneOriginMercator.meterInMercatorCoordinateUnits()
-                    };
+              // Make extrusions slightly opaque for see through indoor walls.
+              'fill-extrusion-opacity': 0.5
+          }
+      });
 
-                    const m = new THREE.Matrix4().fromArray(mercatorMatrix);
-                    const l = new THREE.Matrix4()
-                        .makeTranslation(sceneTransform.translateX, sceneTransform.translateY, sceneTransform.translateZ)
-                        .scale(new THREE.Vector3(sceneTransform.scale, -sceneTransform.scale, sceneTransform.scale));
+      map.addLayer({
+          'id': 'design_non_extruded_lines',
+          'type': 'line',
+          'source': 'design_non_extruded',
+          'paint': {
+              'line-color': ['get', 'color'],
+              'line-width': 3,
+              'line-opacity':0.5
+          },
+          'filter': ['==', '$type', 'LineString']
+      });
 
-                    this.camera.projectionMatrix = m.multiply(l);
-                    this.renderer.resetState();
-                    this.renderer.render(this.scene, this.camera);
-                    map.triggerRepaint();
-                }
-            };
-            map.addLayer(three_d_tree_layer);
-        }
-    
-    // document.addEventListener('DOMContentLoaded', () => {
-    //     process_trees();
+      map.addLayer({
+          'id': 'design_non_extruded_polygon',
+          'type': 'fill',
+          'source': 'design_non_extruded',
+          'layout': {},
+          'paint': {
+              'fill-color': ['coalesce', ['get', 'color'], '#696969'],
+              'fill-opacity': 0.5
+          },
+          'filter': ['==', '$type', 'Polygon']
+      });
+      // map.addLayer({
+      //     'id': 'design_non_extruded_point',
+      //     'type': 'circle',
+      //     'source': 'design_non_extruded',
+      //     'paint': {
+      //         'circle-radius': 6,
+      //         'circle-color': ['get', 'color']
+      //     },
+      //     'filter': ['==', '$type', 'Point']
+      // });
+      map.addLayer({
+          'id': 'building_shadows',
+          'type': 'fill',
+          'source': 'building_shadows',
+          'layout': {},
+          'paint': {
+              'fill-color': '#808080',
+              'fill-opacity': 0.5
+          }
+      });
+      map.addLayer({
+          'id': 'existing_building_shadows',
+          'type': 'fill',
+          'source': 'existing_building_shadows',
+          'layout': {},
+          'paint': {
+              'fill-color': '#a9a9a9',
+              'fill-opacity': 0.4
+          }
+      });
+      map.addLayer({
+          'id': 'bike_pedestrian_roads',
+          'type': 'line',
+          'source': 'bike_pedestrian_roads',
+          'layout': {
+              'line-join': 'round',
+              'line-cap': 'round'
+          },
+          'paint': {
+              'line-color': '#422518',
+              'line-width': 3,
+              'line-opacity': 0.4
+          }
+      });
+      map.addControl(
+          new maplibregl.NavigationControl({
+              visualizePitch: true,
+              showZoom: true,
+              showCompass: true
+          })
+      );
+      for (let index = 0; index < wms_layers.length; index++) {
+          const wms_layer = wms_layers[index];
+          let source_str = wms_layer.dom_id + "_source";
+          map.addSource(source_str, {
+              'type': 'raster',
+              // use the tiles option to specify a WMS tile source URL
+              // https://maplibre.org/maplibre-style-spec/sources/
+              'tiles': [wms_layer['url']],
+              'tileSize': 256
+          });
+          map.addLayer(
+              {
+                  'id': wms_layer['dom_id'],
+                  'type': 'raster',
+                  'source': source_str,
+                  'paint': {}
+              },
+              'aeroway_fill'
+          );
 
-    let DesignShadowFactory = function () {
-        let session_id = "{{op['session_id']}}";
-        let current_year = new Date().getFullYear();
-        let august_6th_datetime= current_year+ "-08-06T10:10:00";
+      }
 
-        this.get_generated_design_shadows = function () {
-            let shadow_key = session_id+':'+august_6th_datetime+'_gdh_buildings_canopy_shadow';
-            let shadow_download_url = window.location.origin + '/gdh_generated_shadow?shadow_key=' + shadow_key;
-            get_building_shadow(shadow_download_url);
-        }
-        
-        this.get_roads_shadow_analysis =function() {
-            roads_shadow_stats_key = session_id + ":gdh_roads_shadow";
-            let roads_shadow_stats_url = window.location.origin + '/get_shadow_roads_stats?roads_shadow_stats_key=' + roads_shadow_stats_key;
-            get_road_shadow_stats(roads_shadow_stats_url);
-        }
+      if (cog_layers.length > 0) {
+          for (let index = 0; index < cog_layers.length; index++) {
+              const cog_layer = cog_layers[index];
 
-        this.get_all_generated_data = function(){
-            this.get_generated_design_shadows();            
-            this.get_roads_shadow_analysis();
-        }
-    }
-    let design_shadow_helper = new DesignShadowFactory();
-    // });
-    setTimeout(
-            function() {
-                // hide the spinner container
-            let spinner_cont = document.getElementById('spinner');
-            spinner_cont.classList.add('d-none');
-            // show get_design_shadows_control
-            let get_design_shadows_cont = document.getElementById('get_shadows_control');
-            get_design_shadows_cont.classList.remove('d-none');
+              let source_str = cog_layer.dom_id + "_source";
+              map.addSource(source_str, {
+                  'type': 'raster',
+                  'url': 'cog://' + cog_layer['url'],
+                  'tileSize': 256
+              });
+              map.addLayer(
+                  {
+                      'id': cog_layer['dom_id'],
+                      'source': source_str,
+                      'type': 'raster',
+                      'paint': {}
+                  },
+                  'aeroway_fill'
+              );
+          }
+      }
+      if (pmtiles_layers.length > 0) {
+          for (let index = 0; index < pmtiles_layers.length; index++) {
+              const pmtiles_layer = pmtiles_layers[index];
 
-            design_shadow_helper.get_generated_design_shadows();            
-            design_shadow_helper.get_roads_shadow_analysis();
-            }, 25000);
-    
+              let source_str = pmtiles_layer.dom_id + "_source";
+              if (pmtiles_layer.layer_type == 'raster') {
+                  map.addSource(source_str, {
+                      'type': 'raster',
+                      'url': 'pmtiles://' + pmtiles_layer['url']
+                  });
+                  map.addLayer(
+                      {
+                          'id': pmtiles_layer['dom_id'],
+                          'source': source_str,
+                          'type': 'raster',
+                          'paint': {}
+                      },
+                      'aeroway_fill'
+                  );
+              }
+          }
+      }
 
+
+      if (fgb_layers.length > 0) {
+          for (let index = 0; index < fgb_layers.length; index++) {
+              const fgb_layer = fgb_layers[index];
+              const geometry_type = fgb_layer['geometry_type'];
+              const response = await fetch(fgb_layer['url']);
+              let source_str = fgb_layer.dom_id + "_source";
+              const fc = { type: "FeatureCollection", features: [] };
+              let i = 0;
+              for await (const f of flatgeobuf.deserialize(response.body, undefined)) {
+                  fc.features.push({ ...f, id: i });
+                  i += 1;
+              }
+
+              map.addSource(source_str, {
+                  type: "geojson",
+                  data: fc,
+              });
+              if (geometry_type == 'polygon') {
+                  map.addLayer({
+                      id: fgb_layer['dom_id'],
+                      type: "fill",
+                      source: source_str,
+                      paint: {
+                          "fill-color": fgb_layer['color'],
+                          "fill-opacity": 0.75,
+                      },
+                  });
+              }
+              else if (geometry_type == 'line') {
+                  map.addLayer({
+                      id: fgb_layer['dom_id'] + "_lines",
+                      type: "line",
+                      source: source_str,
+                      paint: {
+                          "line-color": fgb_layer['color'],
+                          "line-opacity": 0.9,
+                          "line-width": 2,
+                      },
+                  });
+              }
+
+              else if (geometry_type == 'point') {
+                  map.addLayer({
+                      id: fgb_layer['dom_id'] + "_points",
+                      type: 'circle',
+                      source: source_str,
+                      paint: {
+
+                          "circle-blur": 0,
+                          "circle-color": fgb_layer['color'],
+                          "circle-opacity": 0.8,
+                          "circle-radius": 10,
+                          "circle-stroke-color": fgb_layer['color'],
+                          "circle-stroke-opacity": 0.9,
+                          "circle-stroke-width": 1,
+
+                      }
+
+                  });
+              }
+          }
+      }
+      process_trees();
+  });
+
+  async function process_trees() {
+          /*
+          * Helper function used to get threejs-scene-coordinates from mercator coordinates.
+          * This is just a quick and dirty solution - it won't work if points are far away from each other
+          * because a meter near the north-pole covers more mercator-units
+          * than a meter near the equator.
+          */
+
+          const results = await Promise.all([loadModel()]);
+          const model = results[0];
+
+          function calculateDistanceMercatorToMeters(from, to) {
+              const mercatorPerMeter = from.meterInMercatorCoordinateUnits();
+              // mercator x: 0=west, 1=east
+              const dEast = to.x - from.x;
+              const dEastMeter = dEast / mercatorPerMeter;
+              // mercator y: 0=north, 1=south
+              const dNorth = from.y - to.y;
+              const dNorthMeter = dNorth / mercatorPerMeter;
+              return {dEastMeter, dNorthMeter};
+          }
+
+
+          async function loadModel() {
+              const loader = new THREE.GLTFLoader();
+              const gltf = await loader.loadAsync(
+              "{{ url_for('static', filename='assets/low_poly_tree.glb') }}");
+              const model = gltf.scene;
+              return model;
+          }
+          const project_center = design_detail['project_data']['center']['center'].split(',');
+          const sceneOrigin = new maplibregl.LngLat(parseFloat(project_center[0]), parseFloat(project_center[1]));
+
+          const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(sceneOrigin);
+          const three_d_tree_layer = {
+              id: '3d-model',
+              type: 'custom',
+              renderingMode: '3d',
+              onAdd(map, gl) {
+                  this.camera = new THREE.Camera();
+                  this.scene = new THREE.Scene();
+                  this.scene.rotateX(Math.PI / 2);
+                  this.scene.scale.multiply(new THREE.Vector3(1, 1, -1));
+                  const light = new THREE.DirectionalLight(0xffffff);
+                  light.position.set(50, 70, -30).normalize();
+                  this.scene.add(light);
+
+                  for (var x = 0; x < trees_geojson.features.length; x++){
+                      const curmodel = model.clone();
+                      const tree_coordinates = trees_geojson.features[x].geometry.coordinates;
+                      const tree_location = new maplibregl.LngLat(parseFloat(tree_coordinates[0]),parseFloat(tree_coordinates[1]));
+                      const model_mercator = maplibregl.MercatorCoordinate.fromLngLat(tree_location);
+                      const {dEastMeter: model1east, dNorthMeter: model1north} = calculateDistanceMercatorToMeters(sceneOriginMercator, model_mercator);
+                      curmodel.position.set(model1east-8.75, 0, model1north+0.75);
+                      this.scene.add(curmodel);
+                  }
+                  this.renderer = new THREE.WebGLRenderer({
+                      canvas: map.getCanvas(),
+                      context: gl,
+                      antialias: true
+                  });
+                  this.renderer.autoClear = false;
+              },
+
+              render(gl, mercatorMatrix) {
+
+                  const offsetFromCenterElevation = map.queryTerrainElevation(sceneOrigin) || 0;
+                  const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(sceneOrigin, offsetFromCenterElevation);
+
+                  const sceneTransform = {
+                      translateX: sceneOriginMercator.x,
+                      translateY: sceneOriginMercator.y,
+                      translateZ: sceneOriginMercator.z,
+                      scale: sceneOriginMercator.meterInMercatorCoordinateUnits()
+                  };
+
+                  const m = new THREE.Matrix4().fromArray(mercatorMatrix);
+                  const l = new THREE.Matrix4()
+                      .makeTranslation(sceneTransform.translateX, sceneTransform.translateY, sceneTransform.translateZ)
+                      .scale(new THREE.Vector3(sceneTransform.scale, -sceneTransform.scale, sceneTransform.scale));
+
+                  this.camera.projectionMatrix = m.multiply(l);
+                  this.renderer.resetState();
+                  this.renderer.render(this.scene, this.camera);
+                  map.triggerRepaint();
+              }
+          };
+          map.addLayer(three_d_tree_layer);
+      }
+
+  // document.addEventListener('DOMContentLoaded', () => {
+  //     process_trees();
+
+  let DesignShadowFactory = function () {
+      let session_id = "{{op['session_id']}}";
+      let current_year = new Date().getFullYear();
+      let august_6th_datetime= current_year+ "-08-06T10:10:00";
+
+      this.get_generated_design_shadows = function () {
+          let shadow_key = session_id+':'+august_6th_datetime+'_gdh_buildings_canopy_shadow';
+          let shadow_download_url = window.location.origin + '/gdh_generated_shadow?shadow_key=' + shadow_key;
+          get_building_shadow(shadow_download_url);
+      }
+
+      this.get_roads_shadow_analysis =function() {
+          roads_shadow_stats_key = session_id + ":gdh_roads_shadow";
+          let roads_shadow_stats_url = window.location.origin + '/get_shadow_roads_stats?roads_shadow_stats_key=' + roads_shadow_stats_key;
+          get_road_shadow_stats(roads_shadow_stats_url);
+      }
+
+      this.get_all_generated_data = function(){
+          this.get_generated_design_shadows();
+          this.get_roads_shadow_analysis();
+      }
+  }
+  let design_shadow_helper = new DesignShadowFactory();
+  // });
+  setTimeout(
+          function() {
+              // hide the spinner container
+          let spinner_cont = document.getElementById('spinner');
+          spinner_cont.classList.add('d-none');
+          // show get_design_shadows_control
+          let get_design_shadows_cont = document.getElementById('get_shadows_control');
+          get_design_shadows_cont.classList.remove('d-none');
+
+          design_shadow_helper.get_generated_design_shadows();
+          design_shadow_helper.get_roads_shadow_analysis();
+          }, 25000);
 </script>
-{% endif %}
-
-{% endblock %}
+{% endif %} {% endblock %}
