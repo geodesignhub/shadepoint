@@ -1,19 +1,26 @@
 h1 {
-    font-family: 'Raleway', sans-serif;
+    font-family: 'Oswald', sans-serif;
     font-weight: 400; // Corresponds to the Bold 400 style
 }
 
 h2 {
-    font-family: 'Raleway', sans-serif;
+    font-family: 'Oswald', sans-serif;
     font-weight: 200; // Corresponds to the Bold 200 style
 }
 
-p {
-    font-family: 'Open Sans', sans-serif;
-}
 
+h3,h4,h5,h6, .btn-group,.navbar-brand {
+    font-family: 'Oswald', sans-serif;
+}
+p {
+    font-family: 'Roboto', sans-serif;
+}
+.text-muted{
+    
+    font-family: 'Roboto', sans-serif;
+}
 table {
-    font-family: 'Open Sans', sans-serif;
+    font-family: 'Roboto', sans-serif;
 }
 
 tr.group,
