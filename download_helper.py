@@ -310,6 +310,7 @@ class GeodesignhubDataDownloader:
                     buffered_point = point.buffer(0.00005)
                     buffered_polygon = export_to_json(buffered_point)
                     _geometry = Polygon(coordinates=buffered_polygon["coordinates"])
+                    _feature_properties.height = 2
                     # Buffer the point
 
                 else:
@@ -441,14 +442,14 @@ class GeodesignhubDataDownloader:
 
     def filter_to_get_gi_system(
         self, geodesignhub_project_data: GeodesignhubProjectData
-    ) -> int| None:
+    ) -> int | None:
         geodesignhub_project_data = asdict(geodesignhub_project_data)
         interesting_systems = [
             d
             for d in geodesignhub_project_data["systems"]
             if d["name"].lower() in ["tree", "gi"]
         ]
-        
+
         if not interesting_systems:
             return None
         # Prefer 'tree' if both 'tree' and 'gi' exist
@@ -579,7 +580,7 @@ class ShadowComputationHelper:
                 on_failure=notify_roads_download_failure,
                 job_id=self.session_id + "@" + hash_of_timestamp + "@roads",
             )
-            
+
             gdh_buildings_shadow_dependency = Dependency(
                 jobs=[roads_download_result], allow_failure=False, enqueue_at_front=True
             )
@@ -592,7 +593,7 @@ class ShadowComputationHelper:
                 bounds=self.bounds,
             )
             shadow_canpopy_job_id = self.session_id + "@" + hash_of_timestamp
-            
+
             gdh_shadow_result = q.enqueue(
                 utils.compute_gdh_shadow_with_tree_canopy,
                 asdict(gdh_worker_data),
