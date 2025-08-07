@@ -1,3 +1,5 @@
+![LOGO](images/logos/logo-A.png)
+
 # Shadepoint
 This plugin uses the [Geodesignhub API](https://www.geodesignhub.com/api) to download information about a design and / or diagrams to  analyze it to produce a variety of views around heat and shade impacts at a local level. 
 
