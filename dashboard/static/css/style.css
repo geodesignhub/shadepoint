@@ -912,3 +912,25 @@ tr.group:hover {
 .c-ffb671-policy {
     background-image: linear-gradient(45deg, transparent 45%, #ffb671 50%, transparent 55%, transparent 100%), linear-gradient(-45deg, transparent 45%, #ffb671 50%, transparent 55%, transparent 100%);
 }
+   .overlay {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 999;
+    }
+
+    .overlay button {
+        font: 600 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+        background-color: #3386c0;
+        color: #fff;
+        display: inline-block;
+        margin: 0;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        border-radius: 3px;
+    }
+
+    .overlay button:hover {
+        background-color: #4ea0da;
+    }
