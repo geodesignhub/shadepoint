@@ -9,16 +9,24 @@ h2 {
 }
 
 
-h3,h4,h5,h6, .btn-group,.navbar-brand {
+h3,
+h4,
+h5,
+h6,
+.btn-group,
+.navbar-brand {
     font-family: 'Oswald', sans-serif;
 }
+
 p {
     font-family: 'Roboto', sans-serif;
 }
-.text-muted{
-    
+
+.text-muted {
+
     font-family: 'Roboto', sans-serif;
 }
+
 table {
     font-family: 'Roboto', sans-serif;
 }
@@ -911,4 +919,80 @@ tr.group:hover {
 
 .c-ffb671-policy {
     background-image: linear-gradient(45deg, transparent 45%, #ffb671 50%, transparent 55%, transparent 100%), linear-gradient(-45deg, transparent 45%, #ffb671 50%, transparent 55%, transparent 100%);
+}
+
+.overlay {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 999;
+}
+
+.maplibregl-terradraw-measure-add-linestring-button,
+.maplibregl-terradraw-measure-add-polygon-button,
+.maplibregl-terradraw-measure-add-freehand-button,
+.maplibregl-terradraw-measure-delete-button {
+    font-family: "Oswald", sans-serif;
+    font-size: 16px;
+    letter-spacing: 2px;
+    text-decoration: none;
+    text-transform: uppercase;
+    color: #000;
+    cursor: pointer;
+    border: 3px solid;
+    padding: 0.25em 0.5em;
+    box-shadow: 1px 1px 0px 0px, 2px 2px 0px 0px, 3px 3px 0px 0px, 4px 4px 0px 0px, 5px 5px 0px 0px;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    background: ''
+}
+
+.maplibregl-terradraw-measure-add-linestring-button:active,
+.maplibregl-terradraw-measure-add-polygon-button:active,
+.maplibregl-terradraw-measure-add-freehand-button:active,
+.maplibregl-terradraw-measure-delete-button:active {
+    box-shadow: 0px 0px 0px 0px;
+    top: 5px;
+    left: 5px;
+}
+
+@media (min-width: 768px) {
+    .maplibregl-terradraw-measure-add-linestring-button,
+    .maplibregl-terradraw-measure-add-polygon-button,
+    .maplibregl-terradraw-measure-add-freehand-button,
+    .maplibregl-terradraw-measure-delete-button {
+        padding: 0.25em 0.75em;
+    }
+}
+
+/* CSS */
+.button-54 {
+    font-family: "Oswald", sans-serif;
+    font-size: 16px;
+    letter-spacing: 2px;
+    text-decoration: none;
+    text-transform: uppercase;
+    color: #000;
+    cursor: pointer;
+    border: 3px solid;
+    padding: 0.25em 0.5em;
+    box-shadow: 1px 1px 0px 0px, 2px 2px 0px 0px, 3px 3px 0px 0px, 4px 4px 0px 0px, 5px 5px 0px 0px;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+.button-54:active {
+    box-shadow: 0px 0px 0px 0px;
+    top: 5px;
+    left: 5px;
+}
+
+@media (min-width: 768px) {
+    .button-54 {
+        padding: 0.25em 0.75em;
+    }
 }
