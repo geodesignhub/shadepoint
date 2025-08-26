@@ -24,11 +24,11 @@
   <div class="row">
     <div class="col-md-12">
       <h3>
-        <i class="bi bi-tree"></i>&nbsp;{{ gettext('Draw Trees') }}
+        <i class="bi bi-tree"></i>&nbsp;{{ gettext('Add Trees') }}
         <small class="text-muted"></small>
       </h3>
       <p class="text-muted">
-        {{ gettext('Draw new trees by dropping points on a map and submit to be
+        {{ gettext('Add new trees by using the measurements on a map and submit to be
         added to a Geodesignhub project') }}
       </p>
     </div>
@@ -105,11 +105,7 @@
   <br />
   <div id="map">
     <div class="overlay">
-      <button id="draw_measure_linestring">Linestring</button>
-      <button id="draw_measure_polygon">Polygon</button>
-      <button id="draw_measure_freehand">Freehand</button>
-      <button id="draw_measure_delete">Delete</button>
-      <button id="replay">Add Trees from measurements</button>
+      <button class="button-54" id="add_trees_from_measurements"><i class='bi bi-plus'></i> Add Trees from measurements</button>
     </div>
   </div>
   <br />
@@ -125,8 +121,8 @@
   <div class="row">
     <div class="col-md-10">
       <h5>
-        {{ gettext('Drawing Toolbox') }}&nbsp;<small class="text-muted"
-          >{{ gettext('Use the buttons below to draw trees') }}</small
+        {{ gettext('Drawn Trees Manager') }}&nbsp;<small class="text-muted"
+          >{{ gettext('Use the buttons below to manage added trees in green') }}</small
         >
       </h5>
     </div>
@@ -422,9 +418,9 @@
           lengthMeasurementButtonTitle: 'Measure length',
           clearMeasurementsButtonTitle: 'Clear measurements',
       },
-      open:false,
+      open:true,
       modeOptions: {
-  	point: new terraDraw.TerraDrawPointMode({
+  	  point: new terraDraw.TerraDrawPointMode({
   		styles: {
   			pointColor: '#FF0000',
   			pointWidth: 3,
@@ -491,10 +487,7 @@
   };
   const measure_control = new MaplibreTerradrawControl.MaplibreMeasureControl(measure_control_options);
 
-  measure_control.on("mode-changed", (ids, type) => {
-      console.log(type);
-      console.log(ids);
-     });
+  
   measure_control.fontGlyphs = ['Oswald'];
   map.addControl(measure_control, 'top-left');
   map.addControl(
@@ -579,6 +572,81 @@
           }),
       ],
   });
+
+  let MeasureControls = function() {
+    this.add_trees_from_measures   = function(){
+      let all_drawn_feature_collection = measure_control.getFeatures();
+      // parse the drawn feature collection
+      let all_drawn_features = all_drawn_feature_collection['features'];
+      all_drawn_features.forEach(function(feature) {
+          // Do something with each feature
+          // if the feature is a line
+          if (feature.geometry.type === "LineString") {
+              // Handle line feature
+              // extract the vertices from the linestring using turf
+              let line_vertices = turf.getCoords(feature);
+              line_vertices.forEach(function(vertex) {
+                // Do something with each vertex
+                // Create a Point Feature
+                let point_feature = turf.point(vertex);
+                  // add a id as a uuid4
+                  point_feature.id = uuidv4();
+                  // round the coordinates to 6 decimals
+                  point_feature.geometry.coordinates = point_feature.geometry.coordinates.map(coord => parseFloat(coord.toFixed(6)));
+                  point_feature.properties.mode = 'point';
+                  draw.addFeatures([point_feature]);
+              });
+          } // else the feature is polygon
+          else {
+              // Handle polygon feature
+              // get the extent bbox of the feature
+              let extent = turf.bbox(feature);
+
+              // generate a grid from the features using turf.pointGrid(extent, cellSide, options);
+              let cellSide = 20; // size of the grid cells
+              let options = {
+                  units: 'meters'
+              };
+              let grid = turf.pointGrid(extent, cellSide, options);
+              // filter the points in the grid that are inside the feature
+              let filtered_points = turf.pointsWithinPolygon(grid, feature);
+
+              // iterate over the filtered points
+              filtered_points.features.forEach(function(point) {
+                  // Do something with each point
+                  // round the coordinates to 6 decimals
+                  point.id = uuidv4();
+                  point.properties.mode = 'point';
+                  point.geometry.coordinates = point.geometry.coordinates.map(coord => parseFloat(coord.toFixed(6)));
+                  console.log(point);
+                  draw.addFeatures([point]);
+              });
+
+          }
+      });
+      // create a notification
+      new Notify ({
+          status: 'success',
+          title: 'Trees Added',
+          text: 'The trees have been successfully added to the map.',
+          effect: 'fade',
+          speed: 400,
+          customClass: '',
+          customIcon: '',
+          showIcon: true,
+          showCloseButton: true,
+          autoclose: true,
+          autotimeout: 4000,
+          notificationsGap: null,
+          notificationsPadding: null,
+          type: 'outline',
+          position: 'top-right',
+          customWrapper: '',
+      });
+    }
+
+  };
+
 
   draw.start();
    let TreeEditingFactory = function () {
@@ -884,6 +952,7 @@
       }
   }
   let tree_editing_control = new TreeEditingFactory();
+  let measure_control_helper = new MeasureControls();
   draw.on("change", (ids, type) => {
       // Possible type values:
       // 'create'
@@ -1089,17 +1158,20 @@
       geo_json_element.value = JSON.stringify(store_geojson);
 
   });
-  let show = true;
-  const toggleButton = document.querySelector('#replay');
-          toggleButton.addEventListener('click', () => {
-              if (show) {
-              console.log(show);
-                  toggleButton.innerText = 'Show';
-                  show = false;
-              } else {
-                  toggleButton.innerText = 'Hide';
-                  show = true;
-              }
-          });
+  // add event handlers for all the button-54 buttons
+  document.querySelectorAll('.button-54').forEach(button => {
+      button.addEventListener('click', () => {
+          console.log('Button 54 clicked');
+          // check what button was clicked
+          const buttonId = button.getAttribute('id');
+          console.log('Button ID:', buttonId);
+         if (buttonId === 'add_trees_from_measurements') {
+              measure_control_helper.add_trees_from_measures();
+              // do nothing, the onclick is set dynamically
+          } else {
+              console.log('Unknown button ID:', buttonId);
+          }
+      });
+  });
 </script>
 {% endif %} {% endblock %}
