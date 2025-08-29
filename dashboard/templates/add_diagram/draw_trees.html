@@ -28,8 +28,8 @@
         <small class="text-muted"></small>
       </h3>
       <p class="text-muted">
-        {{ gettext('Add new trees by using the measurements on a map and submit to be
-        added to a Geodesignhub project') }}
+        {{ gettext('Add new trees by using the measurements on a map and submit
+        to be added to a Geodesignhub project') }}
       </p>
     </div>
   </div>
@@ -105,7 +105,9 @@
   <br />
   <div id="map">
     <div class="overlay">
-      <button class="button-54" id="add_trees_from_measurements"><i class='bi bi-plus'></i> Add Trees from measurements</button>
+      <button class="button-54" id="add_trees_from_measurements">
+        <i class="bi bi-plus"></i> Add Trees from measurements
+      </button>
     </div>
   </div>
   <br />
@@ -122,7 +124,8 @@
     <div class="col-md-10">
       <h5>
         {{ gettext('Drawn Trees Manager') }}&nbsp;<small class="text-muted"
-          >{{ gettext('Use the buttons below to manage added trees in green') }}</small
+          >{{ gettext('Use the buttons below to manage added trees in green')
+          }}</small
         >
       </h5>
     </div>
@@ -487,7 +490,7 @@
   };
   const measure_control = new MaplibreTerradrawControl.MaplibreMeasureControl(measure_control_options);
 
-  
+
   measure_control.fontGlyphs = ['Oswald'];
   map.addControl(measure_control, 'top-left');
   map.addControl(
@@ -576,7 +579,6 @@
   let MeasureControls = function() {
     this.add_trees_from_measures   = function(){
       let all_drawn_feature_collection = measure_control.getFeatures();
-      // parse the drawn feature collection
       let all_drawn_features = all_drawn_feature_collection['features'];
       all_drawn_features.forEach(function(feature) {
           // Do something with each feature
@@ -603,7 +605,7 @@
               let extent = turf.bbox(feature);
 
               // generate a grid from the features using turf.pointGrid(extent, cellSide, options);
-              let cellSide = 20; // size of the grid cells
+              let cellSide = 30; // size of the grid cells
               let options = {
                   units: 'meters'
               };
@@ -618,17 +620,19 @@
                   point.id = uuidv4();
                   point.properties.mode = 'point';
                   point.geometry.coordinates = point.geometry.coordinates.map(coord => parseFloat(coord.toFixed(6)));
-                  console.log(point);
                   draw.addFeatures([point]);
               });
 
           }
       });
       // create a notification
+
+      let delete_button = document.getElementsByClassName('maplibregl-terradraw-measure-delete-button')[0];
+      delete_button.click();
       new Notify ({
           status: 'success',
           title: 'Trees Added',
-          text: 'The trees have been successfully added to the map.',
+          text: 'Measurements removed, the trees have been successfully added to the map.',
           effect: 'fade',
           speed: 400,
           customClass: '',
