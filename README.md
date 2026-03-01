@@ -7,6 +7,42 @@ This plugin can be added to your project in the Administration interface or at t
 ### Details
 This plugin provides analytical capability for any diagram and design from Geodesignhub as a one-click integration, we use the API to download all the data. 
 
+## Setup
+
+### Prerequisites
+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) — install via `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- PostgreSQL with PostGIS extension
+- Redis
+
+### Install dependencies
+
+```bash
+uv sync
+```
+
+### Environment variables
+
+Copy the sample env file and fill in your values:
+
+```bash
+cp .env.sample.txt .env
+```
+
+Key variables:
+
+| Variable | Description |
+|---|---|
+| `DB_ENGINE` | Database engine (e.g. `postgresql`) |
+| `DB_USERNAME` | Database user |
+| `DB_PASSWORD` | Database password |
+| `DB_NAME` | Database name |
+| `DB_HOSTNAME` | Database host |
+| `DB_PORT` | Database port (default `5432`) |
+| `REDIS_URL` | Redis connection URL |
+| `maptiler_key` | MapTiler API key |
+
 ## Initial Database setup
 
 Create an initial database.
@@ -29,6 +65,30 @@ CREATE USER localclimateresponse;
 ALTER ROLE localclimateresponse WITH PASSWORD 'localclimateresponse';
 GRANT all privileges ON DATABASE localclimateresponse TO localclimateresponse;
 ALTER DATABASE localclimateresponse OWNER TO localclimateresponse;
+```
+
+### Run migrations
+
+```bash
+uv run flask --app app db upgrade
+```
+
+### Seed the database
+
+```bash
+uv run flask --app app seed-db
+```
+
+### Start the app
+
+```bash
+uv run flask --app app run
+```
+
+### Start the background worker
+
+```bash
+uv run python worker.py
 ```
 
 
