@@ -69,7 +69,7 @@ GRANT all privileges ON DATABASE localclimateresponse TO localclimateresponse;
 ALTER DATABASE localclimateresponse OWNER TO localclimateresponse;
 ```
 
-### Run migrations
+### Run migrations and update database
 
 ```bash
 uv run flask --app app db upgrade
