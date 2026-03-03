@@ -250,7 +250,9 @@
       style:
           'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
       bounds: map_bounds,
-      zoom: 10 // starting zoom
+      zoom: 10, // starting zoom
+      pitch: 45,
+      canvasContextAttributes: {antialias: true}
   });
 
   if (cog_layers.length > 0) {
@@ -295,8 +297,8 @@
   //     return true;
   // }
 
-  const zeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height === 0);
-  const nonZeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height !== 0);
+  const zeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height === 0 || feature.properties.is_tree);
+  const nonZeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height !== 0 && !feature.properties.is_tree);
 
 
   const zeroHeightGeojson = {
@@ -574,39 +576,46 @@
   });
 
   async function process_trees() {
-          /*
-          * Helper function used to get threejs-scene-coordinates from mercator coordinates.
-          * This is just a quick and dirty solution - it won't work if points are far away from each other
-          * because a meter near the north-pole covers more mercator-units
-          * than a meter near the equator.
-          */
+          const tree_features = design_geojson.features.filter(f => f.properties.is_tree);
+          if (tree_features.length === 0) return;
 
-          const results = await Promise.all([loadModel()]);
-          const model = results[0];
+          async function loadModel() {
+              const loader = new THREE.GLTFLoader();
+              const gltf = await loader.loadAsync("{{ url_for('static', filename='assets/low_poly_tree.glb') }}");
+              const modelScene = gltf.scene;
+              // Center model: X/Z at origin, base sitting at Y=0
+              const box = new THREE.Box3().setFromObject(modelScene);
+              const center = box.getCenter(new THREE.Vector3());
+              const size = box.getSize(new THREE.Vector3());
+              modelScene.position.set(-center.x, -box.min.y, -center.z);
+              // Wrap in a group so later position.set() on the clone doesn't lose the centering
+              const wrapper = new THREE.Group();
+              wrapper.add(modelScene);
+              wrapper.userData.naturalHeight = size.y;
+              return wrapper;
+          }
+
+          function polygonCentroid(coordinates) {
+              const ring = coordinates[0];
+              let x = 0, y = 0;
+              for (const coord of ring) { x += coord[0]; y += coord[1]; }
+              return [x / ring.length, y / ring.length];
+          }
 
           function calculateDistanceMercatorToMeters(from, to) {
               const mercatorPerMeter = from.meterInMercatorCoordinateUnits();
-              // mercator x: 0=west, 1=east
               const dEast = to.x - from.x;
               const dEastMeter = dEast / mercatorPerMeter;
-              // mercator y: 0=north, 1=south
               const dNorth = from.y - to.y;
               const dNorthMeter = dNorth / mercatorPerMeter;
               return {dEastMeter, dNorthMeter};
           }
 
-
-          async function loadModel() {
-              const loader = new THREE.GLTFLoader();
-              const gltf = await loader.loadAsync(
-              "{{ url_for('static', filename='assets/low_poly_tree.glb') }}");
-              const model = gltf.scene;
-              return model;
-          }
+          const model = await loadModel();
           const project_center = design_detail['project_data']['center']['center'].split(',');
           const sceneOrigin = new maplibregl.LngLat(parseFloat(project_center[0]), parseFloat(project_center[1]));
-
           const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(sceneOrigin);
+
           const three_d_tree_layer = {
               id: '3d-model',
               type: 'custom',
@@ -616,17 +625,22 @@
                   this.scene = new THREE.Scene();
                   this.scene.rotateX(Math.PI / 2);
                   this.scene.scale.multiply(new THREE.Vector3(1, 1, -1));
-                  const light = new THREE.DirectionalLight(0xffffff);
-                  light.position.set(50, 70, -30).normalize();
-                  this.scene.add(light);
+                  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                  this.scene.add(ambientLight);
+                  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                  dirLight.position.set(50, 70, -30).normalize();
+                  this.scene.add(dirLight);
 
-                  for (var x = 0; x < trees_geojson.features.length; x++){
+                  for (var x = 0; x < tree_features.length; x++) {
                       const curmodel = model.clone();
-                      const tree_coordinates = trees_geojson.features[x].geometry.coordinates;
-                      const tree_location = new maplibregl.LngLat(parseFloat(tree_coordinates[0]),parseFloat(tree_coordinates[1]));
+                      const targetHeight = (tree_features[x].properties.height > 0) ? tree_features[x].properties.height : 10;
+                      const scaleFactor = targetHeight / model.userData.naturalHeight;
+                      curmodel.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                      const centroid = polygonCentroid(tree_features[x].geometry.coordinates);
+                      const tree_location = new maplibregl.LngLat(centroid[0], centroid[1]);
                       const model_mercator = maplibregl.MercatorCoordinate.fromLngLat(tree_location);
                       const {dEastMeter: model1east, dNorthMeter: model1north} = calculateDistanceMercatorToMeters(sceneOriginMercator, model_mercator);
-                      curmodel.position.set(model1east-8.75, 0, model1north+0.75);
+                      curmodel.position.set(model1east, 0, model1north);
                       this.scene.add(curmodel);
                   }
                   this.renderer = new THREE.WebGLRenderer({
@@ -637,23 +651,19 @@
                   this.renderer.autoClear = false;
               },
 
-              render(gl, mercatorMatrix) {
-
+              render(gl, args) {
                   const offsetFromCenterElevation = map.queryTerrainElevation(sceneOrigin) || 0;
                   const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(sceneOrigin, offsetFromCenterElevation);
-
                   const sceneTransform = {
                       translateX: sceneOriginMercator.x,
                       translateY: sceneOriginMercator.y,
                       translateZ: sceneOriginMercator.z,
                       scale: sceneOriginMercator.meterInMercatorCoordinateUnits()
                   };
-
-                  const m = new THREE.Matrix4().fromArray(mercatorMatrix);
+                  const m = new THREE.Matrix4().fromArray(args.defaultProjectionData.mainMatrix);
                   const l = new THREE.Matrix4()
                       .makeTranslation(sceneTransform.translateX, sceneTransform.translateY, sceneTransform.translateZ)
                       .scale(new THREE.Vector3(sceneTransform.scale, -sceneTransform.scale, sceneTransform.scale));
-
                   this.camera.projectionMatrix = m.multiply(l);
                   this.renderer.resetState();
                   this.renderer.render(this.scene, this.camera);
