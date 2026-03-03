@@ -69,7 +69,16 @@
         computed for August 6 at 10AM when radiation is not strong') }}
       </p>
       <br />
-      <div id="map"></div>
+      <div id="layer-availability-panel" class="alert alert-secondary mt-2 d-none">
+    <strong>3/30/300 Data Layers</strong>&nbsp;
+    <button type="button"
+      id="layer-info-btn"
+      class="btn btn-sm btn-link p-0 align-baseline"
+      aria-label="Layer name requirements"
+    ><i class="bi bi-info-circle"></i></button>
+    <ul class="mb-0 mt-1 small" id="layer-availability-list"></ul>
+  </div>
+  <div id="map"></div>
     </div>
   </div>
   <br />
@@ -141,6 +150,15 @@
     </div>
   </div>
   <br />
+  <div class="row mt-2">
+    <div class="col-md-12">
+      <h6>
+        300 m Green Space Reach&nbsp;<small class="text-muted"
+          >Areas within 300 m of a planned tree are shown in green on the map</small
+        >
+      </h6>
+    </div>
+  </div>
   <div class="row">
     <div class="col-md-12">
       <h6>
@@ -207,6 +225,10 @@
   type="text/javascript"
   src="{{ url_for('static', filename='js/notifications/simple-notify.min.js') }}"
 ></script>
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/turf.min.js') }}"
+></script>
 
 {% if op['cog_layers'] %}
 <script
@@ -230,6 +252,29 @@
   let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
   return new bootstrap.Tooltip(tooltipTriggerEl)
   })
+  // 3/30/300 layer info popover
+  const layerInfoPopoverContent = `
+    <table class="table table-sm table-bordered mb-1" style="font-size:0.8rem">
+      <thead><tr><th>FGB Layer Name</th><th>Enables</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><code>Existing Canopy</code></td><td>Rule 30 — adds existing canopy area to coverage</td><td class="text-muted">optional</td></tr>
+        <tr><td><code>Green Spaces</code></td><td>Rule 300 — proximity to nearest green space</td><td class="text-danger fw-bold">required</td></tr>
+        <tr><td><code>Buildings</code></td><td>Rule 3 — trees visible from building windows</td><td class="text-danger fw-bold">required</td></tr>
+      </tbody>
+    </table>
+    <p class="mb-0 text-muted" style="font-size:0.75rem">Names are matched case-insensitively. Add these as FGB analytical layers in the project configuration.</p>`;
+  document.addEventListener('DOMContentLoaded', () => {
+      const layerInfoBtn = document.getElementById('layer-info-btn');
+      if (layerInfoBtn) {
+          new bootstrap.Popover(layerInfoBtn, {
+              html: true,
+              title: 'Required FGB Layer Names',
+              content: layerInfoPopoverContent,
+              trigger: 'click',
+              placement: 'bottom',
+          });
+      }
+  });
   const design_detail = {{ op|safe}};
 
   const design_geojson = {{ op["geometry_data"]["geojson"]|safe }};
@@ -244,6 +289,50 @@
   let cog_layers = design_detail['cog_layers'];
   let fgb_layers = design_detail['fgb_layers'];
   let pmtiles_layers = design_detail['pmtiles_layers'];
+
+  // ── 3/30/300 layer registry ──────────────────────────────────────────────
+  const LAYER_REGISTRY = {
+      existingCanopy: null,
+      greenSpaces:    null,
+      buildings:      null,
+  };
+
+  function renderLayerAvailabilityPanel() {
+      const list = document.getElementById('layer-availability-list');
+      const entries = [
+          { label: 'Existing Canopy', key: 'existingCanopy', required: false,
+            rule: 'Rule 30 — existing canopy included in coverage calculation' },
+          { label: 'Green Spaces',    key: 'greenSpaces',    required: true,
+            rule: 'Rule 300 — proximity to nearest green space' },
+          { label: 'Buildings',       key: 'buildings',       required: true,
+            rule: 'Rule 3 — trees visible from building windows' },
+      ];
+      list.innerHTML = '';
+      entries.forEach(e => {
+          const present = LAYER_REGISTRY[e.key] !== null;
+          const icon  = present ? '✅' : (e.required ? '❌' : '⚠️');
+          const state = present
+              ? 'available'
+              : (e.required ? 'missing — rule unavailable' : 'not loaded (optional)');
+          const li = document.createElement('li');
+          li.innerHTML = `${icon} <strong>${e.label}</strong>: ${state} <em class="text-muted">(${e.rule})</em>`;
+          list.appendChild(li);
+      });
+      document.getElementById('layer-availability-panel').classList.remove('d-none');
+  }
+
+  function render300mBuffers() {
+      if (!trees_geojson || trees_geojson.features.length === 0) return;
+      const bufferFeatures = trees_geojson.features.map(tree => {
+          const centroid = turf.centroid(tree);
+          return turf.circle(centroid.geometry.coordinates, 300, { units: 'meters' });
+      });
+      map.getSource('tree_300m_buffers').setData({
+          type: 'FeatureCollection',
+          features: bufferFeatures
+      });
+  }
+  // ── end 3/30/300 ─────────────────────────────────────────────────────────
 
   var map = new maplibregl.Map({
       container: 'map', // container id
@@ -570,8 +659,39 @@
 
                   });
               }
+
+              // 3/30/300 — register named layers
+              const layerNameLower = (fgb_layer.name || '').toLowerCase();
+              if (layerNameLower === 'existing canopy') {
+                  LAYER_REGISTRY.existingCanopy = fc.features;
+              } else if (layerNameLower === 'green spaces') {
+                  LAYER_REGISTRY.greenSpaces = fc.features;
+              } else if (layerNameLower === 'buildings') {
+                  LAYER_REGISTRY.buildings = fc.features;
+              }
           }
       }
+
+      // 3/30/300 — 300 m buffer source and layers (rendered below 3D trees)
+      map.addSource('tree_300m_buffers', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] }
+      });
+      map.addLayer({
+          id: 'tree_300m_buffers_fill',
+          type: 'fill',
+          source: 'tree_300m_buffers',
+          paint: { 'fill-color': '#228b22', 'fill-opacity': 0.12 }
+      });
+      map.addLayer({
+          id: 'tree_300m_buffers_outline',
+          type: 'line',
+          source: 'tree_300m_buffers',
+          paint: { 'line-color': '#228b22', 'line-width': 1.5, 'line-opacity': 0.5 }
+      });
+
+      renderLayerAvailabilityPanel();
+      render300mBuffers();
       process_trees();
   });
 

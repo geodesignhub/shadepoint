@@ -110,6 +110,39 @@
       </button>
     </div>
   </div>
+
+  <div id="layer-availability-panel" class="alert alert-secondary mt-2 d-none">
+    <strong>3/30/300 Data Layers</strong>&nbsp;
+    <button type="button"
+      id="layer-info-btn"
+      class="btn btn-sm btn-link p-0 align-baseline"
+      aria-label="Layer name requirements"
+    ><i class="bi bi-info-circle"></i></button>
+    <ul class="mb-0 mt-1 small" id="layer-availability-list"></ul>
+  </div>
+
+  <div id="compliance-dashboard" class="card mt-2 d-none">
+    <div class="card-header"><strong>3/30/300 Live Compliance</strong></div>
+    <div class="card-body">
+      <div class="row text-center">
+        <div class="col-md-4">
+          <small class="text-muted d-block">Rule 3 &mdash; Trees visible</small>
+          <span id="rule3-stat" class="badge bg-secondary fs-6">&mdash;</span>
+          <small class="d-block text-muted">avg trees within 50 m</small>
+        </div>
+        <div class="col-md-4">
+          <small class="text-muted d-block">Rule 30 &mdash; Canopy cover</small>
+          <span id="rule30-stat" class="badge bg-secondary fs-6">&mdash;</span>
+          <small class="d-block text-muted">target &ge; 30%</small>
+        </div>
+        <div class="col-md-4">
+          <small class="text-muted d-block">Rule 300 &mdash; Green space</small>
+          <span id="rule300-stat" class="badge bg-secondary fs-6">&mdash;</span>
+          <small class="d-block text-muted">target &le; 300 m</small>
+        </div>
+      </div>
+    </div>
+  </div>
   <br />
 
   {% else %}
@@ -375,6 +408,29 @@
   let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
       return new bootstrap.Tooltip(tooltipTriggerEl)
   })
+  // 3/30/300 layer info popover — initialised here, button exists in HTML
+  const layerInfoPopoverContent = `
+    <table class="table table-sm table-bordered mb-1" style="font-size:0.8rem">
+      <thead><tr><th>FGB Layer Name</th><th>Enables</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><code>Existing Canopy</code></td><td>Rule 30 — adds existing canopy area to coverage</td><td class="text-muted">optional</td></tr>
+        <tr><td><code>Green Spaces</code></td><td>Rule 300 — proximity to nearest green space</td><td class="text-danger fw-bold">required</td></tr>
+        <tr><td><code>Buildings</code></td><td>Rule 3 — trees visible from building windows</td><td class="text-danger fw-bold">required</td></tr>
+      </tbody>
+    </table>
+    <p class="mb-0 text-muted" style="font-size:0.75rem">Names are matched case-insensitively. Add these as FGB analytical layers in the project configuration.</p>`;
+  document.addEventListener('DOMContentLoaded', () => {
+      const layerInfoBtn = document.getElementById('layer-info-btn');
+      if (layerInfoBtn) {
+          new bootstrap.Popover(layerInfoBtn, {
+              html: true,
+              title: 'Required FGB Layer Names',
+              content: layerInfoPopoverContent,
+              trigger: 'click',
+              placement: 'bottom',
+          });
+      }
+  });
   const csrf_token = "{{ csrf_token() }}";
   const project_detail = {{ op|safe }};
   var bounds = project_detail['project_data']['bounds']['bounds'];
@@ -653,6 +709,117 @@
 
 
   draw.start();
+
+  // ── 3/30/300 layer registry ──────────────────────────────────────────────
+  // Populated after FGB layers finish loading; null means the layer is absent.
+  const LAYER_REGISTRY = {
+      existingCanopy: null,   // "Existing Canopy" FGB layer (optional, Rule 30)
+      greenSpaces:    null,   // "Green Spaces"    FGB layer (required, Rule 300)
+      buildings:      null,   // "Buildings"       FGB layer (required, Rule 3)
+  };
+  const DEFAULT_CROWN_RADIUS_M = 2.5; // assume 5 m canopy diameter per street tree
+
+  function renderLayerAvailabilityPanel() {
+      const list = document.getElementById('layer-availability-list');
+      const entries = [
+          { label: 'Existing Canopy', key: 'existingCanopy', required: false,
+            rule: 'Rule 30 — existing canopy added to coverage calculation' },
+          { label: 'Green Spaces',    key: 'greenSpaces',    required: true,
+            rule: 'Rule 300 — proximity to nearest green space' },
+          { label: 'Buildings',       key: 'buildings',       required: true,
+            rule: 'Rule 3 — trees visible from building windows' },
+      ];
+      list.innerHTML = '';
+      entries.forEach(e => {
+          const present = LAYER_REGISTRY[e.key] !== null;
+          const icon  = present ? '✅' : (e.required ? '❌' : '⚠️');
+          const state = present
+              ? 'available'
+              : (e.required ? 'missing — rule unavailable' : 'not loaded (optional)');
+          const li = document.createElement('li');
+          li.innerHTML = `${icon} <strong>${e.label}</strong>: ${state} <em class="text-muted">(${e.rule})</em>`;
+          list.appendChild(li);
+      });
+      document.getElementById('layer-availability-panel').classList.remove('d-none');
+  }
+
+  function updateComplianceStats() {
+      const snapshot = draw.getSnapshot();
+      const treePoints = snapshot.filter(f => f.geometry.type === 'Point');
+      if (treePoints.length === 0) return;
+
+      // Rule 30 — Canopy cover ────────────────────────────────────────────
+      const latLngs = bounds.toString().split(',');
+      const studyAreaPolygon = turf.bboxPolygon([
+          parseFloat(latLngs[0]), parseFloat(latLngs[1]),
+          parseFloat(latLngs[2]), parseFloat(latLngs[3])
+      ]);
+      const studyAreaSize = turf.area(studyAreaPolygon);
+      let totalCanopyArea = 0;
+      treePoints.forEach(tree => {
+          const r = tree.properties.crown_radius || DEFAULT_CROWN_RADIUS_M;
+          totalCanopyArea += turf.area(
+              turf.circle(tree.geometry.coordinates, r, { units: 'meters' })
+          );
+      });
+      if (LAYER_REGISTRY.existingCanopy) {
+          LAYER_REGISTRY.existingCanopy.forEach(f => { totalCanopyArea += turf.area(f); });
+      }
+      const canopyPct = (totalCanopyArea / studyAreaSize) * 100;
+      const el30 = document.getElementById('rule30-stat');
+      el30.textContent = `${canopyPct.toFixed(1)}% / 30%`;
+      el30.className = `badge fs-6 ${canopyPct >= 30 ? 'bg-success' : 'bg-danger'}`;
+
+      // Rule 3 — Trees visible ────────────────────────────────────────────
+      const el3 = document.getElementById('rule3-stat');
+      const treeFC = turf.featureCollection(treePoints);
+      if (!LAYER_REGISTRY.buildings) {
+          // Fallback: count tree neighbours within 50 m of each tree
+          let totalNeighbours = 0;
+          treePoints.forEach(tree => {
+              const buf = turf.circle(tree.geometry.coordinates, 50, { units: 'meters' });
+              const within = turf.pointsWithinPolygon(treeFC, buf);
+              totalNeighbours += Math.max(0, within.features.length - 1);
+          });
+          const avg = (totalNeighbours / treePoints.length).toFixed(1);
+          el3.textContent = `avg ${avg} trees / 50 m`;
+          el3.className = `badge fs-6 ${parseFloat(avg) >= 3 ? 'bg-success' : 'bg-danger'}`;
+      } else {
+          // With buildings: count trees within 50 m of each building centroid
+          const buildingCentroids = LAYER_REGISTRY.buildings.map(b => turf.centroid(b));
+          let totalTreesPerBuilding = 0;
+          buildingCentroids.forEach(bc => {
+              const buf = turf.circle(bc.geometry.coordinates, 50, { units: 'meters' });
+              const within = turf.pointsWithinPolygon(treeFC, buf);
+              totalTreesPerBuilding += within.features.length;
+          });
+          const avg = buildingCentroids.length > 0
+              ? (totalTreesPerBuilding / buildingCentroids.length).toFixed(1)
+              : 0;
+          el3.textContent = `avg ${avg} trees / building`;
+          el3.className = `badge fs-6 ${parseFloat(avg) >= 3 ? 'bg-success' : 'bg-danger'}`;
+      }
+
+      // Rule 300 — Green space proximity ─────────────────────────────────
+      const el300 = document.getElementById('rule300-stat');
+      if (!LAYER_REGISTRY.greenSpaces) {
+          el300.textContent = 'Layer unavailable';
+          el300.className = 'badge fs-6 bg-secondary';
+      } else {
+          const greenCentroids = LAYER_REGISTRY.greenSpaces.map(f => turf.centroid(f));
+          const greenFC = turf.featureCollection(greenCentroids);
+          let maxDist = 0;
+          treePoints.forEach(tree => {
+              const nearest = turf.nearestPoint(tree, greenFC);
+              const dist = turf.distance(tree, nearest, { units: 'meters' });
+              if (dist > maxDist) maxDist = dist;
+          });
+          el300.textContent = `${Math.round(maxDist)} m / 300 m`;
+          el300.className = `badge fs-6 ${maxDist <= 300 ? 'bg-success' : 'bg-danger'}`;
+      }
+  }
+  // ── end 3/30/300 ─────────────────────────────────────────────────────────
+
    let TreeEditingFactory = function () {
       let session_id = "{{op['session_id']}}";
       let state_id = uuidv4();
@@ -756,14 +923,17 @@
               // show the generate shadows button
               let show_shadows_control = document.getElementById('generate_shadows_control');
               show_shadows_control.classList.remove('d-none');
+              // show 3/30/300 compliance dashboard
+              document.getElementById('compliance-dashboard').classList.remove('d-none');
           }
           else {
               let add_as_diagram_button = document.getElementById('add_as_diagram_button');
               add_as_diagram_button.classList.add('d-none');
-              ;
               // show the generate shadows button
               let show_shadows_control = document.getElementById('generate_shadows_control');
               show_shadows_control.classList.add('d-none');
+              // hide 3/30/300 compliance dashboard
+              document.getElementById('compliance-dashboard').classList.add('d-none');
           }
 
 
@@ -967,6 +1137,7 @@
       if (['create', 'delete', 'move'].includes(type)) {
           tree_editing_control.update_tree_count();
           tree_editing_control.update_state_id();
+          updateComplianceStats();
       }
   });
   draw.on('select', (id) => {
@@ -1152,8 +1323,19 @@
 
                   });
               }
+
+              // 3/30/300 — register named layers
+              const layerNameLower = (fgb_layer.name || '').toLowerCase();
+              if (layerNameLower === 'existing canopy') {
+                  LAYER_REGISTRY.existingCanopy = fc.features;
+              } else if (layerNameLower === 'green spaces') {
+                  LAYER_REGISTRY.greenSpaces = fc.features;
+              } else if (layerNameLower === 'buildings') {
+                  LAYER_REGISTRY.buildings = fc.features;
+              }
           }
       }
+      renderLayerAvailabilityPanel();
   });
   const addDiagramModalEl = document.getElementById('addDiagramModal');
   addDiagramModalEl.addEventListener('shown.bs.modal', event => {
