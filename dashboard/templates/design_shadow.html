@@ -79,6 +79,16 @@
     <ul class="mb-0 mt-1 small" id="layer-availability-list"></ul>
   </div>
   <div id="map"></div>
+  <div class="mt-2">
+    <button
+      id="toggle-300m-layer-btn"
+      type="button"
+      class="btn btn-outline-success btn-sm"
+      onclick="toggle300mLayer()"
+    >
+      <i class="bi bi-circle-fill" style="color:#228b22;font-size:0.6rem;vertical-align:middle"></i>&nbsp;Hide 300 m reach
+    </button>
+  </div>
     </div>
   </div>
   <br />
@@ -331,6 +341,22 @@
           type: 'FeatureCollection',
           features: bufferFeatures
       });
+  }
+
+  let _300mLayerVisible = true;
+  function toggle300mLayer() {
+      _300mLayerVisible = !_300mLayerVisible;
+      const visibility = _300mLayerVisible ? 'visible' : 'none';
+      ['tree_300m_buffers_fill', 'tree_300m_buffers_outline'].forEach(id => {
+          if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visibility);
+      });
+      const btn = document.getElementById('toggle-300m-layer-btn');
+      btn.textContent = '';
+      const dot = document.createElement('i');
+      dot.className = 'bi bi-circle-fill';
+      dot.style.cssText = 'color:#228b22;font-size:0.6rem;vertical-align:middle';
+      btn.appendChild(dot);
+      btn.appendChild(document.createTextNode('\u00a0' + (_300mLayerVisible ? 'Hide 300 m reach' : 'Show 300 m reach')));
   }
   // ── end 3/30/300 ─────────────────────────────────────────────────────────
 
