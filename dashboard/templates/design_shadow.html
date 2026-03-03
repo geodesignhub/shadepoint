@@ -69,7 +69,26 @@
         computed for August 6 at 10AM when radiation is not strong') }}
       </p>
       <br />
-      <div id="map"></div>
+      <div id="layer-availability-panel" class="alert alert-secondary mt-2 d-none">
+    <strong>3/30/300 Data Layers</strong>&nbsp;
+    <button type="button"
+      id="layer-info-btn"
+      class="btn btn-sm btn-link p-0 align-baseline"
+      aria-label="Layer name requirements"
+    ><i class="bi bi-info-circle"></i></button>
+    <ul class="mb-0 mt-1 small" id="layer-availability-list"></ul>
+  </div>
+  <div id="map"></div>
+  <div class="mt-2">
+    <button
+      id="toggle-300m-layer-btn"
+      type="button"
+      class="btn btn-outline-success btn-sm"
+      onclick="toggle300mLayer()"
+    >
+      <i class="bi bi-circle-fill" style="color:#228b22;font-size:0.6rem;vertical-align:middle"></i>&nbsp;Hide 300 m reach
+    </button>
+  </div>
     </div>
   </div>
   <br />
@@ -141,6 +160,15 @@
     </div>
   </div>
   <br />
+  <div class="row mt-2">
+    <div class="col-md-12">
+      <h6>
+        300 m Green Space Reach&nbsp;<small class="text-muted"
+          >Areas within 300 m of a planned tree are shown in green on the map</small
+        >
+      </h6>
+    </div>
+  </div>
   <div class="row">
     <div class="col-md-12">
       <h6>
@@ -207,6 +235,10 @@
   type="text/javascript"
   src="{{ url_for('static', filename='js/notifications/simple-notify.min.js') }}"
 ></script>
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/turf.min.js') }}"
+></script>
 
 {% if op['cog_layers'] %}
 <script
@@ -230,6 +262,29 @@
   let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
   return new bootstrap.Tooltip(tooltipTriggerEl)
   })
+  // 3/30/300 layer info popover
+  const layerInfoPopoverContent = `
+    <table class="table table-sm table-bordered mb-1" style="font-size:0.8rem">
+      <thead><tr><th>FGB Layer Name</th><th>Enables</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><code>Existing Canopy</code></td><td>Rule 30 — adds existing canopy area to coverage</td><td class="text-muted">optional</td></tr>
+        <tr><td><code>Green Spaces</code></td><td>Rule 300 — proximity to nearest green space</td><td class="text-danger fw-bold">required</td></tr>
+        <tr><td><code>Buildings</code></td><td>Rule 3 — trees visible from building windows</td><td class="text-danger fw-bold">required</td></tr>
+      </tbody>
+    </table>
+    <p class="mb-0 text-muted" style="font-size:0.75rem">Names are matched case-insensitively. Add these as FGB analytical layers in the project configuration.</p>`;
+  document.addEventListener('DOMContentLoaded', () => {
+      const layerInfoBtn = document.getElementById('layer-info-btn');
+      if (layerInfoBtn) {
+          new bootstrap.Popover(layerInfoBtn, {
+              html: true,
+              title: 'Required FGB Layer Names',
+              content: layerInfoPopoverContent,
+              trigger: 'click',
+              placement: 'bottom',
+          });
+      }
+  });
   const design_detail = {{ op|safe}};
 
   const design_geojson = {{ op["geometry_data"]["geojson"]|safe }};
@@ -245,12 +300,76 @@
   let fgb_layers = design_detail['fgb_layers'];
   let pmtiles_layers = design_detail['pmtiles_layers'];
 
+  // ── 3/30/300 layer registry ──────────────────────────────────────────────
+  const LAYER_REGISTRY = {
+      existingCanopy: null,
+      greenSpaces:    null,
+      buildings:      null,
+  };
+
+  function renderLayerAvailabilityPanel() {
+      const list = document.getElementById('layer-availability-list');
+      const entries = [
+          { label: 'Existing Canopy', key: 'existingCanopy', required: false,
+            rule: 'Rule 30 — existing canopy included in coverage calculation' },
+          { label: 'Green Spaces',    key: 'greenSpaces',    required: true,
+            rule: 'Rule 300 — proximity to nearest green space' },
+          { label: 'Buildings',       key: 'buildings',       required: true,
+            rule: 'Rule 3 — trees visible from building windows' },
+      ];
+      const anyMissing = entries.some(e => LAYER_REGISTRY[e.key] === null);
+      if (!anyMissing) return;
+      list.innerHTML = '';
+      entries.forEach(e => {
+          const present = LAYER_REGISTRY[e.key] !== null;
+          const icon  = present ? '✅' : (e.required ? '❌' : '⚠️');
+          const state = present
+              ? 'available'
+              : (e.required ? 'missing — rule unavailable' : 'not loaded (optional)');
+          const li = document.createElement('li');
+          li.innerHTML = `${icon} <strong>${e.label}</strong>: ${state} <em class="text-muted">(${e.rule})</em>`;
+          list.appendChild(li);
+      });
+      document.getElementById('layer-availability-panel').classList.remove('d-none');
+  }
+
+  function render300mBuffers() {
+      if (!trees_geojson || trees_geojson.features.length === 0) return;
+      const bufferFeatures = trees_geojson.features.map(tree => {
+          const centroid = turf.centroid(tree);
+          return turf.circle(centroid.geometry.coordinates, 300, { units: 'meters' });
+      });
+      map.getSource('tree_300m_buffers').setData({
+          type: 'FeatureCollection',
+          features: bufferFeatures
+      });
+  }
+
+  let _300mLayerVisible = true;
+  function toggle300mLayer() {
+      _300mLayerVisible = !_300mLayerVisible;
+      const visibility = _300mLayerVisible ? 'visible' : 'none';
+      ['tree_300m_buffers_fill', 'tree_300m_buffers_outline'].forEach(id => {
+          if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visibility);
+      });
+      const btn = document.getElementById('toggle-300m-layer-btn');
+      btn.textContent = '';
+      const dot = document.createElement('i');
+      dot.className = 'bi bi-circle-fill';
+      dot.style.cssText = 'color:#228b22;font-size:0.6rem;vertical-align:middle';
+      btn.appendChild(dot);
+      btn.appendChild(document.createTextNode('\u00a0' + (_300mLayerVisible ? 'Hide 300 m reach' : 'Show 300 m reach')));
+  }
+  // ── end 3/30/300 ─────────────────────────────────────────────────────────
+
   var map = new maplibregl.Map({
       container: 'map', // container id
       style:
           'https://api.maptiler.com/maps/streets/style.json?key={{op["maptiler_key"]}}',
       bounds: map_bounds,
-      zoom: 10 // starting zoom
+      zoom: 10, // starting zoom
+      pitch: 45,
+      canvasContextAttributes: {antialias: true}
   });
 
   if (cog_layers.length > 0) {
@@ -295,8 +414,8 @@
   //     return true;
   // }
 
-  const zeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height === 0);
-  const nonZeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height !== 0);
+  const zeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height === 0 || feature.properties.is_tree);
+  const nonZeroHeightFeatures = design_geojson.features.filter(feature => feature.properties.height !== 0 && !feature.properties.is_tree);
 
 
   const zeroHeightGeojson = {
@@ -568,45 +687,83 @@
 
                   });
               }
+
+              // 3/30/300 — register named layers
+              const layerNameLower = (fgb_layer.name || '').toLowerCase();
+              if (layerNameLower === 'existing canopy') {
+                  LAYER_REGISTRY.existingCanopy = fc.features;
+              } else if (layerNameLower === 'green spaces') {
+                  LAYER_REGISTRY.greenSpaces = fc.features;
+              } else if (layerNameLower === 'buildings') {
+                  LAYER_REGISTRY.buildings = fc.features;
+              }
           }
       }
+
+      // 3/30/300 — 300 m buffer source and layers (rendered below 3D trees)
+      map.addSource('tree_300m_buffers', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] }
+      });
+      map.addLayer({
+          id: 'tree_300m_buffers_fill',
+          type: 'fill',
+          source: 'tree_300m_buffers',
+          paint: { 'fill-color': '#228b22', 'fill-opacity': 0.12 }
+      });
+      map.addLayer({
+          id: 'tree_300m_buffers_outline',
+          type: 'line',
+          source: 'tree_300m_buffers',
+          paint: { 'line-color': '#228b22', 'line-width': 1.5, 'line-opacity': 0.5 }
+      });
+
+      renderLayerAvailabilityPanel();
+      render300mBuffers();
       process_trees();
   });
 
   async function process_trees() {
-          /*
-          * Helper function used to get threejs-scene-coordinates from mercator coordinates.
-          * This is just a quick and dirty solution - it won't work if points are far away from each other
-          * because a meter near the north-pole covers more mercator-units
-          * than a meter near the equator.
-          */
+          const tree_features = design_geojson.features.filter(f => f.properties.is_tree);
+          if (tree_features.length === 0) return;
 
-          const results = await Promise.all([loadModel()]);
-          const model = results[0];
+          async function loadModel() {
+              const loader = new THREE.GLTFLoader();
+              const gltf = await loader.loadAsync("{{ url_for('static', filename='assets/low_poly_tree.glb') }}");
+              const modelScene = gltf.scene;
+              // Center model: X/Z at origin, base sitting at Y=0
+              const box = new THREE.Box3().setFromObject(modelScene);
+              const center = box.getCenter(new THREE.Vector3());
+              const size = box.getSize(new THREE.Vector3());
+              modelScene.position.set(-center.x, -box.min.y, -center.z);
+              // Wrap in a group so later position.set() on the clone doesn't lose the centering
+              const wrapper = new THREE.Group();
+              wrapper.add(modelScene);
+              wrapper.userData.naturalHeight = size.y;
+              return wrapper;
+          }
+
+          function polygonCentroid(coordinates) {
+              const ring = coordinates[0];
+              let x = 0, y = 0;
+              for (const coord of ring) { x += coord[0]; y += coord[1]; }
+              return [x / ring.length, y / ring.length];
+          }
 
           function calculateDistanceMercatorToMeters(from, to) {
               const mercatorPerMeter = from.meterInMercatorCoordinateUnits();
-              // mercator x: 0=west, 1=east
               const dEast = to.x - from.x;
               const dEastMeter = dEast / mercatorPerMeter;
-              // mercator y: 0=north, 1=south
               const dNorth = from.y - to.y;
               const dNorthMeter = dNorth / mercatorPerMeter;
               return {dEastMeter, dNorthMeter};
           }
 
-
-          async function loadModel() {
-              const loader = new THREE.GLTFLoader();
-              const gltf = await loader.loadAsync(
-              "{{ url_for('static', filename='assets/low_poly_tree.glb') }}");
-              const model = gltf.scene;
-              return model;
-          }
+          const model = await loadModel();
           const project_center = design_detail['project_data']['center']['center'].split(',');
           const sceneOrigin = new maplibregl.LngLat(parseFloat(project_center[0]), parseFloat(project_center[1]));
-
           const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(sceneOrigin);
+
           const three_d_tree_layer = {
               id: '3d-model',
               type: 'custom',
@@ -616,17 +773,22 @@
                   this.scene = new THREE.Scene();
                   this.scene.rotateX(Math.PI / 2);
                   this.scene.scale.multiply(new THREE.Vector3(1, 1, -1));
-                  const light = new THREE.DirectionalLight(0xffffff);
-                  light.position.set(50, 70, -30).normalize();
-                  this.scene.add(light);
+                  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                  this.scene.add(ambientLight);
+                  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                  dirLight.position.set(50, 70, -30).normalize();
+                  this.scene.add(dirLight);
 
-                  for (var x = 0; x < trees_geojson.features.length; x++){
+                  for (var x = 0; x < tree_features.length; x++) {
                       const curmodel = model.clone();
-                      const tree_coordinates = trees_geojson.features[x].geometry.coordinates;
-                      const tree_location = new maplibregl.LngLat(parseFloat(tree_coordinates[0]),parseFloat(tree_coordinates[1]));
+                      const targetHeight = (tree_features[x].properties.height > 0) ? tree_features[x].properties.height : 10;
+                      const scaleFactor = targetHeight / model.userData.naturalHeight;
+                      curmodel.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                      const centroid = polygonCentroid(tree_features[x].geometry.coordinates);
+                      const tree_location = new maplibregl.LngLat(centroid[0], centroid[1]);
                       const model_mercator = maplibregl.MercatorCoordinate.fromLngLat(tree_location);
                       const {dEastMeter: model1east, dNorthMeter: model1north} = calculateDistanceMercatorToMeters(sceneOriginMercator, model_mercator);
-                      curmodel.position.set(model1east-8.75, 0, model1north+0.75);
+                      curmodel.position.set(model1east, 0, model1north);
                       this.scene.add(curmodel);
                   }
                   this.renderer = new THREE.WebGLRenderer({
@@ -637,23 +799,19 @@
                   this.renderer.autoClear = false;
               },
 
-              render(gl, mercatorMatrix) {
-
+              render(gl, args) {
                   const offsetFromCenterElevation = map.queryTerrainElevation(sceneOrigin) || 0;
                   const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(sceneOrigin, offsetFromCenterElevation);
-
                   const sceneTransform = {
                       translateX: sceneOriginMercator.x,
                       translateY: sceneOriginMercator.y,
                       translateZ: sceneOriginMercator.z,
                       scale: sceneOriginMercator.meterInMercatorCoordinateUnits()
                   };
-
-                  const m = new THREE.Matrix4().fromArray(mercatorMatrix);
+                  const m = new THREE.Matrix4().fromArray(args.defaultProjectionData.mainMatrix);
                   const l = new THREE.Matrix4()
                       .makeTranslation(sceneTransform.translateX, sceneTransform.translateY, sceneTransform.translateZ)
                       .scale(new THREE.Vector3(sceneTransform.scale, -sceneTransform.scale, sceneTransform.scale));
-
                   this.camera.projectionMatrix = m.multiply(l);
                   this.renderer.resetState();
                   this.renderer.render(this.scene, this.camera);

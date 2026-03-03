@@ -311,6 +311,7 @@ class GeodesignhubDataDownloader:
                     buffered_polygon = export_to_json(buffered_point)
                     _geometry = Polygon(coordinates=buffered_polygon["coordinates"])
                     _feature_properties.height = 2
+                    _feature_properties.is_tree = 1
                     # Buffer the point
 
                 else:

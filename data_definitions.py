@@ -94,6 +94,7 @@ class GeodesignhubDesignFeatureProperties:
     areatype: str
     volume_information: VolumeInformation
     tag_codes: str
+    is_tree: int = 0
 
 
 @dataclass

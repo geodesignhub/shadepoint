@@ -1,92 +1,80 @@
-[
-  {
-    "id":1,
-    "name": "Tree Planting",
-    "definition": "Urban tree planting involves the strategic planting of trees in urban areas to improve environmental quality, enhance biodiversity, and provide shade.",
-    "cobenefits": "Improved biodiversity",
-    "specificdetails": "Tree planting in urban areas involves selecting appropriate tree species that can thrive in the local environment, preparing the soil, and ensuring proper spacing and care for the trees. This process includes regular watering, pruning, and protection from pests and diseases to ensure the trees grow healthy and strong.",
-    "location": "Dublin, Ireland",
-    "geometry": {
-      "type": "FeatureCollection",
-      "features": [
+{
+  "measure_types": [
+    {
+      "id": "tree_planting",
+      "name": "Tree Planting",
+      "description": "Planting of trees in urban and peri-urban areas to improve environmental quality and biodiversity.",
+      "default_color": "#228B22",
+      "default_inflow": null,
+      "default_depth": null,
+      "default_width": null,
+      "default_radius": 5.0
+    }
+  ],
+  "solutions": [
+    {
+      "id": 1,
+      "name": "Tree Planting",
+      "definition": "Urban tree planting involves the strategic planting of trees in urban areas to improve environmental quality, enhance biodiversity, and provide shade.",
+      "cobenefits": "Improved biodiversity",
+      "specificdetails": "Tree planting in urban areas involves selecting appropriate tree species that can thrive in the local environment, preparing the soil, and ensuring proper spacing and care for the trees. This process includes regular watering, pruning, and protection from pests and diseases to ensure the trees grow healthy and strong.",
+      "location": "Dublin, Ireland",
+      "measure_id": "tree_planting",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-6.2585, 53.3401],
+          [-6.2583, 53.3401],
+          [-6.2583, 53.3405],
+          [-6.2585, 53.3405],
+          [-6.2585, 53.3401]
+        ]]
+      },
+      "styling": {
+        "color": "#228B22",
+        "hidden": false
+      },
+      "physical_properties": {
+        "default_radius": 5.0
+      },
+      "tree_locations": [
+        [-6.258405034024179, 53.34023338849602],
+        [-6.258378429485248, 53.34031748313669],
+        [-6.258362779756737, 53.340447362310954],
+        [-6.25835025997327, 53.34038849625935]
+      ],
+      "impacts": [
         {
-          "type": "Feature",
-          "properties": {},
-          "geometry": {
-            "coordinates": [
-              -6.258405034024179,
-              53.34023338849602
-            ],
-            "type": "Point"
+          "intensity": {
+            "intensity": "low"
+          },
+          "magnitude": 10.5,
+          "unit": {
+            "description": "shade",
+            "unit": "m2"
           }
+        }
+      ],
+      "solution_targets": [
+        {
+          "adaptation": {
+            "type": "Heat"
+          },
+          "value": 10
         },
         {
-          "type": "Feature",
-          "properties": {},
-          "geometry": {
-            "coordinates": [
-              -6.258378429485248,
-              53.34031748313669
-            ],
-            "type": "Point"
-          }
+          "adaptation": {
+            "type": "Pluvial Flooding"
+          },
+          "value": 20
         },
         {
-          "type": "Feature",
-          "properties": {},
-          "geometry": {
-            "coordinates": [
-              -6.258362779756737,
-              53.340447362310954
-            ],
-            "type": "Point"
-          }
-        },
-        {
-          "type": "Feature",
-          "properties": {},
-          "geometry": {
-            "coordinates": [
-              -6.25835025997327,
-              53.34038849625935
-            ],
-            "type": "Point"
-          }
+          "adaptation": {
+            "type": "Fluvial Flooding"
+          },
+          "value": 30
         }
       ]
-    },
-    "impacts": [
-      {
-        "intensity": {
-          "intensity": "low"
-        },
-        "magnitude": 10.5,
-        "unit": {
-          "description": "shade",
-          "unit": "m2"
-        }
-      }
-    ],
-    "solution_targets": [
-      {
-        "adaptation": {
-          "type": "Heat"
-        },
-        "value": 10
-      },
-      {
-        "adaptation": {
-          "type": "Pluvial Flooding"
-        },
-        "value": 20
-      },
-
-      {
-        "adaptation": {
-          "type": "Fluvial Flooding"
-        },
-        "value": 30
-      }
-    ]
-  }
-]
+    }
+  ]
+}
