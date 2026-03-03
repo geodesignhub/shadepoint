@@ -317,6 +317,8 @@
           { label: 'Buildings',       key: 'buildings',       required: true,
             rule: 'Rule 3 — trees visible from building windows' },
       ];
+      const anyMissing = entries.some(e => LAYER_REGISTRY[e.key] === null);
+      if (!anyMissing) return;
       list.innerHTML = '';
       entries.forEach(e => {
           const present = LAYER_REGISTRY[e.key] !== null;
