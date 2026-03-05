@@ -30,9 +30,19 @@ tree_shadow_analysis:
       dom_id: "bus_stops"
       environment_key: "EXISTING_BUSSTOPS_PROJECT_ID_FGB_URL"
       geometry_type: "point"
-      color: "#9932cc "
-
-
+      color: "#9932cc"
+    - url: ""
+      name: "Existing Buildings"
+      dom_id: "existing_buildings"
+      environment_key: "EXISTING_BUILDINGS_PROJECT_ID_FGB_URL"
+      geometry_type: "polygon"
+      color: "#AA336A"
+    - url: ""
+      name: "Existing Green Spaces"
+      dom_id: "existing_greenspaces"
+      environment_key: "EXISTING_GREENSPACES_PROJECT_ID_FGB_URL"
+      geometry_type: "polygon"
+      color: "#205A1B"
   pmtiles:
     - url: ""
       name: "Ortho Photo"
