@@ -310,11 +310,11 @@
   function renderLayerAvailabilityPanel() {
       const list = document.getElementById('layer-availability-list');
       const entries = [
-          { label: 'Existing Canopy', key: 'existingCanopy', required: false,
-            rule: 'Rule 30 — existing canopy included in coverage calculation' },
-          { label: 'Green Spaces',    key: 'greenSpaces',    required: true,
+          { label: 'Existing Canopy', key: 'existing_canopy', required: false,
+            rule: 'Rule 30 — existing canopy added to coverage calculation' },
+          { label: 'Green Spaces',    key: 'existing_greenspaces',    required: true,
             rule: 'Rule 300 — proximity to nearest green space' },
-          { label: 'Buildings',       key: 'buildings',       required: true,
+          { label: 'Buildings',       key: 'existing_buildings',       required: true,
             rule: 'Rule 3 — trees visible from building windows' },
       ];
       const anyMissing = entries.some(e => LAYER_REGISTRY[e.key] === null);
