@@ -751,11 +751,9 @@
       if (treePoints.length === 0) return;
 
       // Rule 30 — Canopy cover ────────────────────────────────────────────
-      const latLngs = bounds.toString().split(',');
-      const studyAreaPolygon = turf.bboxPolygon([
-          parseFloat(latLngs[0]), parseFloat(latLngs[1]),
-          parseFloat(latLngs[2]), parseFloat(latLngs[3])
-      ]);
+      const sw = bounds.getSouthWest();
+      const ne = bounds.getNorthEast();
+      const studyAreaPolygon = turf.bboxPolygon([sw.lng, sw.lat, ne.lng, ne.lat]);
       const studyAreaSize = turf.area(studyAreaPolygon);
       let totalCanopyArea = 0;
       treePoints.forEach(tree => {
