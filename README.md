@@ -121,6 +121,14 @@ Shadepoint implements the [3/30/300 urban greening standard](https://nbsi.eu/330
 | **Rule 30** | 30% canopy cover | 30% of a neighbourhood should be covered by tree canopy |
 | **Rule 300** | Within 300 m | Every resident should live within 300 m of a green space ≥ 1 ha |
 
+### 3/30/300 in Shadepoint
+
+![3/30/300-A](images/3-30-300-A.jpg)
+
+![3/30/300-B](images/3-30-300-B.jpg)
+
+
+
 ### Draw Trees view (`/draw_trees/`)
 
 A **live compliance dashboard** appears below the map as soon as the first tree is drawn. It updates on every add, move, or delete:

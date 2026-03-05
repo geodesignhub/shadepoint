@@ -16,6 +16,14 @@
   rel="stylesheet"
   href="{{ url_for('static', filename='css/notifications/simple-notify.css') }}"
 />
+<style>
+  .card {
+    font-family: 'Roboto', sans-serif;
+  }
+  .card-header {
+    font-family: 'Oswald', sans-serif;
+  }
+</style>
 {% endblock %} {% block body %}
 <div class="container">
   <!-- Example row of columns -->
@@ -113,9 +121,41 @@
   </div>
 
   <br />
+  <div id="site-eval-panel" class="card mt-2 d-none">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Site Evaluation</strong>&nbsp;<small class="text-muted">Suggested tree planting zones based on 3/30/300 gaps</small>
+    </div>
+    <div class="card-body py-2">
+      <div
+        id="site-eval-toggle-group"
+        class="btn-group btn-group-sm"
+        role="group"
+        aria-label="Site evaluation layer toggles"
+      >
+        <input type="checkbox" class="btn-check" id="site-eval-bldg-toggle" autocomplete="off" checked />
+        <label class="btn btn-outline-warning" for="site-eval-bldg-toggle">
+          <i class="bi bi-building"></i> Building Priority Zones
+        </label>
+        <input type="checkbox" class="btn-check" id="site-eval-gap-toggle" autocomplete="off" checked />
+        <label class="btn btn-outline-danger" for="site-eval-gap-toggle">
+          <i class="bi bi-geo-alt"></i> Green Space Coverage Gaps
+        </label>
+      </div>
+      <div class="mt-1">
+        <small class="text-muted" id="site-eval-status"></small>
+      </div>
+      <div class="mt-1 small">
+        <span class="badge" style="background-color:#dc3545">&nbsp;</span> High priority (0 trees)&nbsp;
+        <span class="badge" style="background-color:#fd7e14">&nbsp;</span> Medium (1&ndash;2 trees)&nbsp;
+        <span class="badge" style="background-color:#198754">&nbsp;</span> Met (&ge;3 trees)&nbsp;
+        <span class="badge" style="background-color:#dc3545; opacity:0.4">&nbsp;</span> &gt;300 m from green space
+      </div>
+    </div>
+  </div>
+  <br />
   <div id="map">
     <div class="overlay">
-      <button class="button-54" id="add_trees_from_measurements">
+      <button class="button-54 d-none" id="add_trees_from_measurements">
         <i class="bi bi-plus"></i> Add Trees from measurements
       </button>
     </div>
@@ -126,24 +166,36 @@
     <div class="card-body">
       <div class="row text-center">
         <div class="col-md-4">
-          <small class="text-muted d-block">Rule 3 &mdash; Trees visible</small>
+          <small class="text-muted d-block">Rule 3 &mdash; Trees visible&nbsp;<i
+            class="bi bi-info-circle"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            title="Rule 3: Every resident should be able to see at least 3 trees from their home or workplace. Measured as the average number of drawn trees within 50 m of each building."></i></small>
           <span id="rule3-stat" class="badge bg-secondary fs-6">&mdash;</span>
           <small class="d-block text-muted">avg trees within 50 m</small>
         </div>
         <div class="col-md-4">
-          <small class="text-muted d-block">Rule 30 &mdash; Canopy cover</small>
+          <small class="text-muted d-block">Rule 30 &mdash; Canopy cover&nbsp;<i
+            class="bi bi-info-circle"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            title="Rule 30: At least 30% of the neighborhood should be covered by tree canopy. Includes drawn trees plus any existing canopy loaded from the 'Existing Canopy' layer."></i></small>
           <span id="rule30-stat" class="badge bg-secondary fs-6">&mdash;</span>
           <small class="d-block text-muted">target &ge; 30%</small>
         </div>
         <div class="col-md-4">
-          <small class="text-muted d-block">Rule 300 &mdash; Green space</small>
+          <small class="text-muted d-block">Rule 300 &mdash; Green space&nbsp;<i
+            class="bi bi-info-circle"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            title="Rule 300: Every resident should be within 300 m of a green space. Measured as the maximum distance from any drawn tree to the nearest green space polygon in the 'Green Spaces' layer."></i></small>
           <span id="rule300-stat" class="badge bg-secondary fs-6">&mdash;</span>
           <small class="d-block text-muted">target &le; 300 m</small>
         </div>
       </div>
     </div>
   </div>
-  <br />
+
 
   {% else %}
   <div class="row">
@@ -152,7 +204,7 @@
     </div>
   </div>
   {% endif %}
-
+  <br />
   <div class="row">
     <div class="col-md-10">
       <h5>
@@ -722,11 +774,11 @@
   function renderLayerAvailabilityPanel() {
       const list = document.getElementById('layer-availability-list');
       const entries = [
-          { label: 'Existing Canopy', key: 'existing_canopy', required: false,
+          { label: 'Existing Canopy', key: 'existingCanopy', required: false,
             rule: 'Rule 30 — existing canopy added to coverage calculation' },
-          { label: 'Green Spaces', key: 'existing_greenspaces', required: true,
+          { label: 'Green Spaces', key: 'greenSpaces', required: true,
             rule: 'Rule 300 — proximity to nearest green space' },
-          { label: 'Buildings', key: 'existing_buildings', required: true,
+          { label: 'Buildings', key: 'buildings', required: true,
             rule: 'Rule 3 — trees visible from building windows' },
       ];
       const anyMissing = entries.some(e => LAYER_REGISTRY[e.key] === null);
@@ -793,6 +845,7 @@
               const within = turf.pointsWithinPolygon(treeFC, buf);
               totalTreesPerBuilding += within.features.length;
           });
+          console.log(`Total trees near buildings: ${totalTreesPerBuilding} across ${buildingCentroids.length} buildings`);
           const avg = buildingCentroids.length > 0
               ? (totalTreesPerBuilding / buildingCentroids.length).toFixed(1)
               : 0;
@@ -819,6 +872,97 @@
       }
   }
   // ── end 3/30/300 ─────────────────────────────────────────────────────────
+
+  // ── Site Evaluation ───────────────────────────────────────────────────────
+  // Computes two GeoJSON layers:
+  //   site_eval_bldg_circles  – 50 m buffers around buildings coloured by Rule 3 deficiency
+  //   site_eval_coverage_gap  – study-area polygon minus 300 m green-space buffers (Rule 300 gap)
+  function updateSiteEvaluation() {
+      if (!map.getSource('site_eval_bldg_circles')) return;
+
+      const snapshot = draw.getSnapshot();
+      const treePoints = snapshot.filter(f => f.geometry.type === 'Point');
+      const treeFC = turf.featureCollection(treePoints);
+      const statusEl = document.getElementById('site-eval-status');
+      const messages = [];
+
+      // Rule 3 — Building Priority Zones ─────────────────────────────────────
+      if (LAYER_REGISTRY.buildings) {
+          const bldgFeatures = [];
+          let highCount = 0, medCount = 0, metCount = 0;
+          LAYER_REGISTRY.buildings.forEach(bldg => {
+              const centroid = turf.centroid(bldg);
+              const buf50 = turf.circle(centroid.geometry.coordinates, 50, { units: 'meters' });
+              const count = turf.pointsWithinPolygon(treeFC, buf50).features.length;
+              const priority = count === 0 ? 'high' : count < 3 ? 'medium' : 'met';
+              if (priority === 'high') highCount++;
+              else if (priority === 'medium') medCount++;
+              else metCount++;
+              buf50.properties = { tree_count: count, priority, priority_score: Math.max(0, 3 - count) };
+              bldgFeatures.push(buf50);
+          });
+          map.getSource('site_eval_bldg_circles').setData({ type: 'FeatureCollection', features: bldgFeatures });
+          if (highCount > 0 || medCount > 0) {
+              messages.push(`${highCount} buildings need trees · ${medCount} need more trees`);
+          }
+      } else {
+          map.getSource('site_eval_bldg_circles').setData({ type: 'FeatureCollection', features: [] });
+      }
+
+      // Rule 300 — Green Space Coverage Gaps ─────────────────────────────────
+      if (LAYER_REGISTRY.greenSpaces && LAYER_REGISTRY.greenSpaces.length > 0) {
+          try {
+              const sw = bounds.getSouthWest();
+              const ne = bounds.getNorthEast();
+              const studyArea = turf.bboxPolygon([sw.lng, sw.lat, ne.lng, ne.lat]);
+              const buffers = LAYER_REGISTRY.greenSpaces.map(gs =>
+                  turf.circle(turf.centroid(gs).geometry.coordinates, 300, { units: 'meters' })
+              );
+              // turf v7 API: union/difference take a FeatureCollection
+              const unionBuf = buffers.length === 1
+                  ? buffers[0]
+                  : turf.union(turf.featureCollection(buffers));
+              const gap = turf.difference(turf.featureCollection([studyArea, unionBuf]));
+              map.getSource('site_eval_coverage_gap').setData({
+                  type: 'FeatureCollection',
+                  features: gap ? [gap] : []
+              });
+              if (gap) {
+                  const gapPct = ((turf.area(gap) / turf.area(studyArea)) * 100).toFixed(1);
+                  messages.push(`${gapPct}% of study area is >300 m from a green space`);
+              }
+          } catch (e) {
+              console.warn('Site Evaluation coverage gap error:', e);
+              map.getSource('site_eval_coverage_gap').setData({ type: 'FeatureCollection', features: [] });
+          }
+      } else {
+          map.getSource('site_eval_coverage_gap').setData({ type: 'FeatureCollection', features: [] });
+      }
+
+      if (statusEl) {
+          statusEl.textContent = messages.length > 0 ? messages.join(' · ') : '';
+      }
+  }
+
+  function clearSiteEvaluation() {
+      if (map.getSource('site_eval_bldg_circles')) {
+          map.getSource('site_eval_bldg_circles').setData({ type: 'FeatureCollection', features: [] });
+      }
+      if (map.getSource('site_eval_coverage_gap')) {
+          map.getSource('site_eval_coverage_gap').setData({ type: 'FeatureCollection', features: [] });
+      }
+      const statusEl = document.getElementById('site-eval-status');
+      if (statusEl) statusEl.textContent = '';
+  }
+
+  // Debounced wrapper — coalesces rapid-fire adds (e.g. measurements grid)
+  // into a single recompute 250 ms after the last tree change.
+  let _siteEvalTimer = null;
+  function scheduleSiteEvaluation() {
+      if (_siteEvalTimer) clearTimeout(_siteEvalTimer);
+      _siteEvalTimer = setTimeout(updateSiteEvaluation, 250);
+  }
+  // ── end Site Evaluation ───────────────────────────────────────────────────
 
    let TreeEditingFactory = function () {
       let session_id = "{{op['session_id']}}";
@@ -925,6 +1069,8 @@
               show_shadows_control.classList.remove('d-none');
               // show 3/30/300 compliance dashboard
               document.getElementById('compliance-dashboard').classList.remove('d-none');
+              // show site evaluation panel
+              document.getElementById('site-eval-panel').classList.remove('d-none');
           }
           else {
               let add_as_diagram_button = document.getElementById('add_as_diagram_button');
@@ -934,6 +1080,9 @@
               show_shadows_control.classList.add('d-none');
               // hide 3/30/300 compliance dashboard
               document.getElementById('compliance-dashboard').classList.add('d-none');
+              // hide site evaluation panel and clear layers
+              document.getElementById('site-eval-panel').classList.add('d-none');
+              clearSiteEvaluation();
           }
 
 
@@ -1134,10 +1283,11 @@
       // 'delete'
       // 'styling'
 
-      if (['create', 'delete', 'move'].includes(type)) {
+      if (['create', 'update', 'delete'].includes(type)) {
           tree_editing_control.update_tree_count();
           tree_editing_control.update_state_id();
           updateComplianceStats();
+          scheduleSiteEvaluation();
       }
   });
   draw.on('select', (id) => {
@@ -1195,6 +1345,71 @@
               'line-opacity': 0.7
           }
       });
+
+      // ── Site Evaluation layers ────────────────────────────────────────────
+      // Rule 3: 50 m buffer circles around buildings, coloured by tree deficiency
+      map.addSource('site_eval_bldg_circles', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] }
+      });
+      map.addLayer({
+          id: 'site_eval_bldg_circles_fill',
+          type: 'fill',
+          source: 'site_eval_bldg_circles',
+          paint: {
+              'fill-color': [
+                  'match', ['get', 'priority'],
+                  'high',   '#dc3545',
+                  'medium', '#fd7e14',
+                  'met',    '#198754',
+                  '#6c757d'
+              ],
+              'fill-opacity': 0.3
+          }
+      });
+      map.addLayer({
+          id: 'site_eval_bldg_circles_outline',
+          type: 'line',
+          source: 'site_eval_bldg_circles',
+          paint: {
+              'line-color': [
+                  'match', ['get', 'priority'],
+                  'high',   '#dc3545',
+                  'medium', '#fd7e14',
+                  'met',    '#198754',
+                  '#6c757d'
+              ],
+              'line-width': 1.5,
+              'line-opacity': 0.75
+          }
+      });
+
+      // Rule 300: study-area polygon minus 300 m green-space buffers (coverage gap)
+      map.addSource('site_eval_coverage_gap', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] }
+      });
+      map.addLayer({
+          id: 'site_eval_coverage_gap_fill',
+          type: 'fill',
+          source: 'site_eval_coverage_gap',
+          paint: {
+              'fill-color': '#dc3545',
+              'fill-opacity': 0.15
+          }
+      });
+      map.addLayer({
+          id: 'site_eval_coverage_gap_outline',
+          type: 'line',
+          source: 'site_eval_coverage_gap',
+          paint: {
+              'line-color': '#dc3545',
+              'line-dasharray': [3, 2],
+              'line-width': 2,
+              'line-opacity': 0.7
+          }
+      });
+      // ── end Site Evaluation layers ────────────────────────────────────────
 
       for (let index = 0; index < wms_layers.length; index++) {
           const wms_layer = wms_layers[index];
@@ -1344,6 +1559,33 @@
       geo_json_element.value = JSON.stringify(store_geojson);
 
   });
+  // ── Site Evaluation toggle handlers ──────────────────────────────────────
+  document.getElementById('site-eval-bldg-toggle').addEventListener('change', function (e) {
+      const vis = e.target.checked ? 'visible' : 'none';
+      ['site_eval_bldg_circles_fill', 'site_eval_bldg_circles_outline'].forEach(id => {
+          if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+      });
+  });
+  document.getElementById('site-eval-gap-toggle').addEventListener('change', function (e) {
+      const vis = e.target.checked ? 'visible' : 'none';
+      ['site_eval_coverage_gap_fill', 'site_eval_coverage_gap_outline'].forEach(id => {
+          if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+      });
+  });
+  // ── end Site Evaluation toggle handlers ───────────────────────────────────
+
+  // show/hide the "Add Trees from measurements" button based on whether measurements exist
+  function updateMeasureButtonVisibility() {
+      const btn = document.getElementById('add_trees_from_measurements');
+      const features = measure_control.getFeatures();
+      if (features && features.features && features.features.length > 0) {
+          btn.classList.remove('d-none');
+      } else {
+          btn.classList.add('d-none');
+      }
+  }
+  map.on('sourcedata', updateMeasureButtonVisibility);
+
   // add event handlers for all the button-54 buttons
   document.querySelectorAll('.button-54').forEach(button => {
       button.addEventListener('click', () => {
