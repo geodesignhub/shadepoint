@@ -722,11 +722,11 @@
   function renderLayerAvailabilityPanel() {
       const list = document.getElementById('layer-availability-list');
       const entries = [
-          { label: 'Existing Canopy', key: 'existingCanopy', required: false,
+          { label: 'Existing Canopy', key: 'existing_canopy', required: false,
             rule: 'Rule 30 — existing canopy added to coverage calculation' },
-          { label: 'Green Spaces',    key: 'greenSpaces',    required: true,
+          { label: 'Green Spaces',    key: 'existing_greenspaces',    required: true,
             rule: 'Rule 300 — proximity to nearest green space' },
-          { label: 'Buildings',       key: 'buildings',       required: true,
+          { label: 'Buildings',       key: 'existing_buildings',       required: true,
             rule: 'Rule 3 — trees visible from building windows' },
       ];
       const anyMissing = entries.some(e => LAYER_REGISTRY[e.key] === null);
@@ -1326,11 +1326,11 @@
 
               // 3/30/300 — register named layers
               const layerNameLower = (fgb_layer.name || '').toLowerCase();
-              if (layerNameLower === 'existing canopy') {
+              if (layerNameLower === 'existing_canopy') {
                   LAYER_REGISTRY.existingCanopy = fc.features;
-              } else if (layerNameLower === 'green spaces') {
+              } else if (layerNameLower === 'existing_greenspaces') {
                   LAYER_REGISTRY.greenSpaces = fc.features;
-              } else if (layerNameLower === 'buildings') {
+              } else if (layerNameLower === 'existing_buildings') {
                   LAYER_REGISTRY.buildings = fc.features;
               }
           }
