@@ -59,6 +59,7 @@ class RoadsShadowsComputationStartRequest:
     bounds: str
     session_id: str
     request_date_time: str
+    synthesis_id: str = ""
 
 
 @dataclass
@@ -254,6 +255,9 @@ class ShadowViewSuccessResponse:
     trees_feature_collection: GeodesignhubDiagramGeoJSON
     maptiler_key: str
     session_id: str
+    # Stable identifier of the design; the design shadow cache key is derived
+    # from the synthesis id instead of the per-request session id.
+    synthesis_id: str
     shadow_date_time: str
     cog_layers: List[COGLayer]
     wms_layers: List[WMSLayer]
@@ -305,6 +309,9 @@ class GeodesignhubDataShadowGenerationRequest:
     session_id: str
     request_date_time: str
     bounds: str
+    # Stable identifier of the design (the synthesis id). Used to cache the
+    # computed shadow in Redis so a final design is not recomputed on reload.
+    synthesis_id: str = ""
 
 
 @dataclass

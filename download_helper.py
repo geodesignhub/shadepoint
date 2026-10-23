@@ -526,6 +526,8 @@ class ShadowComputationHelper:
     A helper class to compute shadows for Geodesignhub (GDH) buildings and existing roads.
     Attributes:
         session_id (str): Unique identifier for the session.
+        synthesis_id (str, optional): Stable identifier of the design. When set,
+            the design shadow is cached under this id so it is not recomputed.
         shadow_date_time (str): The timestamp for which the shadow computation is performed.
         bounds (str): The geographical bounds for the computation.
         project_id (str): The project identifier.
@@ -545,9 +547,11 @@ class ShadowComputationHelper:
         bounds: str,
         project_id: str,
         design_diagram_geojson=None,
+        synthesis_id: str = None,
     ):
         self.gdh_geojson = design_diagram_geojson
         self.session_id = session_id
+        self.synthesis_id = synthesis_id
         self.shadow_date_time = shadow_date_time
         self.bounds = bounds
         self.project_id = project_id
@@ -592,6 +596,7 @@ class ShadowComputationHelper:
                 session_id=self.session_id,
                 request_date_time=self.shadow_date_time,
                 bounds=self.bounds,
+                synthesis_id=self.synthesis_id or "",
             )
             shadow_canpopy_job_id = self.session_id + "@" + hash_of_timestamp
 
@@ -608,6 +613,7 @@ class ShadowComputationHelper:
                 bounds=self.bounds,
                 session_id=self.session_id,
                 request_date_time=self.shadow_date_time,
+                synthesis_id=self.synthesis_id or "",
             )
 
             gdh_roads_intersection_result = q.enqueue(

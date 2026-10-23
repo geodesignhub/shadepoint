@@ -247,6 +247,7 @@ def generate_design_shadow():
         shadow_date_time=shadow_date_time,
         bounds=project_data.bounds.bounds,
         project_id=projectid,
+        synthesis_id=synthesisid,
     )
     shadow_computation_helper.compute_gdh_buildings_shadow()
 
@@ -261,6 +262,7 @@ def generate_design_shadow():
         project_data=project_data,
         maptiler_key=maptiler_key,
         session_id=str(session_id),
+        synthesis_id=synthesisid,
         shadow_date_time=shadow_date_time,
         view_details=design_view_details,
         wms_layers=wms_layers.layers,
@@ -395,6 +397,7 @@ def generate_diagram_shadow():
                 project_data=project_data,
                 maptiler_key=maptiler_key,
                 session_id=str(session_id),
+                synthesis_id="",
                 shadow_date_time=shadow_date_time,
                 cog_layers=cog_layers_list.layers,
                 wms_layers=wms_layers_list.layers,

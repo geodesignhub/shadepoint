@@ -229,10 +229,8 @@
 </div>
 <!-- /container -->
 {% endblock %} {% block footer %} {% if op['status'] == 1 %}
-<script
-  type="text/javascript"
-  src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"
-></script>
+
+
 <script
   type="text/javascript"
   src="{{ url_for('static', filename='js/common.js') }}"
@@ -265,7 +263,8 @@
 ></script>
 {% endif %}
 
-<script type="text/javascript">
+<script type="text/javascript" type="module">
+  import { Map } from 'https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.mjs';
   let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
   let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
   return new bootstrap.Tooltip(tooltipTriggerEl)
@@ -879,18 +878,19 @@
   //     process_trees();
 
   let DesignShadowFactory = function () {
-      let session_id = "{{op['session_id']}}";
-      let current_year = new Date().getFullYear();
-      let august_6th_datetime= current_year+ "-08-06T10:10:00";
+      // A Geodesignhub design is identified by its synthesis id, so the same
+      // design always maps to the same cached shadow in Redis.
+      let synthesis_id = "{{op['synthesis_id']}}";
+      let shadow_date_time = "{{op['shadow_date_time']}}";
 
       this.get_generated_design_shadows = function () {
-          let shadow_key = session_id+':'+august_6th_datetime+'_gdh_buildings_canopy_shadow';
+          let shadow_key = synthesis_id + ':' + shadow_date_time + '_gdh_buildings_canopy_shadow';
           let shadow_download_url = window.location.origin + '/gdh_generated_shadow?shadow_key=' + shadow_key;
           return get_building_shadow(shadow_download_url);
       }
 
       this.get_roads_shadow_analysis =function() {
-          roads_shadow_stats_key = session_id + ":gdh_roads_shadow";
+          roads_shadow_stats_key = synthesis_id + ':' + shadow_date_time + '_gdh_roads_shadow';
           let roads_shadow_stats_url = window.location.origin + '/get_shadow_roads_stats?roads_shadow_stats_key=' + roads_shadow_stats_key;
           get_road_shadow_stats(roads_shadow_stats_url);
       }
@@ -999,6 +999,25 @@
       });
   }
 
-  setTimeout(poll_for_design_shadows, INITIAL_SHADOW_DELAY_MS);
+  // A final design's shadow is normally already cached, so check right away.
+  // If it is still being generated, fall back to the delayed polling loop.
+  function check_for_cached_design_shadows() {
+      // The shadow is rendered onto a map source, so wait until the map style
+      // has been loaded and the source exists before fetching it.
+      if (!map.getSource('building_shadows')) {
+          setTimeout(check_for_cached_design_shadows, 500);
+          return;
+      }
+
+      design_shadow_helper.get_generated_design_shadows().then(function (loaded) {
+          if (loaded) {
+              document.getElementById('get_shadows_control').classList.add('d-none');
+              design_shadow_helper.get_roads_shadow_analysis();
+              return;
+          }
+          setTimeout(poll_for_design_shadows, INITIAL_SHADOW_DELAY_MS);
+      });
+  }
+  check_for_cached_design_shadows();
 </script>
 {% endif %} {% endblock %}

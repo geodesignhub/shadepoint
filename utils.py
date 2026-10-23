@@ -59,6 +59,28 @@ def get_default_shadow_datetime():
     return august_6_date
 
 
+def get_synthesis_shadow_key(synthesis_id: str, request_date_time: str) -> str:
+    """Redis key for the shadow of a design.
+
+    ``synthesis_id`` is the stable identifier of a Geodesignhub design, so the
+    same design resolves to the same key on every request. This is what allows
+    a final design's shadow to be reused instead of recomputed.
+    """
+    return f"{synthesis_id}:{request_date_time}_gdh_buildings_canopy_shadow"
+
+
+def get_synthesis_roads_shadow_stats_key(
+    synthesis_id: str, request_date_time: str
+) -> str:
+    """Redis key for the road/shadow overlap statistics of a design."""
+    return f"{synthesis_id}:{request_date_time}_gdh_roads_shadow"
+
+
+def _get_synthesis_id(request, session_id: str) -> str:
+    """Return the stable synthesis id, falling back to the session id."""
+    return getattr(request, "synthesis_id", None) or session_id
+
+
 class DrawnTreesProcessor:
     def process_drawn_trees_data(
         self, unprocessed_tree_geojson
@@ -273,13 +295,30 @@ def kickoff_gdh_roads_shadows_stats(roads_shadow_computation_start):
         data=roads_shadow_computation_start,
     )
 
-    shadows_key = (
-        _roads_shadow_computation_details.session_id
-        + ":"
-        + _roads_shadow_computation_details.request_date_time
-        + "_gdh_buildings_canopy_shadow"
+    synthesis_id = _get_synthesis_id(
+        _roads_shadow_computation_details,
+        _roads_shadow_computation_details.session_id,
     )
+    shadows_key = get_synthesis_shadow_key(
+        synthesis_id, _roads_shadow_computation_details.request_date_time
+    )
+    stats_key = get_synthesis_roads_shadow_stats_key(
+        synthesis_id, _roads_shadow_computation_details.request_date_time
+    )
+
+    # The design is final: if the analysis was already computed for this design
+    # there is nothing to do.
+    if r.exists(stats_key):
+        logger.info(
+            "Road/shadow stats already cached for %s; skipping recomputation",
+            stats_key,
+        )
+        return
+
     shadows_str = r.get(shadows_key)
+    if shadows_str is None:
+        logger.error("Shadows not found in redis for key %s", shadows_key)
+        return
     shadows = json.loads(shadows_str.decode("utf-8"))
     bounds = _roads_shadow_computation_details.bounds
     bounds_hash = hashlib.sha512(bounds.encode("utf-8")).hexdigest()
@@ -289,7 +328,7 @@ def kickoff_gdh_roads_shadows_stats(roads_shadow_computation_start):
     shadow_roads_intersection_data = ShadowsRoadsIntersectionRequest(
         roads=json.dumps(roads),
         shadows=shadows,
-        job_id=_roads_shadow_computation_details.session_id + ":gdh_roads_shadow",
+        job_id=stats_key,
     )
 
     compute_road_shadow_overlap(
@@ -388,6 +427,22 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
         data_class=GeodesignhubDataShadowGenerationRequest,
         data=geojson_session_date_time,
     )
+
+    synthesis_id = _get_synthesis_id(
+        _diagramid_building_date_time, _diagramid_building_date_time.session_id
+    )
+    redis_key = get_synthesis_shadow_key(
+        synthesis_id, _diagramid_building_date_time.request_date_time
+    )
+
+    # The design is final, so its shadow does not change. Reuse the cached
+    # result instead of recomputing it every time the design is opened.
+    if r.exists(redis_key):
+        logger.info(
+            "Design shadow already cached for %s; skipping recomputation", redis_key
+        )
+        return
+
     _date_time = arrow.get(_diagramid_building_date_time.request_date_time).isoformat()
     gdh_design_diagram_buildings = gpd.GeoDataFrame.from_features(
         _diagramid_building_date_time.buildings["features"]
@@ -434,12 +489,6 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
 
     dissolved_shadows = shadows.dissolve()
 
-    redis_key = (
-        _diagramid_building_date_time.session_id
-        + ":"
-        + _diagramid_building_date_time.request_date_time
-        + "_gdh_buildings_canopy_shadow"
-    )
     r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
     r.expire(redis_key, time=6000)
     time.sleep(7)
