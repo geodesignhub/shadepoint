@@ -523,7 +523,7 @@ class GeodesignhubDataDownloader:
 
 class ShadowComputationHelper:
     """
-    A helper class to compute shadows for Geodesignhub (GDH) buildings and existing roads.
+    A helper class to compute shadows for Geodesignhub (GDH) buildings and existing pedestrian roads.
     Attributes:
         session_id (str): Unique identifier for the session.
         synthesis_id (str, optional): Stable identifier of the design. When set,
@@ -534,7 +534,7 @@ class ShadowComputationHelper:
         gdh_geojson (dict, optional): GeoJSON data for the design diagram buildings.
     Methods:
         compute_gdh_buildings_shadow():
-            Computes shadows for GDH buildings and existing roads. This involves downloading
+            Computes shadows for GDH buildings and existing pedestrian roads. This involves downloading
             road data, generating shadows for GDH buildings, and calculating intersections
             between shadows and roads. The method uses a queueing system to manage tasks
             and dependencies.
