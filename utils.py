@@ -403,8 +403,16 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
 
     # Remove building footprints from the computed shadows so that the final
     # shadow geometry only contains the shadow cast by the buildings and not
-    # the buildings themselves.
-    building_footprints = _exploded_gdh_building_polygons.geometry.union_all()
+    # the buildings themselves. Trees (is_tree == 1) are kept so that the tree
+    # cylinders remain part of the shadows.
+    if "is_tree" in _exploded_gdh_building_polygons.columns:
+        non_tree_buildings = _exploded_gdh_building_polygons[
+            _exploded_gdh_building_polygons["is_tree"] != 1
+        ]
+    else:
+        non_tree_buildings = _exploded_gdh_building_polygons
+
+    building_footprints = non_tree_buildings.geometry.union_all()
     if not building_footprints.is_empty:
         shadows = shadows.copy()
         shadows["geometry"] = shadows.geometry.difference(building_footprints)
