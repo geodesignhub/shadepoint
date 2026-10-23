@@ -559,7 +559,7 @@ class ShadowComputationHelper:
     def compute_gdh_buildings_shadow(self):
         """This method computes the shadow for existing or GDH buidlings"""
         my_url_generator = ViewDataGenerator(view_type=None, project_id=self.project_id)
-        r_url = my_url_generator.get_existing_roads_geojson_url()
+        r_url = my_url_generator.get_existing_pedestrian_roads_geojson_url()
 
         hash_of_timestamp = str(
             int(
