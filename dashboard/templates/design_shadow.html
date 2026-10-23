@@ -235,6 +235,7 @@
   type="text/javascript"
   src="{{ url_for('static', filename='js/common.js') }}"
 ></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/maplibre/maplibre-gl.js') }}"></script>
 <script src="{{ url_for('static', filename='js/threejs/three.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/threejs/GLTFLoader.js') }}"></script>
 <script
@@ -263,8 +264,7 @@
 ></script>
 {% endif %}
 
-<script type="text/javascript" type="module">
-  import { Map } from 'https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.mjs';
+<script type="text/javascript">
   let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
   let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
   return new bootstrap.Tooltip(tooltipTriggerEl)
