@@ -67,6 +67,8 @@ flood_analysis:
 
 common: 
   geojson:
+    # NOTE: despite the legacy "ROAD_NETWORK" name, this is the bike-route
+    # network used for the shade analysis (how much shadow falls on bike routes).
     - url: ""
       name: "Existing Roads"
       environment_key: "FULL_ROAD_NETWORK_GEOSJON_PROJECT_ID_URL"

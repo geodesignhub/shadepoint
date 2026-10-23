@@ -568,9 +568,24 @@ class ShadowComputationHelper:
             )
             % 10**8
         )
-        if r_url:
-            # first download the trees and then compute design shadow
 
+        # generate the GDH Shadows
+        gdh_worker_data = GeodesignhubDataShadowGenerationRequest(
+            buildings=self.gdh_geojson,
+            session_id=self.session_id,
+            request_date_time=self.shadow_date_time,
+            bounds=self.bounds,
+            synthesis_id=self.synthesis_id or "",
+        )
+        shadow_canpopy_job_id = self.session_id + "@" + hash_of_timestamp
+
+        if r_url:
+            logger.info(
+                "Using bike-route GeoJSON for project %s: %s",
+                self.project_id,
+                r_url.url,
+            )
+            # first download the roads and then compute the design shadow
             roads_download_job = RoadsDownloadRequest(
                 bounds=self.bounds,
                 session_id=str(self.session_id),
@@ -590,16 +605,6 @@ class ShadowComputationHelper:
                 jobs=[roads_download_result], allow_failure=False, enqueue_at_front=True
             )
 
-            # generate the GDH Shadows
-            gdh_worker_data = GeodesignhubDataShadowGenerationRequest(
-                buildings=self.gdh_geojson,
-                session_id=self.session_id,
-                request_date_time=self.shadow_date_time,
-                bounds=self.bounds,
-                synthesis_id=self.synthesis_id or "",
-            )
-            shadow_canpopy_job_id = self.session_id + "@" + hash_of_timestamp
-
             gdh_shadow_result = q.enqueue(
                 utils.compute_gdh_shadow_with_tree_canopy,
                 asdict(gdh_worker_data),
@@ -616,7 +621,7 @@ class ShadowComputationHelper:
                 synthesis_id=self.synthesis_id or "",
             )
 
-            gdh_roads_intersection_result = q.enqueue(
+            q.enqueue(
                 utils.kickoff_gdh_roads_shadows_stats,
                 asdict(_gdh_roads_shadows_start_processing),
                 on_success=notify_gdh_roads_shadow_intersection_complete,
@@ -626,5 +631,15 @@ class ShadowComputationHelper:
             )
         else:
             logger.error(
-                "Roads URL not found, existing Roads as GeoJSON must be present to compute shadows"
+                "Bike-route GeoJSON URL not found for project %s; computing "
+                "shadows without the shadow/bike-route analysis. Set "
+                "FULL_ROAD_NETWORK_GEOSJON_<project_id>_URL to enable it.",
+                self.project_id,
+            )
+            q.enqueue(
+                utils.compute_gdh_shadow_with_tree_canopy,
+                asdict(gdh_worker_data),
+                on_success=notify_shadow_complete,
+                on_failure=shadow_generation_failure,
+                job_id=shadow_canpopy_job_id,
             )

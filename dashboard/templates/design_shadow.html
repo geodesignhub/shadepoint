@@ -204,14 +204,14 @@
     <div class="col-md-6">
       <h4>
         <span id="total_roads"></span>
-        <small class="text-muted">{{ gettext('Total Roads (meters)') }}</small>
+        <small class="text-muted">{{ gettext('Total Bike Routes (meters)') }}</small>
       </h4>
     </div>
     <div class="col-md-6">
       <h4>
         <span id="shadowed_roads"></span>
         <small class="text-muted"
-          >{{ gettext('Shadowed Roads (meters)') }}</small
+          >{{ gettext('Shadowed Bike Routes (meters)') }}</small
         >
       </h4>
     </div>
@@ -879,8 +879,9 @@
 
   let DesignShadowFactory = function () {
       // A Geodesignhub design is identified by its synthesis id, so the same
-      // design always maps to the same cached shadow in Redis.
-      let synthesis_id = "{{op['synthesis_id']}}";
+      // design always maps to the same cached shadow in Redis. Fall back to the
+      // session id to match the server-side key derivation.
+      let synthesis_id = "{{ op['synthesis_id'] or op['session_id'] }}";
       let shadow_date_time = "{{op['shadow_date_time']}}";
 
       this.get_generated_design_shadows = function () {
@@ -889,13 +890,14 @@
           return get_building_shadow(shadow_download_url);
       }
 
-      this.get_roads_shadow_analysis =function() {
-          roads_shadow_stats_key = synthesis_id + ':' + shadow_date_time + '_gdh_roads_shadow';
+      this.get_roads_shadow_analysis = function () {
+          let roads_shadow_stats_key = synthesis_id + ':' + shadow_date_time + '_gdh_roads_shadow';
           let roads_shadow_stats_url = window.location.origin + '/get_shadow_roads_stats?roads_shadow_stats_key=' + roads_shadow_stats_key;
-          get_road_shadow_stats(roads_shadow_stats_url);
+          return get_road_shadow_stats(roads_shadow_stats_url);
       }
 
       this.get_all_generated_data = function(){
+          start_roads_shadow_polling();
           this.get_generated_design_shadows().then(function (loaded) {
               if (!loaded) {
                   // Manual retries should always get feedback, even if the
@@ -904,7 +906,6 @@
                   notify_shadows_pending();
               }
           });
-          this.get_roads_shadow_analysis();
       }
   }
   let design_shadow_helper = new DesignShadowFactory();
@@ -965,6 +966,66 @@
       });
   }
 
+  function notify_roads_shadow_timeout() {
+      new Notify({
+          status: "warning",
+          title: "Bike-route analysis not ready",
+          text: "Shadows are ready but the shadow/bike-route analysis is still being computed. Click 'Show Design Shadows & Analysis' to try again.",
+          effect: "fade",
+          speed: 300,
+          customClass: "",
+          customIcon: "",
+          showIcon: true,
+          showCloseButton: true,
+          autoclose: true,
+          autotimeout: 8000,
+          notificationsGap: null,
+          notificationsPadding: null,
+          type: "outline",
+          position: "bottom center",
+          customWrapper: "",
+      });
+  }
+
+  // The road/shadow analysis is produced by a separate background job that runs
+  // after the shadow computation, so poll until it is available instead of
+  // displaying the placeholder zeros once and never refreshing.
+  let roads_shadow_poll_attempts = 0;
+  let roads_shadow_poll_timer = null;
+  let roads_shadow_poll_active = false;
+
+  function poll_for_roads_shadow_analysis() {
+      if (!roads_shadow_poll_active) return;
+      roads_shadow_poll_attempts += 1;
+
+      design_shadow_helper.get_roads_shadow_analysis().then(function (ready) {
+          if (ready) {
+              roads_shadow_poll_active = false;
+              roads_shadow_poll_timer = null;
+              return;
+          }
+
+          if (roads_shadow_poll_attempts >= SHADOW_POLL_MAX_ATTEMPTS) {
+              roads_shadow_poll_active = false;
+              roads_shadow_poll_timer = null;
+              notify_roads_shadow_timeout();
+              return;
+          }
+
+          roads_shadow_poll_timer = setTimeout(
+              poll_for_roads_shadow_analysis,
+              SHADOW_POLL_INTERVAL_MS
+          );
+      });
+  }
+
+  function start_roads_shadow_polling() {
+      if (roads_shadow_poll_active) return;
+      roads_shadow_poll_active = true;
+      roads_shadow_poll_attempts = 0;
+      poll_for_roads_shadow_analysis();
+  }
+
   function poll_for_design_shadows() {
       shadow_poll_attempts += 1;
 
@@ -975,7 +1036,7 @@
               shadow_poll_timer = null;
               // Data is ready, so the manual retry button is no longer needed.
               get_design_shadows_cont.classList.add('d-none');
-              design_shadow_helper.get_roads_shadow_analysis();
+              start_roads_shadow_polling();
               return;
           }
 
@@ -1012,7 +1073,7 @@
       design_shadow_helper.get_generated_design_shadows().then(function (loaded) {
           if (loaded) {
               document.getElementById('get_shadows_control').classList.add('d-none');
-              design_shadow_helper.get_roads_shadow_analysis();
+              start_roads_shadow_polling();
               return;
           }
           setTimeout(poll_for_design_shadows, INITIAL_SHADOW_DELAY_MS);

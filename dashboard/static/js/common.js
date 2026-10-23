@@ -94,30 +94,46 @@ function get_downloaded_roads(roads_url) {
     });
 }
 function get_road_shadow_stats(roads_shadow_stats_url) {
-  fetch(roads_shadow_stats_url)
+  return fetch(roads_shadow_stats_url)
     .then((response) => {
       return response.json();
     })
     .then((roads_shadow_data) => {
+      // "0000" is the server's placeholder for "analysis not ready yet".
+      if (!roads_shadow_data || roads_shadow_data["job_id"] === "0000") {
+        console.log("Shadow/bike-route analysis ongoing...");
+        return false;
+      }
+
       let shadow_stats_cont = document.getElementById("shadow_stats");
-      shadow_stats_cont.classList.remove("d-none");
+      if (shadow_stats_cont) {
+        shadow_stats_cont.classList.remove("d-none");
+      }
       let total_roads = document.getElementById("total_roads");
-      total_roads.innerHTML = roads_shadow_data["total_roads_kms"];
+      if (total_roads) {
+        total_roads.innerHTML = roads_shadow_data["total_roads_kms"];
+      }
 
       let shadowed_roads = document.getElementById("shadowed_roads");
-      shadowed_roads.innerHTML = roads_shadow_data["shadowed_kms"];
+      if (shadowed_roads) {
+        shadowed_roads.innerHTML = roads_shadow_data["shadowed_kms"];
+      }
       let total_building_shadow_cont =
         document.getElementById("building_shadows");
-      total_building_shadow_cont.innerHTML =
-        roads_shadow_data["total_shadow_area"];
-      if (roads_shadow_data["job_id"] !== "0000") {
-        //  hide the get design shadows control
-        let get_design_shadows = document.getElementById("get_shadows_control");
+      if (total_building_shadow_cont) {
+        total_building_shadow_cont.innerHTML =
+          roads_shadow_data["total_shadow_area"];
+      }
+      // hide the get design shadows control
+      let get_design_shadows = document.getElementById("get_shadows_control");
+      if (get_design_shadows) {
         get_design_shadows.classList.add("d-none");
       }
+      return true;
     })
     .catch((error) => {
       console.log(error);
+      return false;
     });
 }
 

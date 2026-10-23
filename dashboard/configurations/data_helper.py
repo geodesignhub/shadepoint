@@ -87,6 +87,12 @@ class ViewDataGenerator:
         return _layers_available_in_all_views
 
     def get_existing_roads_geojson_url(self) -> Union[None, GeoJSONDataSource]:
+        """Return the bike-route network used for the shadow-overlap analysis.
+
+        The configuration key is named ``FULL_ROAD_NETWORK_GEOSJON_*`` for
+        historical reasons, but the data is the bike-route network: the analysis
+        measures how much of the design shadow falls on bike routes.
+        """
         all_common_geojson_sources = self.common_data_for_project.geojson_layers
 
         for all_common_geojson_source in all_common_geojson_sources:

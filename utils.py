@@ -123,7 +123,7 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
     )
     bounds_hash = hashlib.sha512(bounds.encode("utf-8")).hexdigest()
 
-    fc = {"type": "FeatureCollection", "features": []}
+    empty_fc = {"type": "FeatureCollection", "features": []}
     roads_storage_key = bounds_hash[:15] + ":roads"
     r.set(session_roads_key, roads_storage_key)
     r.expire(session_roads_key, time=6000)
@@ -131,29 +131,51 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
     if r.exists(roads_storage_key):
         fc_str = r.get(roads_storage_key)
         fc = json.loads(fc_str)
+        # An empty FeatureCollection is treated as a failed download rather than
+        # a valid cached result, so the next run retries instead of reusing it.
+        if isinstance(fc, dict) and fc.get("features"):
+            return fc
 
+    bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)
+    if bounds_filtering:
+        # If bounds filtering is enabled, the bounds parameter in the URL is replaced with the current bounds
+        r_url = roads_url.replace("__bounds__", bounds)
     else:
-        bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)
-        if bounds_filtering:
-            # If bounds filtering is enabled, the bounds parameter in the URL is replaced with the current bounds
-            r_url = roads_url.replace("__bounds__", bounds)
-        else:
-            r_url = roads_url
+        r_url = roads_url
 
-        download_request = requests.get(r_url)
-        if download_request.status_code == 200:
+    try:
+        download_request = requests.get(r_url, timeout=60)
+    except requests.RequestException as exc:
+        logger.error("Error downloading roads from %s: %s", r_url, exc)
+        r.set(roads_storage_key, json.dumps(empty_fc), ex=300)
+        return empty_fc
+
+    if download_request.status_code == 200:
+        try:
             fc = download_request.json()
-            r.set(roads_storage_key, json.dumps(fc))
-        else:
-            logger.error("Error in setting downloaded roads to local memory")
-            r.set(
-                roads_storage_key,
-                json.dumps({"type": "FeatureCollection", "features": []}),
+        except ValueError:
+            fc = None
+
+        if not isinstance(fc, dict) or fc.get("type") != "FeatureCollection":
+            logger.error(
+                "Roads URL %s did not return a GeoJSON FeatureCollection",
+                r_url,
             )
+            r.set(roads_storage_key, json.dumps(empty_fc), ex=300)
+            return empty_fc
 
+        r.set(roads_storage_key, json.dumps(fc))
         r.expire(roads_storage_key, time=60000)
+        return fc
 
-    return fc
+    logger.error(
+        "Error downloading roads from %s (HTTP %s); will retry on the next run",
+        r_url,
+        download_request.status_code,
+    )
+    # Cache the failure only briefly so a corrected URL/config recovers quickly.
+    r.set(roads_storage_key, json.dumps(empty_fc), ex=300)
+    return empty_fc
 
 
 def download_trees(trees_download_request: TreesDownloadRequest):
@@ -306,25 +328,54 @@ def kickoff_gdh_roads_shadows_stats(roads_shadow_computation_start):
         synthesis_id, _roads_shadow_computation_details.request_date_time
     )
 
-    # The design is final: if the analysis was already computed for this design
-    # there is nothing to do.
+    # The design is final: if a non-empty analysis was already computed for this
+    # design there is nothing to do. A cached zero result is treated as invalid
+    # (it normally means the roads download failed) and is recomputed.
     if r.exists(stats_key):
+        try:
+            existing_stats = json.loads(r.get(stats_key).decode("utf-8"))
+        except (AttributeError, TypeError, ValueError):
+            existing_stats = {}
+        if not isinstance(existing_stats, dict):
+            existing_stats = {}
+        if existing_stats.get("total_roads_kms", 0) > 0:
+            logger.info(
+                "Road/shadow stats already cached for %s; skipping recomputation",
+                stats_key,
+            )
+            return
         logger.info(
-            "Road/shadow stats already cached for %s; skipping recomputation",
-            stats_key,
+            "Cached road/shadow stats for %s are empty; recomputing", stats_key
         )
-        return
 
     shadows_str = r.get(shadows_key)
     if shadows_str is None:
         logger.error("Shadows not found in redis for key %s", shadows_key)
+        if r.exists(stats_key):
+            # Do not leave a misleading zero result cached.
+            r.delete(stats_key)
         return
     shadows = json.loads(shadows_str.decode("utf-8"))
     bounds = _roads_shadow_computation_details.bounds
     bounds_hash = hashlib.sha512(bounds.encode("utf-8")).hexdigest()
     roads_storage_key = bounds_hash[:15] + ":roads"
     roads_str = r.get(roads_storage_key)
+    if roads_str is None:
+        logger.error("Roads not found in redis for key %s", roads_storage_key)
+        if r.exists(stats_key):
+            r.delete(stats_key)
+        return
     roads = json.loads(roads_str.decode("utf-8"))
+    if not roads.get("features"):
+        logger.error(
+            "Bike routes for key %s are empty; skipping shadow/bike-route "
+            "analysis. Check the FULL_ROAD_NETWORK_GEOSJON_* URL for this project.",
+            roads_storage_key,
+        )
+        if r.exists(stats_key):
+            # Do not leave a misleading zero result cached.
+            r.delete(stats_key)
+        return
     shadow_roads_intersection_data = ShadowsRoadsIntersectionRequest(
         roads=json.dumps(roads),
         shadows=shadows,
@@ -504,7 +555,7 @@ def compute_polygon_area(polygon: ShapelyPolygon):
 
 def compute_road_shadow_overlap(
     roads_shadows_data: ShadowsRoadsIntersectionRequest,
-) -> RoadsShadowOverlap:
+) -> None:
     _roads_shadows_data = from_dict(
         data_class=ShadowsRoadsIntersectionRequest, data=roads_shadows_data
     )
@@ -554,5 +605,8 @@ def compute_road_shadow_overlap(
     )
 
     r.set(job_id, json.dumps(asdict(road_shadow_overlap)))
+    # Keep the stats aligned with the shadow cache lifetime so they are
+    # recomputed after the underlying shadow expires.
+    r.expire(job_id, time=6000)
     time.sleep(1)
     logger.info("Intersection Completed")
