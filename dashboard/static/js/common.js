@@ -8,40 +8,38 @@ function uuidv4() {
 }
 
 function get_building_shadow(shadow_download_url) {
-  fetch(shadow_download_url)
+  return fetch(shadow_download_url)
     .then((response) => {
       return response.json();
     })
     .then((shadow_data) => {
-      if (shadow_data["features"].length > 0) {
+      const has_shadows =
+        shadow_data["features"] && shadow_data["features"].length > 0;
+
+      if (has_shadows) {
         let spinner_cont = document.getElementById("spinner");
-        spinner_cont.classList.add("d-none");
+        if (spinner_cont) {
+          spinner_cont.classList.add("d-none");
+        }
         let shadows_to_render = shadow_data;
         map.getSource("building_shadows").setData(shadows_to_render);
+
+        // Only offer "Show shadow only" once there are shadows to display.
+        let toggle_shadow_only_btn = document.getElementById(
+          "toggle-shadow-only-btn",
+        );
+        if (toggle_shadow_only_btn) {
+          toggle_shadow_only_btn.classList.remove("d-none");
+        }
       } else {
         console.log("Shadow computation ongoing...");
-        new Notify({
-          status: "info",
-          title: "Not completed",
-          text: "Shadows are still being generated, check after 10 - 30 seconds",
-          effect: "fade",
-          speed: 300,
-          customClass: "",
-          customIcon: "",
-          showIcon: true,
-          showCloseButton: true,
-          autoclose: true,
-          autotimeout: 3000,
-          notificationsGap: null,
-          notificationsPadding: null,
-          type: "outline",
-          position: "bottom center",
-          customWrapper: "",
-        });
       }
+
+      return has_shadows;
     })
     .catch((error) => {
       console.log(error);
+      return false;
     });
 }
 

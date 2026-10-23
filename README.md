@@ -58,15 +58,15 @@ psql -U postgres
 Then create the new database via commands below.
 
 ```sql
-CREATE DATABASE localclimateresponse;
-ALTER DATABASE localclimateresponse SET search_path=public,postgis,contrib;
-\connect localclimateresponse;
+CREATE DATABASE shadepoint;
+ALTER DATABASE shadepoint SET search_path=public,postgis,contrib;
+\connect shadepoint;
 CREATE SCHEMA postgis;
 CREATE EXTENSION postgis SCHEMA postgis;
-CREATE USER localclimateresponse;
-ALTER ROLE localclimateresponse WITH PASSWORD 'localclimateresponse';
-GRANT all privileges ON DATABASE localclimateresponse TO localclimateresponse;
-ALTER DATABASE localclimateresponse OWNER TO localclimateresponse;
+CREATE USER shadepoint;
+ALTER ROLE shadepoint WITH PASSWORD 'shadepoint';
+GRANT all privileges ON DATABASE shadepoint TO shadepoint;
+ALTER DATABASE shadepoint OWNER TO shadepoint;
 ```
 
 ### Run migrations and update database

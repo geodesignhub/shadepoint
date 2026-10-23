@@ -401,6 +401,15 @@ def compute_gdh_shadow_with_tree_canopy(geojson_session_date_time: dict):
         _exploded_gdh_building_polygons, _pd_date_time
     )
 
+    # Remove building footprints from the computed shadows so that the final
+    # shadow geometry only contains the shadow cast by the buildings and not
+    # the buildings themselves.
+    building_footprints = _exploded_gdh_building_polygons.geometry.union_all()
+    if not building_footprints.is_empty:
+        shadows = shadows.copy()
+        shadows["geometry"] = shadows.geometry.difference(building_footprints)
+        shadows = shadows[~shadows.geometry.is_empty]
+
     # # Merge the canopy with the shadow
     # bounds = _diagramid_building_date_time.bounds
     # # Combine trees and buildings into one FC

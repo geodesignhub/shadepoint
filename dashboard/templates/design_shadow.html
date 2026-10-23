@@ -88,6 +88,14 @@
     >
       <i class="bi bi-circle-fill" style="color:#228b22;font-size:0.6rem;vertical-align:middle"></i>&nbsp;Hide 300 m reach
     </button>
+    <button
+      id="toggle-shadow-only-btn"
+      type="button"
+      class="btn btn-outline-dark btn-sm ms-2 d-none"
+      onclick="toggleShadowOnly()"
+    >
+      <i class="bi bi-eye"></i>&nbsp;Show shadow only
+    </button>
   </div>
     </div>
   </div>
@@ -359,6 +367,51 @@
       dot.style.cssText = 'color:#228b22;font-size:0.6rem;vertical-align:middle';
       btn.appendChild(dot);
       btn.appendChild(document.createTextNode('\u00a0' + (_300mLayerVisible ? 'Hide 300 m reach' : 'Show 300 m reach')));
+      if (_shadowOnlyActive) {
+          ['tree_300m_buffers_fill', 'tree_300m_buffers_outline'].forEach(id => {
+              _savedLayerVisibility[id] = visibility;
+          });
+      }
+  }
+
+  let _shadowOnlyActive = false;
+  let _savedLayerVisibility = {};
+  function toggleShadowOnly() {
+      const shadowLayerIds = ['building_shadows', 'existing_building_shadows'];
+      // getStyle() omits custom layers (e.g. the 3D tree layer), so add them explicitly
+      const customLayerIds = ['3d-model'];
+      if (!_shadowOnlyActive) {
+          _savedLayerVisibility = {};
+          const layerIds = (map.getStyle().layers || [])
+              .map(layer => layer.id)
+              .concat(customLayerIds);
+          layerIds.forEach(id => {
+              if (!map.getLayer(id)) return;
+              const visibility = map.getLayoutProperty(id, 'visibility') || 'visible';
+              _savedLayerVisibility[id] = visibility;
+              map.setLayoutProperty(
+                  id,
+                  'visibility',
+                  shadowLayerIds.includes(id) ? 'visible' : 'none'
+              );
+          });
+          _shadowOnlyActive = true;
+      } else {
+          Object.keys(_savedLayerVisibility).forEach(id => {
+              if (map.getLayer(id)) {
+                  map.setLayoutProperty(id, 'visibility', _savedLayerVisibility[id]);
+              }
+          });
+          _savedLayerVisibility = {};
+          _shadowOnlyActive = false;
+      }
+      map.triggerRepaint();
+      const btn = document.getElementById('toggle-shadow-only-btn');
+      btn.innerHTML = _shadowOnlyActive
+          ? '<i class="bi bi-eye-slash"></i>&nbsp;Show all layers'
+          : '<i class="bi bi-eye"></i>&nbsp;Show shadow only';
+      btn.classList.toggle('btn-outline-dark', !_shadowOnlyActive);
+      btn.classList.toggle('btn-dark', _shadowOnlyActive);
   }
   // ── end 3/30/300 ─────────────────────────────────────────────────────────
 
@@ -709,13 +762,13 @@
           id: 'tree_300m_buffers_fill',
           type: 'fill',
           source: 'tree_300m_buffers',
-          paint: { 'fill-color': '#228b22', 'fill-opacity': 0.12 }
+          paint: { 'fill-color': '#228b22', 'fill-opacity': 0.07 }
       });
       map.addLayer({
           id: 'tree_300m_buffers_outline',
           type: 'line',
           source: 'tree_300m_buffers',
-          paint: { 'line-color': '#228b22', 'line-width': 1.5, 'line-opacity': 0.5 }
+          paint: { 'line-color': '#228b22', 'line-width': 1.5, 'line-opacity': 0.3 }
       });
 
       renderLayerAvailabilityPanel();
@@ -800,6 +853,7 @@
               },
 
               render(gl, args) {
+                  if (_shadowOnlyActive) return;
                   const offsetFromCenterElevation = map.queryTerrainElevation(sceneOrigin) || 0;
                   const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(sceneOrigin, offsetFromCenterElevation);
                   const sceneTransform = {
@@ -832,7 +886,7 @@
       this.get_generated_design_shadows = function () {
           let shadow_key = session_id+':'+august_6th_datetime+'_gdh_buildings_canopy_shadow';
           let shadow_download_url = window.location.origin + '/gdh_generated_shadow?shadow_key=' + shadow_key;
-          get_building_shadow(shadow_download_url);
+          return get_building_shadow(shadow_download_url);
       }
 
       this.get_roads_shadow_analysis =function() {
@@ -842,23 +896,109 @@
       }
 
       this.get_all_generated_data = function(){
-          this.get_generated_design_shadows();
+          this.get_generated_design_shadows().then(function (loaded) {
+              if (!loaded) {
+                  // Manual retries should always get feedback, even if the
+                  // automatic poll already notified once.
+                  shadow_pending_notified = false;
+                  notify_shadows_pending();
+              }
+          });
           this.get_roads_shadow_analysis();
       }
   }
   let design_shadow_helper = new DesignShadowFactory();
   // });
-  setTimeout(
-          function() {
-              // hide the spinner container
-          let spinner_cont = document.getElementById('spinner');
-          spinner_cont.classList.add('d-none');
-          // show get_design_shadows_control
+
+  // Shadow generation runs asynchronously on the server. Instead of waiting a
+  // fixed 25 seconds and then relying on the user to click the retry button,
+  // poll until the shadows are actually available.
+  const INITIAL_SHADOW_DELAY_MS = 25000;
+  const SHADOW_POLL_INTERVAL_MS = 5000;
+  const SHADOW_POLL_MAX_ATTEMPTS = 60; // ~5 minutes of polling
+
+  let shadow_poll_attempts = 0;
+  let shadow_poll_timer = null;
+  let shadow_pending_notified = false;
+
+  function notify_shadows_pending() {
+      if (shadow_pending_notified) return;
+      shadow_pending_notified = true;
+      new Notify({
+          status: "info",
+          title: "Not completed",
+          text: "Shadows are still being generated. This page will update automatically.",
+          effect: "fade",
+          speed: 300,
+          customClass: "",
+          customIcon: "",
+          showIcon: true,
+          showCloseButton: true,
+          autoclose: true,
+          autotimeout: 4000,
+          notificationsGap: null,
+          notificationsPadding: null,
+          type: "outline",
+          position: "bottom center",
+          customWrapper: "",
+      });
+  }
+
+  function notify_shadows_timeout() {
+      new Notify({
+          status: "warning",
+          title: "Shadows not ready yet",
+          text: "Shadow generation is taking longer than expected. Click 'Show Design Shadows & Analysis' to try again.",
+          effect: "fade",
+          speed: 300,
+          customClass: "",
+          customIcon: "",
+          showIcon: true,
+          showCloseButton: true,
+          autoclose: true,
+          autotimeout: 8000,
+          notificationsGap: null,
+          notificationsPadding: null,
+          type: "outline",
+          position: "bottom center",
+          customWrapper: "",
+      });
+  }
+
+  function poll_for_design_shadows() {
+      shadow_poll_attempts += 1;
+
+      design_shadow_helper.get_generated_design_shadows().then(function (loaded) {
           let get_design_shadows_cont = document.getElementById('get_shadows_control');
+
+          if (loaded) {
+              shadow_poll_timer = null;
+              // Data is ready, so the manual retry button is no longer needed.
+              get_design_shadows_cont.classList.add('d-none');
+              design_shadow_helper.get_roads_shadow_analysis();
+              return;
+          }
+
+          // Keep a manual retry available while auto-polling continues.
           get_design_shadows_cont.classList.remove('d-none');
 
-          design_shadow_helper.get_generated_design_shadows();
-          design_shadow_helper.get_roads_shadow_analysis();
-          }, 25000);
+          if (shadow_poll_attempts >= SHADOW_POLL_MAX_ATTEMPTS) {
+              shadow_poll_timer = null;
+              // Stop the spinner so the page no longer looks like it is loading.
+              let spinner_cont = document.getElementById('spinner');
+              spinner_cont.classList.add('d-none');
+              notify_shadows_timeout();
+              return;
+          }
+
+          notify_shadows_pending();
+          shadow_poll_timer = setTimeout(
+              poll_for_design_shadows,
+              SHADOW_POLL_INTERVAL_MS
+          );
+      });
+  }
+
+  setTimeout(poll_for_design_shadows, INITIAL_SHADOW_DELAY_MS);
 </script>
 {% endif %} {% endblock %}
