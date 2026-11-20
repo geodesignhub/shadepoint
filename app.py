@@ -35,6 +35,7 @@ from download_helper import (
     GeodesignhubDataDownloader,
     ShadowComputationHelper,
     kickoff_drawn_trees_shadow_job,
+    kickoff_site_evaluation_job,
 )
 from db_helper import TreesDatabaseWriter
 import arrow
@@ -306,6 +307,66 @@ def generate_drawn_trees_shadow():
     )
 
     return Response({}, status=200, mimetype=MIMETYPE)
+
+
+@app.route("/generate_site_evaluation", methods=["POST"])
+def generate_site_evaluation():
+    """Kick off the background job that computes 3/30/300 building priority
+    zones and green-space coverage gaps for the drawn trees."""
+    geojson_payload = request.get_json()
+
+    unprocessed_tree_geojson = geojson_payload["unprocessed_tree_geojson"]
+    session_id = request.args.get("session_id")
+    state_id = request.args.get("state_id")
+    project_id = request.args.get("project_id")
+    bounds = request.args.get("bounds")
+
+    # Resolve the analytical layer URLs server-side, by dom_id
+    buildings_url = ""
+    greenspaces_url = ""
+    my_view_helper = ViewDataGenerator(
+        view_type="tree_shadow_analysis", project_id=project_id
+    )
+    fgb_layers: FGBDataSourceList = my_view_helper.generate_fgb_layers_list()
+    for fgb_layer in fgb_layers.layers:
+        if fgb_layer.dom_id == "existing_buildings":
+            buildings_url = fgb_layer.url
+        elif fgb_layer.dom_id == "existing_greenspaces":
+            greenspaces_url = fgb_layer.url
+
+    kickoff_site_evaluation_job(
+        session_id=session_id,
+        state_id=state_id,
+        trees=unprocessed_tree_geojson,
+        bounds=bounds,
+        buildings_url=buildings_url,
+        greenspaces_url=greenspaces_url,
+    )
+
+    return Response({}, status=200, mimetype=MIMETYPE)
+
+
+@app.route("/get_site_evaluation", methods=["GET"])
+def get_site_evaluation():
+    site_evaluation_key = request.args.get("site_evaluation_key", "0")
+
+    site_evaluation_exists = redis.exists(site_evaluation_key)
+
+    if site_evaluation_exists:
+        site_evaluation_raw = redis.get(site_evaluation_key)
+        result = json.loads(site_evaluation_raw.decode("utf-8"))
+        result["status"] = "complete"
+    else:
+        result = {
+            "status": "processing",
+            "building_priority_zones": {"type": "FeatureCollection", "features": []},
+            "coverage_gap": {"type": "FeatureCollection", "features": []},
+            "stats": {},
+            "messages": [],
+        }
+
+    logger.info(f"Site evaluation Key: {site_evaluation_key}")
+    return Response(json.dumps(result), status=200, mimetype=MIMETYPE)
 
 
 @app.route("/diagram_shadow/", methods=["GET"])

@@ -324,6 +324,18 @@ class DrawnTreesShadowGenerationRequest:
 
 
 @dataclass
+class SiteEvaluationGenerationRequest:
+    trees: list
+    session_id: str
+    state_id: str
+    bounds: str
+    buildings_url: str
+    greenspaces_url: str
+    request_date_time: str
+    result: dict
+
+
+@dataclass
 class ExistingBuildingsDataShadowGenerationRequest:
     session_id: str
     request_date_time: str

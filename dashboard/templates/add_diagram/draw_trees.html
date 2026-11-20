@@ -126,29 +126,82 @@
       <strong>Site Evaluation</strong>&nbsp;<small class="text-muted">Suggested tree planting zones based on 3/30/300 gaps</small>
     </div>
     <div class="card-body py-2">
-      <div
-        id="site-eval-toggle-group"
-        class="btn-group btn-group-sm"
-        role="group"
-        aria-label="Site evaluation layer toggles"
-      >
-        <input type="checkbox" class="btn-check" id="site-eval-bldg-toggle" autocomplete="off" checked />
-        <label class="btn btn-outline-warning" for="site-eval-bldg-toggle">
-          <i class="bi bi-building"></i> Building Priority Zones
-        </label>
-        <input type="checkbox" class="btn-check" id="site-eval-gap-toggle" autocomplete="off" checked />
-        <label class="btn btn-outline-danger" for="site-eval-gap-toggle">
-          <i class="bi bi-geo-alt"></i> Green Space Coverage Gaps
-        </label>
-      </div>
-      <div class="mt-1">
-        <small class="text-muted" id="site-eval-status"></small>
-      </div>
-      <div class="mt-1 small">
-        <span class="badge" style="background-color:#dc3545">&nbsp;</span> High priority (0 trees)&nbsp;
-        <span class="badge" style="background-color:#fd7e14">&nbsp;</span> Medium (1&ndash;2 trees)&nbsp;
-        <span class="badge" style="background-color:#198754">&nbsp;</span> Met (&ge;3 trees)&nbsp;
-        <span class="badge" style="background-color:#dc3545; opacity:0.4">&nbsp;</span> &gt;300 m from green space
+      <div class="row">
+        <div class="col-md-8">
+          <div
+            id="site-eval-toggle-group"
+            class="btn-group btn-group-sm"
+            role="group"
+            aria-label="Site evaluation layer toggles"
+          >
+            <input type="checkbox" class="btn-check" id="site-eval-bldg-toggle" autocomplete="off" checked disabled />
+            <label class="btn btn-outline-warning" for="site-eval-bldg-toggle">
+              <i class="bi bi-building"></i> Building Priority Zones
+            </label>
+            <input type="checkbox" class="btn-check" id="site-eval-gap-toggle" autocomplete="off" checked disabled />
+            <label class="btn btn-outline-danger" for="site-eval-gap-toggle">
+              <i class="bi bi-geo-alt"></i> Green Space Coverage Gaps
+            </label>
+          </div>
+
+            <button
+              class="btn btn-outline-secondary btn-sm d-none"
+              id="generate_site_eval_control"
+              type="button"
+              onclick="tree_editing_control.generate_site_evaluation()"
+              data-bs-toggle="tooltip"
+              data-bs-placement="left"
+              data-bs-title="Compute building priority zones and green-space coverage gaps (3/30/300) in the background"
+            >
+              Load Site Evaluation
+            </button>
+          <div class="mt-1">
+            <small class="text-muted" id="site-eval-hint">Run the site evaluation to enable these layers.</small>
+          </div>
+          <div class="mt-1">
+            <small class="text-muted" id="site-eval-status"></small>
+          </div>
+          <div class="mt-1 small">
+            <span class="badge" style="background-color:#dc3545">&nbsp;</span> High priority (0 trees)&nbsp;
+            <span class="badge" style="background-color:#fd7e14">&nbsp;</span> Medium (1&ndash;2 trees)&nbsp;
+            <span class="badge" style="background-color:#198754">&nbsp;</span> Met (&ge;3 trees)&nbsp;
+            <span class="badge" style="background-color:#dc3545; opacity:0.4">&nbsp;</span> &gt;300 m from green space
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+
+            <div
+              id="site_eval_spinner"
+              class="d-none spinner-grow text-secondary"
+              role="status"
+            >
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <button
+              class="btn btn-outline-info btn-sm d-none"
+              id="clear_site_eval_control"
+              type="button"
+              onclick="tree_editing_control.clear_site_evaluation()"
+              data-bs-toggle="tooltip"
+              data-bs-placement="left"
+              data-bs-title="Clear site evaluation layers"
+            >
+              Clear Site Evaluation
+            </button>
+            <button
+              class="btn btn-outline-info btn-sm d-none"
+              id="get_site_eval_control"
+              type="button"
+              onclick="tree_editing_control.get_site_evaluation()"
+              data-bs-toggle="tooltip"
+              data-bs-placement="left"
+              data-bs-title="Fetch the computed building priority zones and coverage gaps"
+            >
+              Get Site Evaluation
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -162,7 +215,16 @@
   </div>
 
   <div id="compliance-dashboard" class="card mt-2 d-none">
-    <div class="card-header"><strong>3/30/300 Live Compliance</strong></div>
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>3/30/300 Live Compliance</strong>
+      <div
+        id="compliance_spinner"
+        class="spinner-border spinner-border-sm text-secondary d-none"
+        role="status"
+      >
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
     <div class="card-body">
       <div class="row text-center">
         <div class="col-md-4">
@@ -170,9 +232,9 @@
             class="bi bi-info-circle"
             data-bs-toggle="tooltip"
             data-bs-placement="top"
-            title="Rule 3: Every resident should be able to see at least 3 trees from their home or workplace. Measured as the average number of drawn trees within 50 m of each building."></i></small>
+            title="Rule 3: Every resident should be able to see at least 3 trees from their home or workplace. Measured as the percentage of buildings (within the project bounds) with at least 3 drawn trees within 50 m of their centroid."></i></small>
           <span id="rule3-stat" class="badge bg-secondary fs-6">&mdash;</span>
-          <small class="d-block text-muted">avg trees within 50 m</small>
+          <small class="d-block text-muted">% buildings with ≥3 trees</small>
         </div>
         <div class="col-md-4">
           <small class="text-muted d-block">Rule 30 &mdash; Canopy cover&nbsp;<i
@@ -217,7 +279,17 @@
   </div>
   <div class="row">
     <div class="col-md-9">
-      <div class="btn-group" role="group" aria-label="Tree drawing tools">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-bs-toggle="tooltip"
+          data-bs-placement="left"
+          data-bs-title="Number of trees added"
+          id="number_of_trees_drawn"
+        >
+          0
+        </button>
         <button
           id="toggle_toolbox_button"
           type="button"
@@ -227,10 +299,50 @@
           <i class="bi bi-tools"></i>&nbsp;{{ gettext('Add, Move or Remove Drawn
           Trees') }}
         </button>
+        <button
+          data-bs-toggle="tooltip"
+          data-bs-placement="left"
+          data-bs-title="Shadow of the trees added"
+          id="generate_shadows_control"
+          type="button"
+          onclick="tree_editing_control.generate_shadows()"
+          class="btn btn-outline-secondary d-none"
+        >
+          <i class="bi bi-circle-half"></i>&nbsp;{{ gettext('Generate Tree
+          Shadows') }}
+        </button>
+        <div
+          id="shadow_spinner"
+          class="d-none spinner-grow text-secondary"
+          role="status"
+        >
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <button
+          class="btn btn-outline-info d-none"
+          id="clear_shadows_control"
+          type="button"
+          onclick="tree_editing_control.clear_generated_shadows()"
+          data-bs-toggle="tooltip"
+          data-bs-placement="left"
+          data-bs-title="Clear generated shadows"
+        >
+          Clear Tree Shadows
+        </button>
+        <button
+          class="btn btn-outline-info d-none"
+          id="get_shadows_control"
+          type="button"
+          onclick="tree_editing_control.get_generated_shadows('{{ op['session_id'] }}')"
+          data-bs-toggle="tooltip"
+          data-bs-placement="left"
+          data-bs-title="By default the shadow is computed for August 6 at 10AM when radiation is not strong"
+        >
+          Get generated shadows
+        </button>
       </div>
-      &nbsp;
       <div
-        class="btn-group"
+        class="btn-group mt-2"
         role="group"
         aria-label="Drawn trees editing tools"
       >
@@ -273,64 +385,8 @@
           {{ gettext('Delete all trees') }}
         </button>
       </div>
-      &nbsp;
     </div>
     <div class="col-md-3">
-      <div class="btn-toolbar" role="toolbar" aria-label="Drawn trees toolbar">
-        <div class="btn-group" role="group" aria-label="First group">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            data-bs-toggle="tooltip"
-            data-bs-placement="left"
-            data-bs-title="Number of trees added"
-            id="number_of_trees_drawn"
-          >
-            0
-          </button>
-          <button
-            data-bs-toggle="tooltip"
-            data-bs-placement="left"
-            data-bs-title="Shadow of the trees added"
-            id="generate_shadows_control"
-            type="button"
-            onclick="tree_editing_control.generate_shadows()"
-            class="btn btn-outline-secondary d-none"
-          >
-            Generate Tree Shadows
-          </button>
-
-          <div
-            id="shadow_spinner"
-            class="d-none spinner-grow text-secondary"
-            role="status"
-          >
-            <span class="visually-hidden">Loading...</span>
-          </div>
-          <button
-            class="btn btn-outline-info btn-sm d-none"
-            id="clear_shadows_control"
-            type="button"
-            onclick="tree_editing_control.clear_generated_shadows()"
-            data-bs-toggle="tooltip"
-            data-bs-placement="left"
-            data-bs-title="Clear generated shadows"
-          >
-            Clear Tree Shadows</button
-          >&nbsp;
-          <button
-            class="btn btn-outline-info btn-sm d-none"
-            id="get_shadows_control"
-            type="button"
-            onclick="tree_editing_control.get_generated_shadows('{{ op['session_id'] }}')"
-            data-bs-toggle="tooltip"
-            data-bs-placement="left"
-            data-bs-title="By default the shadow is computed for August 6 at 10AM when radiation is not strong"
-          >
-            Get generated shadows</button
-          >&nbsp;
-        </div>
-      </div>
     </div>
   </div>
   <br />
@@ -837,20 +893,28 @@
           el3.textContent = `avg ${avg} trees / 50 m`;
           el3.className = `badge fs-6 ${parseFloat(avg) >= 3 ? 'bg-success' : 'bg-danger'}`;
       } else {
-          // With buildings: count trees within 50 m of each building centroid
-          const buildingCentroids = LAYER_REGISTRY.buildings.map(b => turf.centroid(b));
-          let totalTreesPerBuilding = 0;
-          buildingCentroids.forEach(bc => {
+          // With buildings: % of buildings (within the study bounds) that have
+          // ≥3 trees within 50 m of their centroid. The existing_buildings FGB
+          // frequently covers a whole city, so only buildings overlapping the
+          // project bounds are counted — mirrors the backend site evaluation.
+          const studyBounds = [sw.lng, sw.lat, ne.lng, ne.lat];
+          let metBuildings = 0;
+          let totalBuildings = 0;
+          LAYER_REGISTRY.buildings.forEach(b => {
+              try {
+                  const bb = turf.bbox(b);
+                  if (bb[2] < studyBounds[0] || bb[0] > studyBounds[2] ||
+                      bb[3] < studyBounds[1] || bb[1] > studyBounds[3]) return;
+              } catch (e) { return; }
+              const bc = turf.centroid(b);
               const buf = turf.circle(bc.geometry.coordinates, 50, { units: 'meters' });
               const within = turf.pointsWithinPolygon(treeFC, buf);
-              totalTreesPerBuilding += within.features.length;
+              totalBuildings += 1;
+              if (within.features.length >= 3) metBuildings += 1;
           });
-          console.log(`Total trees near buildings: ${totalTreesPerBuilding} across ${buildingCentroids.length} buildings`);
-          const avg = buildingCentroids.length > 0
-              ? (totalTreesPerBuilding / buildingCentroids.length).toFixed(1)
-              : 0;
-          el3.textContent = `avg ${avg} trees / building`;
-          el3.className = `badge fs-6 ${parseFloat(avg) >= 3 ? 'bg-success' : 'bg-danger'}`;
+          const pct = totalBuildings > 0 ? Math.round((metBuildings / totalBuildings) * 100) : 0;
+          el3.textContent = `${pct}% / buildings ≥3 trees`;
+          el3.className = `badge fs-6 ${pct >= 100 ? 'bg-success' : 'bg-danger'}`;
       }
 
       // Rule 300 — Green space proximity ─────────────────────────────────
@@ -859,91 +923,122 @@
           el300.textContent = 'Layer unavailable';
           el300.className = 'badge fs-6 bg-secondary';
       } else {
-          const greenCentroids = LAYER_REGISTRY.greenSpaces.map(f => turf.centroid(f));
-          const greenFC = turf.featureCollection(greenCentroids);
           let maxDist = 0;
           treePoints.forEach(tree => {
-              const nearest = turf.nearestPoint(tree, greenFC);
-              const dist = turf.distance(tree, nearest, { units: 'meters' });
-              if (dist > maxDist) maxDist = dist;
+              let nearestDist = Infinity;
+              LAYER_REGISTRY.greenSpaces.forEach(gs => {
+                  const geom = gs.geometry;
+                  if (!geom) return;
+                  let dist;
+                  if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {
+                      // distance to the green space itself, not its centroid
+                      dist = turf.pointToPolygonDistance(tree, gs, { units: 'meters' });
+                  } else {
+                      dist = turf.distance(tree, turf.centroid(gs), { units: 'meters' });
+                  }
+                  if (dist < nearestDist) nearestDist = dist;
+              });
+              if (nearestDist > maxDist) maxDist = nearestDist;
           });
           el300.textContent = `${Math.round(maxDist)} m / 300 m`;
           el300.className = `badge fs-6 ${maxDist <= 300 ? 'bg-success' : 'bg-danger'}`;
       }
   }
+
+  // Background execution: the same computation runs in a Web Worker
+  // (js/compliance-worker.js) so bulk tree additions do not freeze the UI.
+  // Analytical layers are pushed to the worker once after the FGB layers
+  // load; each tree edit is debounced and sent as a generation-tagged compute
+  // request. If workers are unavailable we fall back to the synchronous
+  // updateComplianceStats() above.
+  const COMPLIANCE_WORKER_URL = "{{ url_for('static', filename='js/compliance-worker.js') }}";
+  const COMPLIANCE_TURF_URL = "{{ url_for('static', filename='js/turf.min.js') }}";
+  const COMPLIANCE_DEBOUNCE_MS = 400;
+  let compliance_worker = null; // null = not started, false = unavailable
+  let compliance_generation = 0;
+  let compliance_debounce_timer = null;
+
+  function initComplianceWorker() {
+      if (compliance_worker !== null) return compliance_worker;
+      try {
+          compliance_worker = new Worker(COMPLIANCE_WORKER_URL);
+      } catch (err) {
+          console.warn('Compliance worker unavailable, using synchronous fallback', err);
+          compliance_worker = false;
+          return compliance_worker;
+      }
+      compliance_worker.onmessage = function (e) {
+          const data = e.data || {};
+          if (data.type !== 'result' || data.generation !== compliance_generation) return;
+          setComplianceBadge('rule3-stat', data.stats.rule3);
+          setComplianceBadge('rule30-stat', data.stats.rule30);
+          setComplianceBadge('rule300-stat', data.stats.rule300);
+          document.getElementById('compliance_spinner').classList.add('d-none');
+      };
+      compliance_worker.onerror = function () {
+          console.warn('Compliance worker error, using synchronous fallback');
+          compliance_worker = false;
+          updateComplianceStats();
+      };
+      // sendLayersToComplianceWorker() is only called after init completes,
+      // so a promise-free handoff is enough: layers are pushed once turf is
+      // loaded inside the worker.
+      compliance_worker.postMessage({ type: 'init', turfUrl: COMPLIANCE_TURF_URL });
+      return compliance_worker;
+  }
+
+  function setComplianceBadge(id, stat) {
+      const el = document.getElementById(id);
+      el.textContent = stat.text;
+      el.className = `badge fs-6 ${stat.badgeClass}`;
+  }
+
+  // Push the analytical layers into the worker (called after FGB layers load)
+  function sendLayersToComplianceWorker() {
+      if (!initComplianceWorker()) return;
+      compliance_worker.postMessage({
+          type: 'layers',
+          existingCanopy: LAYER_REGISTRY.existingCanopy || [],
+          greenSpaces: LAYER_REGISTRY.greenSpaces || [],
+          buildings: LAYER_REGISTRY.buildings || []
+      });
+  }
+
+  // Debounced entry point replacing direct calls to updateComplianceStats()
+  function queueComplianceStats() {
+      const snapshot = draw.getSnapshot();
+      const treePoints = snapshot.filter(f => f.geometry.type === 'Point');
+      const spinner = document.getElementById('compliance_spinner');
+      if (compliance_debounce_timer) clearTimeout(compliance_debounce_timer);
+      if (treePoints.length === 0) {
+          spinner.classList.add('d-none');
+          return;
+      }
+      const worker = initComplianceWorker();
+      if (!worker) {
+          updateComplianceStats();
+          return;
+      }
+      spinner.classList.remove('d-none');
+      compliance_debounce_timer = setTimeout(function () {
+          compliance_generation += 1;
+          const sw = bounds.getSouthWest();
+          const ne = bounds.getNorthEast();
+          worker.postMessage({
+              type: 'compute',
+              generation: compliance_generation,
+              trees: treePoints,
+              bounds: [sw.lng, sw.lat, ne.lng, ne.lat]
+          });
+      }, COMPLIANCE_DEBOUNCE_MS);
+  }
   // ── end 3/30/300 ─────────────────────────────────────────────────────────
 
   // ── Site Evaluation ───────────────────────────────────────────────────────
-  // Computes two GeoJSON layers:
-  //   site_eval_bldg_circles  – 50 m buffers around buildings coloured by Rule 3 deficiency
-  //   site_eval_coverage_gap  – study-area polygon minus 300 m green-space buffers (Rule 300 gap)
-  function updateSiteEvaluation() {
-      if (!map.getSource('site_eval_bldg_circles')) return;
-
-      const snapshot = draw.getSnapshot();
-      const treePoints = snapshot.filter(f => f.geometry.type === 'Point');
-      const treeFC = turf.featureCollection(treePoints);
-      const statusEl = document.getElementById('site-eval-status');
-      const messages = [];
-
-      // Rule 3 — Building Priority Zones ─────────────────────────────────────
-      if (LAYER_REGISTRY.buildings) {
-          const bldgFeatures = [];
-          let highCount = 0, medCount = 0, metCount = 0;
-          LAYER_REGISTRY.buildings.forEach(bldg => {
-              const centroid = turf.centroid(bldg);
-              const buf50 = turf.circle(centroid.geometry.coordinates, 50, { units: 'meters' });
-              const count = turf.pointsWithinPolygon(treeFC, buf50).features.length;
-              const priority = count === 0 ? 'high' : count < 3 ? 'medium' : 'met';
-              if (priority === 'high') highCount++;
-              else if (priority === 'medium') medCount++;
-              else metCount++;
-              buf50.properties = { tree_count: count, priority, priority_score: Math.max(0, 3 - count) };
-              bldgFeatures.push(buf50);
-          });
-          map.getSource('site_eval_bldg_circles').setData({ type: 'FeatureCollection', features: bldgFeatures });
-          if (highCount > 0 || medCount > 0) {
-              messages.push(`${highCount} buildings need trees · ${medCount} need more trees`);
-          }
-      } else {
-          map.getSource('site_eval_bldg_circles').setData({ type: 'FeatureCollection', features: [] });
-      }
-
-      // Rule 300 — Green Space Coverage Gaps ─────────────────────────────────
-      if (LAYER_REGISTRY.greenSpaces && LAYER_REGISTRY.greenSpaces.length > 0) {
-          try {
-              const sw = bounds.getSouthWest();
-              const ne = bounds.getNorthEast();
-              const studyArea = turf.bboxPolygon([sw.lng, sw.lat, ne.lng, ne.lat]);
-              const buffers = LAYER_REGISTRY.greenSpaces.map(gs =>
-                  turf.circle(turf.centroid(gs).geometry.coordinates, 300, { units: 'meters' })
-              );
-              // turf v7 API: union/difference take a FeatureCollection
-              const unionBuf = buffers.length === 1
-                  ? buffers[0]
-                  : turf.union(turf.featureCollection(buffers));
-              const gap = turf.difference(turf.featureCollection([studyArea, unionBuf]));
-              map.getSource('site_eval_coverage_gap').setData({
-                  type: 'FeatureCollection',
-                  features: gap ? [gap] : []
-              });
-              if (gap) {
-                  const gapPct = ((turf.area(gap) / turf.area(studyArea)) * 100).toFixed(1);
-                  messages.push(`${gapPct}% of study area is >300 m from a green space`);
-              }
-          } catch (e) {
-              console.warn('Site Evaluation coverage gap error:', e);
-              map.getSource('site_eval_coverage_gap').setData({ type: 'FeatureCollection', features: [] });
-          }
-      } else {
-          map.getSource('site_eval_coverage_gap').setData({ type: 'FeatureCollection', features: [] });
-      }
-
-      if (statusEl) {
-          statusEl.textContent = messages.length > 0 ? messages.join(' · ') : '';
-      }
-  }
-
+  // The two layers (building priority zones and green-space coverage gaps)
+  // are computed by a background job (POST /generate_site_evaluation,
+  // result fetched from /get_site_evaluation). This helper only resets the
+  // map sources and the status line.
   function clearSiteEvaluation() {
       if (map.getSource('site_eval_bldg_circles')) {
           map.getSource('site_eval_bldg_circles').setData({ type: 'FeatureCollection', features: [] });
@@ -955,18 +1050,29 @@
       if (statusEl) statusEl.textContent = '';
   }
 
-  // Debounced wrapper — coalesces rapid-fire adds (e.g. measurements grid)
-  // into a single recompute 250 ms after the last tree change.
-  let _siteEvalTimer = null;
-  function scheduleSiteEvaluation() {
-      if (_siteEvalTimer) clearTimeout(_siteEvalTimer);
-      _siteEvalTimer = setTimeout(updateSiteEvaluation, 250);
+  // Enable the layer toggles only once the site evaluation has been computed
+  // successfully; before that they stay disabled with a hint shown.
+  function setSiteEvaluationTogglesEnabled(enabled) {
+      ['site-eval-bldg-toggle', 'site-eval-gap-toggle'].forEach(function (id) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.disabled = !enabled;
+          el.checked = true;
+      });
+      const hintEl = document.getElementById('site-eval-hint');
+      if (hintEl) hintEl.classList.toggle('d-none', enabled);
   }
   // ── end Site Evaluation ───────────────────────────────────────────────────
 
    let TreeEditingFactory = function () {
       let session_id = "{{op['session_id']}}";
       let state_id = uuidv4();
+      let project_id = "{{ op['project_id'] }}";
+      let bounds_str = project_detail['project_data']['bounds']['bounds'];
+      // Site evaluation polling state (background job)
+      let _site_eval_poll_timer = null;
+      let _site_eval_poll_count = 0;
+      let _site_eval_key = null;
 
       this.show_toolbox = function () {
           let drawing_controls =  document.getElementsByClassName("drawing_mode_controls");
@@ -1067,6 +1173,9 @@
               // show the generate shadows button
               let show_shadows_control = document.getElementById('generate_shadows_control');
               show_shadows_control.classList.remove('d-none');
+              // show the generate site evaluation button
+              let generate_site_eval_control = document.getElementById('generate_site_eval_control');
+              generate_site_eval_control.classList.remove('d-none');
               // show 3/30/300 compliance dashboard
               document.getElementById('compliance-dashboard').classList.remove('d-none');
               // show site evaluation panel
@@ -1078,11 +1187,17 @@
               // show the generate shadows button
               let show_shadows_control = document.getElementById('generate_shadows_control');
               show_shadows_control.classList.add('d-none');
+              // hide the site evaluation controls and layers
+              document.getElementById('generate_site_eval_control').classList.add('d-none');
+              document.getElementById('clear_site_eval_control').classList.add('d-none');
+              document.getElementById('get_site_eval_control').classList.add('d-none');
+              document.getElementById('site_eval_spinner').classList.add('d-none');
               // hide 3/30/300 compliance dashboard
               document.getElementById('compliance-dashboard').classList.add('d-none');
               // hide site evaluation panel and clear layers
               document.getElementById('site-eval-panel').classList.add('d-none');
               clearSiteEvaluation();
+              setSiteEvaluationTogglesEnabled(false);
           }
 
 
@@ -1273,6 +1388,202 @@
           let get_shadows_control = document.getElementById('get_shadows_control');
           get_shadows_control.classList.add('d-none');
       }
+      this.generate_site_evaluation = function () {
+          const snapshot = draw.getSnapshot();
+          if (!snapshot || snapshot.length === 0) return;
+
+          // UI: hide generate/get/clear, show spinner
+          document.getElementById('generate_site_eval_control').classList.add('d-none');
+          document.getElementById('clear_site_eval_control').classList.add('d-none');
+          document.getElementById('get_site_eval_control').classList.add('d-none');
+          document.getElementById('site_eval_spinner').classList.remove('d-none');
+          const statusEl = document.getElementById('site-eval-status');
+          if (statusEl) statusEl.textContent = 'Computing building priority zones and coverage gaps…';
+
+          this.send_generate_site_evaluation_request(snapshot);
+
+          // remember the key of this request and poll for the result
+          _site_eval_key = session_id + '_' + state_id + '_site_evaluation';
+          _site_eval_poll_count = 0;
+          this.poll_site_evaluation();
+
+          new Notify ({
+              status: 'info',
+              title: 'Site evaluation started',
+              text: 'Building priority zones and coverage gaps are being computed in the background, this may take 10 - 30 seconds.',
+              effect: 'fade',
+              speed: 400,
+              customClass: '',
+              customIcon: '',
+              showIcon: true,
+              showCloseButton: true,
+              autoclose: true,
+              autotimeout: 4000,
+              notificationsGap: null,
+              notificationsPadding: null,
+              type: 'outline',
+              position: 'top-right',
+              customWrapper: '',
+          });
+      }
+      this.send_generate_site_evaluation_request = function (snapshot) {
+          let post_site_eval_url = window.location.origin + '/generate_site_evaluation?session_id=' + session_id + '&state_id=' + state_id + '&project_id=' + project_id + '&bounds=' + encodeURIComponent(bounds_str);
+          fetch(post_site_eval_url, {
+              method: "post",
+              headers: {
+                  "X-CSRF-Token": csrf_token,
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                  unprocessed_tree_geojson: snapshot,
+                  session_id: session_id,
+                  state_id: state_id
+              })
+          })
+              .then((response) => {
+                console.log(response);
+              });
+      }
+      this.poll_site_evaluation = function () {
+          if (_site_eval_poll_timer) clearTimeout(_site_eval_poll_timer);
+          if (!_site_eval_key) return;
+          const fetch_url = window.location.origin + '/get_site_evaluation?site_evaluation_key=' + _site_eval_key;
+          _site_eval_poll_timer = setTimeout(() => {
+              fetch(fetch_url)
+                  .then(response => response.json())
+                  .then(data => {
+                      if (data.status === 'complete') {
+                          _site_eval_poll_timer = null;
+                          this.site_evaluation_loaded(data);
+                      } else {
+                          _site_eval_poll_count += 1;
+                          if (_site_eval_poll_count >= 20) {
+                              // give up polling, offer manual retrieval
+                              document.getElementById('site_eval_spinner').classList.add('d-none');
+                              document.getElementById('get_site_eval_control').classList.remove('d-none');
+                              const statusEl = document.getElementById('site-eval-status');
+                              if (statusEl) statusEl.textContent = 'Still computing — click "Get Site Evaluation" to check again.';
+                              return;
+                          }
+                          this.poll_site_evaluation();
+                      }
+                  })
+                  .catch(err => {
+                      console.warn('Site evaluation poll failed', err);
+                      this.poll_site_evaluation();
+                  });
+          }, 3000);
+      }
+      this.get_site_evaluation = function () {
+          const key = _site_eval_key || (session_id + '_' + state_id + '_site_evaluation');
+          let download_url = window.location.origin + '/get_site_evaluation?site_evaluation_key=' + key;
+          fetch(download_url)
+              .then(response => response.json())
+              .then(data => {
+                  if (data.status === 'complete') {
+                      this.site_evaluation_loaded(data);
+                  } else {
+                      this.site_evaluation_ongoing();
+                  }
+              });
+      }
+      this.site_evaluation_loaded = function (data) {
+          document.getElementById('site_eval_spinner').classList.add('d-none');
+          document.getElementById('get_site_eval_control').classList.add('d-none');
+          document.getElementById('clear_site_eval_control').classList.remove('d-none');
+
+          if (map.getSource('site_eval_bldg_circles')) {
+              map.getSource('site_eval_bldg_circles').setData(data.building_priority_zones || { type: 'FeatureCollection', features: [] });
+          }
+          if (map.getSource('site_eval_coverage_gap')) {
+              map.getSource('site_eval_coverage_gap').setData(data.coverage_gap || { type: 'FeatureCollection', features: [] });
+          }
+          const statusEl = document.getElementById('site-eval-status');
+          if (statusEl) {
+              const msgs = data.messages || [];
+              let text = msgs.join(' · ');
+              if (!text && data.stats && typeof data.stats.met_buildings !== 'undefined'
+                  && (data.stats.high_buildings || 0) === 0 && (data.stats.medium_buildings || 0) === 0) {
+                  text = 'All buildings meet the 3-tree rule';
+              }
+              statusEl.textContent = text;
+          }
+          // make sure the panel is visible
+          document.getElementById('site-eval-panel').classList.remove('d-none');
+          // enable the layer toggles now that results are available
+          setSiteEvaluationTogglesEnabled(true);
+
+          new Notify ({
+              status: 'success',
+              title: 'Site evaluation ready',
+              text: 'Building priority zones and coverage gaps are now displayed on the map',
+              effect: 'fade',
+              speed: 400,
+              customClass: '',
+              customIcon: '',
+              showIcon: true,
+              showCloseButton: true,
+              autoclose: true,
+              autotimeout: 4000,
+              notificationsGap: null,
+              notificationsPadding: null,
+              type: 'outline',
+              position: 'top-right',
+              customWrapper: '',
+          });
+      }
+      this.site_evaluation_ongoing = function () {
+          new Notify ({
+              status: 'info',
+              title: 'Site evaluation ongoing',
+              text: 'The site evaluation is still being computed, check again in 10 - 30 seconds',
+              effect: 'fade',
+              speed: 300,
+              customClass: '',
+              customIcon: '',
+              showIcon: true,
+              showCloseButton: true,
+              autoclose: true,
+              autotimeout: 3000,
+              notificationsGap: null,
+              notificationsPadding: null,
+              type: 'outline',
+              position: 'top-left',
+              customWrapper: '',
+          });
+      }
+      this.clear_site_evaluation = function () {
+          if (_site_eval_poll_timer) { clearTimeout(_site_eval_poll_timer); _site_eval_poll_timer = null; }
+          _site_eval_key = null;
+          _site_eval_poll_count = 0;
+          document.getElementById('clear_site_eval_control').classList.add('d-none');
+          document.getElementById('get_site_eval_control').classList.add('d-none');
+          document.getElementById('site_eval_spinner').classList.add('d-none');
+          document.getElementById('generate_site_eval_control').classList.remove('d-none');
+
+          clearSiteEvaluation();
+          setSiteEvaluationTogglesEnabled(false);
+
+          new Notify ({
+              status: 'success',
+              title: 'Site evaluation cleared',
+              text: 'The site evaluation layers have been cleared, you can compute them again by clicking on the "Generate Site Evaluation" button',
+              effect: 'fade',
+              speed: 400,
+              customClass: '',
+              customIcon: '',
+              showIcon: true,
+              showCloseButton: true,
+              autoclose: true,
+              autotimeout: 4000,
+              notificationsGap: null,
+              notificationsPadding: null,
+              type: 'outline',
+              position: 'top-right',
+              customWrapper: '',
+          });
+      }
   }
   let tree_editing_control = new TreeEditingFactory();
   let measure_control_helper = new MeasureControls();
@@ -1286,8 +1597,7 @@
       if (['create', 'update', 'delete'].includes(type)) {
           tree_editing_control.update_tree_count();
           tree_editing_control.update_state_id();
-          updateComplianceStats();
-          scheduleSiteEvaluation();
+          queueComplianceStats();
       }
   });
   draw.on('select', (id) => {
@@ -1311,6 +1621,35 @@
 
       map.setPaintProperty('Minor road', 'line-color', '#000000');
       map.setPaintProperty('Minor road', 'line-opacity', 0.05);
+
+      // ── Geodesignhub project bounds ──────────────────────────────────────
+      const gdhBoundsPolygon = {
+          type: 'Feature',
+          geometry: {
+              type: 'Polygon',
+              coordinates: [[
+                  [parseFloat(latLngs[0]), parseFloat(latLngs[1])],
+                  [parseFloat(latLngs[0]), parseFloat(latLngs[3])],
+                  [parseFloat(latLngs[2]), parseFloat(latLngs[3])],
+                  [parseFloat(latLngs[2]), parseFloat(latLngs[1])],
+                  [parseFloat(latLngs[0]), parseFloat(latLngs[1])]
+              ]]
+          },
+          properties: { source: 'geodesignhub' }
+      };
+      map.addSource('gdh_bounds', { type: 'geojson', data: gdhBoundsPolygon });
+      map.addLayer({
+          id: 'gdh_bounds_outline',
+          type: 'line',
+          source: 'gdh_bounds',
+          paint: {
+              'line-color': '#0d6efd',
+              'line-width': 2,
+              'line-opacity': 0.9,
+              'line-dasharray': [3, 2]
+          }
+      });
+      // ── end Geodesignhub project bounds ──────────────────────────────────
 
       map.addSource('tree_shadows', {
           'type': 'geojson',
@@ -1551,6 +1890,7 @@
           }
       }
       renderLayerAvailabilityPanel();
+      sendLayersToComplianceWorker();
   });
   const addDiagramModalEl = document.getElementById('addDiagramModal');
   addDiagramModalEl.addEventListener('shown.bs.modal', event => {
@@ -1589,10 +1929,9 @@
   // add event handlers for all the button-54 buttons
   document.querySelectorAll('.button-54').forEach(button => {
       button.addEventListener('click', () => {
-          console.log('Button 54 clicked');
           // check what button was clicked
           const buttonId = button.getAttribute('id');
-          console.log('Button ID:', buttonId);
+          console.debug('Button ID:', buttonId);
          if (buttonId === 'add_trees_from_measurements') {
               measure_control_helper.add_trees_from_measures();
               // do nothing, the onclick is set dynamically

@@ -64,6 +64,17 @@ def notify_drawn_trees_shadow_failure(job, connection, result, *args, **kwargs):
     logger.info("Job with id %s downloaded roads data successfully.." % str(job_id))
 
 
+def notify_site_evaluation_complete(job, connection, result, *args, **kwargs):
+    logger.info(
+        "Job with id %s for computing site evaluation completed successfully.."
+        % str(job.id)
+    )
+
+
+def notify_site_evaluation_failure(job, connection, result, *args, **kwargs):
+    logger.info("Site evaluation job with id %s failed.." % str(job.id))
+
+
 def notify_roads_download_failure(job, connection, type, value, traceback):
     logger.info("Job with %s failed.." % str(job.id))
 

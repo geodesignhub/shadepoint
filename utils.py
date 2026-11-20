@@ -12,6 +12,7 @@ from data_definitions import (
     ExistingBuildingsDataShadowGenerationRequest,
     ExistingBuildingsFeatureProperties,
     DrawnTreesShadowGenerationRequest,
+    SiteEvaluationGenerationRequest,
     ErrorResponse,
     DrawnTreesFeatureProperties,
 )
@@ -28,8 +29,11 @@ from shapely.geometry import MultiLineString as ShapelyMultiLineString
 
 from shapely.geometry import shape
 from shapely.geometry import Polygon as ShapelyPolygon
+from shapely.geometry import box as ShapelyBox
 from shapely.geometry.polygon import orient
+from shapely.ops import unary_union
 import json
+import tempfile
 import uuid
 from typing import List
 import requests
@@ -51,6 +55,20 @@ ENV_FILE = find_dotenv()
 if ENV_FILE:
     load_dotenv(ENV_FILE)
 r = get_redis()
+
+
+def _use_bounds_filtering() -> bool:
+    """Parse USE_BOUNDS_FILTERING as a real boolean.
+
+    ``os.getenv("USE_BOUNDS_FILTERING", None)`` treats "0" as truthy, which
+    silently enables bounds filtering when the intent was to disable it.
+    """
+    return os.getenv("USE_BOUNDS_FILTERING", "0").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 def get_default_shadow_datetime():
@@ -136,7 +154,7 @@ def download_roads(roads_download_request: RoadsDownloadRequest):
         if isinstance(fc, dict) and fc.get("features"):
             return fc
 
-    bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)
+    bounds_filtering = _use_bounds_filtering()
     if bounds_filtering:
         # If bounds filtering is enabled, the bounds parameter in the URL is replaced with the current bounds
         r_url = roads_url.replace("__bounds__", bounds)
@@ -199,7 +217,7 @@ def download_trees(trees_download_request: TreesDownloadRequest):
         fc_str = r.get(trees_storage_key)
         fc = json.loads(fc_str)
     else:
-        bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)
+        bounds_filtering = _use_bounds_filtering()
         t_url = (
             trees_url.replace("__bounds__", bounds) if bounds_filtering else trees_url
         )
@@ -237,7 +255,7 @@ def download_existing_buildings(buildings_download_request: BuildingsDownloadReq
         fc_str = r.get(storage_key)
         fc = json.loads(fc_str)
     else:
-        bounds_filtering = os.getenv("USE_BOUNDS_FILTERING", None)
+        bounds_filtering = _use_bounds_filtering()
         b_url = (
             buildings_url.replace("__bounds__", bounds)
             if bounds_filtering
@@ -423,6 +441,246 @@ def drawn_trees_compute_shadow(tree_processing_payload: dict):
     r.expire(redis_key, time=6000)
     time.sleep(7)
     logger.info("Job Completed...")
+
+
+def _read_fgb_layer(layer_url: str, bounds: str, storage_suffix: str) -> dict:
+    """Download a FlatGeobuf layer and cache it in redis keyed by bounds hash.
+
+    Follows the same caching pattern as ``download_trees`` /
+    ``download_existing_buildings``: a successful download is cached for a
+    long time, a failed one briefly so a corrected URL recovers quickly.
+    """
+
+    empty_fc = {"type": "FeatureCollection", "features": []}
+    if not layer_url:
+        return empty_fc
+
+    bounds_hash = hashlib.sha512(bounds.encode("utf-8")).hexdigest()
+    storage_key = f"{bounds_hash[:15]}:{storage_suffix}"
+
+    if r.exists(storage_key):
+        cached = json.loads(r.get(storage_key))
+        if isinstance(cached, dict) and cached.get("features"):
+            return cached
+
+    bounds_filtering = _use_bounds_filtering()
+    url = layer_url.replace("__bounds__", bounds) if bounds_filtering else layer_url
+
+    fc = empty_fc
+    try:
+        download_request = requests.get(url, timeout=120)
+        if download_request.status_code == 200:
+            # pyogrio (geopandas) reads FlatGeobuf from a local file
+            with tempfile.NamedTemporaryFile(suffix=".fgb", delete=False) as tmp:
+                tmp.write(download_request.content)
+                tmp_path = tmp.name
+            try:
+                gdf = gpd.read_file(tmp_path)
+                fc = json.loads(gdf.to_json())
+            finally:
+                os.remove(tmp_path)
+        else:
+            logger.error(
+                "Error downloading %s layer from %s (HTTP %s)",
+                storage_suffix,
+                layer_url,
+                download_request.status_code,
+            )
+    except Exception as e:
+        logger.error("Error reading %s layer from %s: %s", storage_suffix, layer_url, e)
+
+    if fc.get("features"):
+        r.set(storage_key, json.dumps(fc))
+        r.expire(storage_key, time=60000)
+    else:
+        r.set(storage_key, json.dumps(empty_fc), ex=300)
+    return fc
+
+
+def _features_to_gdf(features: list):
+    """Build a WGS84 GeoDataFrame from GeoJSON features, tolerating empty input.
+
+    ``GeoDataFrame.from_features([])`` raises, so construct an explicit empty
+    frame in that case.
+    """
+    if features:
+        return gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
+    return gpd.GeoDataFrame(geometry=[], crs="EPSG:4326")
+
+
+def compute_site_evaluation(site_evaluation_payload: dict):
+    """Background job: compute 3/30/300 site evaluation layers for drawn trees.
+
+    Produces two GeoJSON layers:
+      - building_priority_zones: 50 m buffers around building centroids,
+        classified by the number of drawn trees within 50 m (high = 0 trees,
+        medium = 1-2, met = >= 3) and dissolved per priority class, so
+        overlapping buffers of the same type merge into a single zone.
+      - coverage_gap: study area minus a 300 m buffer around the *actual*
+        green space polygons (Rule 300), i.e. areas further than 300 m
+        from any green space.
+
+    The result is stored in redis under
+    ``{session_id}_{state_id}_site_evaluation``.
+    """
+
+    _site_evaluation_request = from_dict(
+        data_class=SiteEvaluationGenerationRequest, data=site_evaluation_payload
+    )
+
+    session_id = _site_evaluation_request.session_id
+    state_id = _site_evaluation_request.state_id
+    bounds = _site_evaluation_request.bounds
+
+    # ── Drawn trees (only Point features are trees) ────────────────────────
+    trees = _site_evaluation_request.trees
+    if isinstance(trees, dict):
+        trees = trees.get("features", [])
+    point_features = [
+        f for f in (trees or []) if f.get("geometry", {}).get("type") == "Point"
+    ]
+    trees_gdf = _features_to_gdf(point_features)
+
+    # ── Study area (project bounds bbox) ───────────────────────────────────
+    minx, miny, maxx, maxy = [float(c) for c in bounds.split(",")]
+    study_area = ShapelyBox(minx, miny, maxx, maxy)
+    study_gdf = gpd.GeoDataFrame(geometry=[study_area], crs="EPSG:4326")
+    utm_crs = study_gdf.estimate_utm_crs()
+    study_area_utm = study_gdf.to_crs(utm_crs).geometry.iloc[0]
+
+    # ── Analytical layers ──────────────────────────────────────────────────
+    buildings_fc = _read_fgb_layer(
+        _site_evaluation_request.buildings_url, bounds, "existing_buildings"
+    )
+    greenspaces_fc = _read_fgb_layer(
+        _site_evaluation_request.greenspaces_url, bounds, "existing_greenspaces"
+    )
+    buildings_gdf = _features_to_gdf(buildings_fc["features"])
+    if not buildings_gdf.empty:
+        # FGB files are downloaded whole; only evaluate buildings in the study area
+        buildings_gdf = buildings_gdf[buildings_gdf.intersects(study_area)]
+    greenspaces_gdf = _features_to_gdf(greenspaces_fc["features"])
+
+    empty_fc = {"type": "FeatureCollection", "features": []}
+    priority_fc = empty_fc
+    gap_fc = empty_fc
+    stats = {}
+    messages = []
+
+    # ── Rule 3 — Building Priority Zones (dissolved per priority) ──────────
+    if not buildings_gdf.empty:
+        buildings_utm = buildings_gdf.to_crs(utm_crs)
+        trees_utm = trees_gdf.to_crs(utm_crs)
+
+        priority_buffers = {"high": [], "medium": [], "met": []}
+        priority_building_counts = {"high": 0, "medium": 0, "met": 0}
+        priority_tree_counts = {"high": 0, "medium": 0, "met": 0}
+
+        for building_geom in buildings_utm.geometry:
+            centroid = building_geom.centroid
+            buffer_50m = centroid.buffer(50)
+            if trees_utm.empty:
+                tree_count = 0
+            else:
+                tree_count = int(trees_utm.geometry.within(buffer_50m).sum())
+            if tree_count == 0:
+                priority = "high"
+            elif tree_count < 3:
+                priority = "medium"
+            else:
+                priority = "met"
+            priority_buffers[priority].append(buffer_50m)
+            priority_building_counts[priority] += 1
+            priority_tree_counts[priority] += tree_count
+
+        # Dissolve buffers of the same priority class into a single zone
+        dissolved_zones = []
+        for priority in ("high", "medium", "met"):
+            geoms = priority_buffers[priority]
+            if not geoms:
+                continue
+            dissolved = unary_union(geoms)
+            dissolved_zones.append(
+                {
+                    "geometry": dissolved,
+                    "priority": priority,
+                    "building_count": priority_building_counts[priority],
+                    "tree_count": priority_tree_counts[priority],
+                }
+            )
+
+        if dissolved_zones:
+            zones_gdf = gpd.GeoDataFrame(
+                dissolved_zones,
+                geometry="geometry",
+                crs=utm_crs,
+            )
+            priority_fc = json.loads(zones_gdf.to_crs("EPSG:4326").to_json())
+
+        stats["high_buildings"] = priority_building_counts["high"]
+        stats["medium_buildings"] = priority_building_counts["medium"]
+        stats["met_buildings"] = priority_building_counts["met"]
+        stats["total_buildings"] = int(len(buildings_utm))
+        rule3_msg = (
+            "3-tree rule: {met} of {total} buildings have ≥3 trees within 50 m".format(
+                met=priority_building_counts["met"],
+                total=int(len(buildings_utm)),
+            )
+        )
+        if priority_building_counts["high"] > 0:
+            rule3_msg += "; {high} have none".format(
+                high=priority_building_counts["high"]
+            )
+        if priority_building_counts["medium"] > 0:
+            rule3_msg += "; {medium} have 1–2 trees".format(
+                medium=priority_building_counts["medium"]
+            )
+        messages.append(rule3_msg)
+    else:
+        messages.append("Buildings layer unavailable")
+
+    # ── Rule 300 — Green Space Coverage Gap ────────────────────────────────
+    # Buffer the actual green space polygons (not their centroids) by 300 m;
+    # the gap is the part of the study area outside that buffered coverage.
+    if _site_evaluation_request.greenspaces_url:
+        if greenspaces_gdf.empty:
+            gap_geom_utm = study_area_utm
+        else:
+            greenspaces_utm = greenspaces_gdf.to_crs(utm_crs)
+            green_union = unary_union(greenspaces_utm.geometry.values)
+            coverage_utm = green_union.buffer(300)
+            gap_geom_utm = study_area_utm.difference(coverage_utm)
+
+        study_area_sqm = study_area_utm.area
+        gap_sqm = gap_geom_utm.area if not gap_geom_utm.is_empty else 0
+        gap_percentage = (
+            (gap_sqm / study_area_sqm) * 100 if study_area_sqm > 0 else 0
+        )
+        stats["gap_percentage"] = round(gap_percentage, 1)
+        if not gap_geom_utm.is_empty and gap_geom_utm.area > 0:
+            gap_gdf = gpd.GeoDataFrame(
+                [{"geometry": gap_geom_utm}], geometry="geometry", crs=utm_crs
+            )
+            gap_fc = json.loads(gap_gdf.to_crs("EPSG:4326").to_json())
+            messages.append(
+                "{pct}% of study area is more than 300 m from a green space".format(
+                    pct=stats["gap_percentage"]
+                )
+            )
+    else:
+        messages.append("Green Spaces layer unavailable")
+
+    result = {
+        "building_priority_zones": priority_fc,
+        "coverage_gap": gap_fc,
+        "stats": stats,
+        "messages": messages,
+    }
+
+    redis_key = f"{session_id}_{state_id}_site_evaluation"
+    r.set(redis_key, json.dumps(result))
+    r.expire(redis_key, time=6000)
+    logger.info("Site evaluation job with key %s completed", redis_key)
 
 
 def compute_existing_buildings_shadow_with_tree_canopy(geojson_session_date_time: dict):

@@ -142,6 +142,35 @@
     }
 
     map.on('load', function () {
+        // ── Geodesignhub project bounds ──────────────────────────────────────
+        const gdhBoundsPolygon = {
+            type: 'Feature',
+            geometry: {
+                type: 'Polygon',
+                coordinates: [[
+                    [parseFloat(latLngs[0]), parseFloat(latLngs[1])],
+                    [parseFloat(latLngs[0]), parseFloat(latLngs[3])],
+                    [parseFloat(latLngs[2]), parseFloat(latLngs[3])],
+                    [parseFloat(latLngs[2]), parseFloat(latLngs[1])],
+                    [parseFloat(latLngs[0]), parseFloat(latLngs[1])]
+                ]]
+            },
+            properties: { source: 'geodesignhub' }
+        };
+        map.addSource('gdh_bounds', { type: 'geojson', data: gdhBoundsPolygon });
+        map.addLayer({
+            id: 'gdh_bounds_outline',
+            type: 'line',
+            source: 'gdh_bounds',
+            paint: {
+                'line-color': '#0d6efd',
+                'line-width': 2,
+                'line-opacity': 0.9,
+                'line-dasharray': [3, 2]
+            }
+        });
+        // ── end Geodesignhub project bounds ──────────────────────────────────
+
         map.addSource('buildings', {
             // GeoJSON Data source used in vector tiles, documented at
             // https://gist.github.com/ryanbaumann/a7d970386ce59d11c16278b90dde094d

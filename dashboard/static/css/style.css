@@ -967,6 +967,13 @@ tr.group:hover {
     }
 }
 
+/* Larger TerraDraw measure control buttons (maplibre default is 29x29 px) */
+.maplibregl-ctrl-group button[class*="maplibregl-terradraw-measure"] {
+    width: 40px;
+    height: 40px;
+    background-size: 80%;
+}
+
 /* CSS */
 .button-54 {
     font-family: "Oswald", sans-serif;

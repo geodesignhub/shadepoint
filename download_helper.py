@@ -20,6 +20,7 @@ from data_definitions import (
     DiagramUploadDetails,
     UploadSuccessResponse,
     DrawnTreesShadowGenerationRequest,
+    SiteEvaluationGenerationRequest,
 )
 from dashboard.configurations.data_helper import ViewDataGenerator
 import utils
@@ -44,6 +45,8 @@ from notifications_helper import (
     notify_gdh_roads_shadow_intersection_failure,
     notify_drawn_trees_shadow_complete,
     notify_drawn_trees_shadow_failure,
+    notify_site_evaluation_complete,
+    notify_site_evaluation_failure,
     notify_trees_download_complete,
     notify_trees_download_failure,
     notify_buildings_download_complete,
@@ -105,6 +108,40 @@ def kickoff_drawn_trees_shadow_job(
         asdict(tree_processing_payload),
         on_success=notify_drawn_trees_shadow_complete,
         on_failure=notify_drawn_trees_shadow_failure,
+        job_id=job_id,
+    )
+
+
+def kickoff_site_evaluation_job(
+    session_id: str,
+    state_id: str,
+    trees: list,
+    bounds: str,
+    buildings_url: str,
+    greenspaces_url: str,
+):
+    """Queue a background job computing 3/30/300 building priority zones and
+    green-space coverage gaps for the currently drawn trees."""
+
+    request_date_time = arrow.now().format("YYYY-MM-DDTHH:mm:ss")
+    site_evaluation_payload = SiteEvaluationGenerationRequest(
+        trees=trees,
+        session_id=session_id,
+        state_id=state_id,
+        bounds=bounds,
+        buildings_url=buildings_url,
+        greenspaces_url=greenspaces_url,
+        request_date_time=request_date_time,
+        result={},
+    )
+    # state_id changes with every tree edit, so this id is unique per request
+    job_id = f"{session_id}_{state_id}@site_evaluation_job"
+
+    q.enqueue(
+        utils.compute_site_evaluation,
+        asdict(site_evaluation_payload),
+        on_success=notify_site_evaluation_complete,
+        on_failure=notify_site_evaluation_failure,
         job_id=job_id,
     )
 
