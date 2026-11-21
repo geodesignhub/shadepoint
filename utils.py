@@ -439,7 +439,6 @@ def drawn_trees_compute_shadow(tree_processing_payload: dict):
 
     r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
     r.expire(redis_key, time=6000)
-    time.sleep(7)
     logger.info("Job Completed...")
 
 

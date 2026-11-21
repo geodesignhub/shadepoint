@@ -143,7 +143,6 @@
               <i class="bi bi-geo-alt"></i> Green Space Coverage Gaps
             </label>
           </div>
-
             <button
               class="btn btn-outline-secondary btn-sm d-none"
               id="generate_site_eval_control"
@@ -155,22 +154,6 @@
             >
               Load Site Evaluation
             </button>
-          <div class="mt-1">
-            <small class="text-muted" id="site-eval-hint">Run the site evaluation to enable these layers.</small>
-          </div>
-          <div class="mt-1">
-            <small class="text-muted" id="site-eval-status"></small>
-          </div>
-          <div class="mt-1 small">
-            <span class="badge" style="background-color:#dc3545">&nbsp;</span> High priority (0 trees)&nbsp;
-            <span class="badge" style="background-color:#fd7e14">&nbsp;</span> Medium (1&ndash;2 trees)&nbsp;
-            <span class="badge" style="background-color:#198754">&nbsp;</span> Met (&ge;3 trees)&nbsp;
-            <span class="badge" style="background-color:#dc3545; opacity:0.4">&nbsp;</span> &gt;300 m from green space
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-
             <div
               id="site_eval_spinner"
               class="d-none spinner-grow text-secondary"
@@ -200,7 +183,20 @@
             >
               Get Site Evaluation
             </button>
+          <div class="mt-1">
+            <small class="text-muted" id="site-eval-hint">Run the site evaluation to enable these layers.</small>
           </div>
+          <div class="mt-1">
+            <small class="text-muted" id="site-eval-status"></small>
+          </div>
+          <div class="mt-1 small">
+            <span class="badge" style="background-color:#dc3545">&nbsp;</span> High priority (0 trees)&nbsp;
+            <span class="badge" style="background-color:#fd7e14">&nbsp;</span> Medium (1&ndash;2 trees)&nbsp;
+            <span class="badge" style="background-color:#198754">&nbsp;</span> Met (&ge;3 trees)&nbsp;
+            <span class="badge" style="background-color:#dc3545; opacity:0.4">&nbsp;</span> &gt;300 m from green space
+          </div>
+        </div>
+        <div class="col-md-4">
         </div>
       </div>
     </div>
@@ -1064,6 +1060,12 @@
   }
   // ── end Site Evaluation ───────────────────────────────────────────────────
 
+  // Drawn trees shadows are computed by a background job; poll the download
+  // endpoint until the result lands in the cache instead of waiting a fixed
+  // amount of time. The shadows are rendered as soon as they are available.
+  const SHADOW_POLL_INTERVAL_MS = 3000;
+  const SHADOW_POLL_MAX_ATTEMPTS = 40; // ~2 minutes of polling
+
    let TreeEditingFactory = function () {
       let session_id = "{{op['session_id']}}";
       let state_id = uuidv4();
@@ -1073,6 +1075,10 @@
       let _site_eval_poll_timer = null;
       let _site_eval_poll_count = 0;
       let _site_eval_key = null;
+      // Drawn trees shadow polling state (background job)
+      let _shadow_key = null;
+      let _shadow_poll_timer = null;
+      let _shadow_poll_count = 0;
 
       this.show_toolbox = function () {
           let drawing_controls =  document.getElementsByClassName("drawing_mode_controls");
@@ -1187,6 +1193,13 @@
               // show the generate shadows button
               let show_shadows_control = document.getElementById('generate_shadows_control');
               show_shadows_control.classList.add('d-none');
+              // stop any ongoing shadow polling and reset its controls
+              if (_shadow_poll_timer) { clearTimeout(_shadow_poll_timer); _shadow_poll_timer = null; }
+              _shadow_key = null;
+              _shadow_poll_count = 0;
+              document.getElementById('shadow_spinner').classList.add('d-none');
+              document.getElementById('get_shadows_control').classList.add('d-none');
+              document.getElementById('clear_shadows_control').classList.add('d-none');
               // hide the site evaluation controls and layers
               document.getElementById('generate_site_eval_control').classList.add('d-none');
               document.getElementById('clear_site_eval_control').classList.add('d-none');
@@ -1220,7 +1233,7 @@
               new Notify ({
                   status: 'info',
                   title: 'Shadows generation started',
-                  text: 'Shadows are being generated, this may take a while depending on the number of trees drawn. You can check back after 10 - 30 seconds',
+                  text: 'Shadows are being generated, this may take a while depending on the number of trees drawn. They will be shown on the map automatically once they are ready.',
                   effect: 'fade',
                   speed: 400,
                   customClass: '',
@@ -1235,30 +1248,104 @@
                   position: 'top-right',
                   customWrapper: '',
               });
-              // after 20 seconds remove spinner and add a get shadows button
-              setTimeout(
-              function() {
-
-                  // hide the spinner container
-                  spinner_cont.classList.add('d-none');
-                  // show the get shadows button
-                  let get_shadows_control = document.getElementById('get_shadows_control');
-                  get_shadows_control.classList.remove('d-none');
-
-              }, 30000);
+              // remember the key of this request and poll for the result,
+              // the shadows are rendered as soon as the background job
+              // has written them to the cache
+              _shadow_key = session_id + '_' + state_id + '_drawn_trees_shadow';
+              _shadow_poll_count = 0;
+              this.poll_drawn_trees_shadows();
 
           }
 
       }
 
       this.get_generated_shadows = function (session_id){
-
-          let drawn_trees_shadow_key = session_id + '_'+ state_id+'_drawn_trees_shadow';
-              // The message is for the current sesion, download the data...
-              let drawn_trees_download_url = window.location.origin + '/get_drawn_trees_shadows?drawn_trees_shadows_key=' + drawn_trees_shadow_key;
-              get_drawn_trees_shadows(drawn_trees_download_url);
+          // use the key captured when the shadows were requested, the
+          // state_id may have changed since then
+          const drawn_trees_shadow_key = _shadow_key || (session_id + '_' + state_id + '_drawn_trees_shadow');
+          // The message is for the current sesion, download the data...
+          let drawn_trees_download_url = window.location.origin + '/get_drawn_trees_shadows?drawn_trees_shadows_key=' + drawn_trees_shadow_key;
+          get_drawn_trees_shadows(drawn_trees_download_url);
+      }
+      this.poll_drawn_trees_shadows = function () {
+          if (_shadow_poll_timer) clearTimeout(_shadow_poll_timer);
+          if (!_shadow_key) return;
+          const fetch_url = window.location.origin + '/get_drawn_trees_shadows?drawn_trees_shadows_key=' + _shadow_key;
+          _shadow_poll_timer = setTimeout(() => {
+              fetch(fetch_url)
+                  .then(response => response.json())
+                  .then(data => {
+                      // depending on whether the result was already cached the
+                      // endpoint returns the GeoJSON as an object or as a
+                      // double stringified JSON string
+                      let shadow_data = data;
+                      if (typeof shadow_data === 'string') {
+                          shadow_data = JSON.parse(shadow_data);
+                      }
+                      const shadows_ready = shadow_data
+                          && shadow_data['features']
+                          && shadow_data['features'].length > 0;
+                      if (shadows_ready) {
+                          _shadow_poll_timer = null;
+                          this.drawn_trees_shadows_loaded(shadow_data);
+                      } else {
+                          _shadow_poll_count += 1;
+                          if (_shadow_poll_count >= SHADOW_POLL_MAX_ATTEMPTS) {
+                              // give up polling, offer manual retrieval
+                              document.getElementById('shadow_spinner').classList.add('d-none');
+                              document.getElementById('get_shadows_control').classList.remove('d-none');
+                              new Notify ({
+                                  status: 'warning',
+                                  title: 'Shadows not ready yet',
+                                  text: 'Shadow generation is taking longer than expected. Click on "Get generated shadows" to check again.',
+                                  effect: 'fade',
+                                  speed: 300,
+                                  customClass: '',
+                                  customIcon: '',
+                                  showIcon: true,
+                                  showCloseButton: true,
+                                  autoclose: true,
+                                  autotimeout: 6000,
+                                  notificationsGap: null,
+                                  notificationsPadding: null,
+                                  type: 'outline',
+                                  position: 'top-right',
+                                  customWrapper: '',
+                              });
+                              return;
+                          }
+                          this.poll_drawn_trees_shadows();
+                      }
+                  })
+                  .catch(err => {
+                      console.warn('Drawn trees shadow poll failed', err);
+                      _shadow_poll_count += 1;
+                      if (_shadow_poll_count >= SHADOW_POLL_MAX_ATTEMPTS) {
+                          document.getElementById('shadow_spinner').classList.add('d-none');
+                          document.getElementById('get_shadows_control').classList.remove('d-none');
+                          return;
+                      }
+                      this.poll_drawn_trees_shadows();
+                  });
+          }, SHADOW_POLL_INTERVAL_MS);
+      }
+      this.drawn_trees_shadows_loaded = function (shadow_data) {
+          // render the shadows on the map and update the shadowed area stat
+          map.getSource('tree_shadows').setData(shadow_data);
+          const area = turf.area(shadow_data);
+          let drawn_trees_shadow_area = document.getElementById('drawn_trees_shadow_area');
+          drawn_trees_shadow_area.innerHTML = "";
+          let marked_element = document.createElement('mark');
+          marked_element.innerHTML = area.toFixed(2) + 'm2';
+          drawn_trees_shadow_area.appendChild(marked_element);
+          this.shadows_loaded();
       }
       this.clear_generated_shadows = function () {
+          // stop any ongoing shadow polling
+          if (_shadow_poll_timer) { clearTimeout(_shadow_poll_timer); _shadow_poll_timer = null; }
+          _shadow_key = null;
+          _shadow_poll_count = 0;
+          document.getElementById('get_shadows_control').classList.add('d-none');
           // hide generate shadows button
           let show_shadows_control = document.getElementById('generate_shadows_control');
           show_shadows_control.classList.remove('d-none');
