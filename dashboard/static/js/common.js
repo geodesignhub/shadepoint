@@ -77,22 +77,6 @@ function get_drawn_trees_shadows(drawn_trees_download_url) {
     });
 }
 
-function get_downloaded_roads(roads_url) {
-  fetch(roads_url)
-    .then((response) => {
-      return response.json();
-    })
-    .then((roads_data) => {
-      // let spinner_cont = document.getElementById('spinner');
-      // spinner_cont.classList.add('d-none');
-
-      // let roads_to_render = roads_data;   ds_data);
-      map.getSource("bike_pedestrian_roads").setData(roads_data);
-    })
-    .catch((error) => {
-      console.log(error);
-    });
-}
 function get_road_shadow_stats(roads_shadow_stats_url) {
   return fetch(roads_shadow_stats_url)
     .then((response) => {
