@@ -237,7 +237,7 @@
             class="bi bi-info-circle"
             data-bs-toggle="tooltip"
             data-bs-placement="top"
-            title="Rule 30: At least 30% of the neighborhood should be covered by tree canopy. Includes drawn trees plus any existing canopy loaded from the 'Existing Canopy' layer."></i></small>
+            title="Rule 30: At least 30% of the neighborhood should be covered by tree canopy. Includes drawn trees plus any existing canopy loaded from the 'Existing Canopy' layer. Canopy is clipped to the project bounds and overlapping canopy is counted once."></i></small>
           <span id="rule30-stat" class="badge bg-secondary fs-6">&mdash;</span>
           <small class="d-block text-muted">target &ge; 30%</small>
         </div>
@@ -246,9 +246,9 @@
             class="bi bi-info-circle"
             data-bs-toggle="tooltip"
             data-bs-placement="top"
-            title="Rule 300: Every resident should be within 300 m of a green space. Measured as the maximum distance from any drawn tree to the nearest green space polygon in the 'Green Spaces' layer."></i></small>
+            title="Rule 300: Every resident should be within 300 m of a green space. Measured as the percentage of buildings (within the project bounds) whose centroid is within 300 m of a green space polygon in the 'Green Spaces' layer. Drawn trees do not count as green space: tree planting and green space provision are tracked separately."></i></small>
           <span id="rule300-stat" class="badge bg-secondary fs-6">&mdash;</span>
-          <small class="d-block text-muted">target &le; 300 m</small>
+          <small class="d-block text-muted">% buildings within 300 m</small>
         </div>
       </div>
     </div>
@@ -501,6 +501,10 @@
 <script
   type="text/javascript"
   src="{{ url_for('static', filename='js/turf.min.js') }}"
+></script>
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/compliance-core.js') }}"
 ></script>
 
 <script
@@ -821,7 +825,9 @@
       greenSpaces:    null,   // "Green Spaces"    FGB layer (required, Rule 300)
       buildings:      null,   // "Buildings"       FGB layer (required, Rule 3)
   };
-  const DEFAULT_CROWN_RADIUS_M = 2.5; // assume 5 m canopy diameter per street tree
+  // Pre-processed analytical layers for the synchronous fallback (built lazily
+  // once the FGB layers are loaded; reset when they finish loading).
+  let compliance_prepared = null;
 
   function renderLayerAvailabilityPanel() {
       const list = document.getElementById('layer-availability-list');
@@ -829,7 +835,7 @@
           { label: 'Existing Canopy', key: 'existingCanopy', required: false,
             rule: 'Rule 30 — existing canopy added to coverage calculation' },
           { label: 'Green Spaces', key: 'greenSpaces', required: true,
-            rule: 'Rule 300 — proximity to nearest green space' },
+            rule: 'Rule 300 — buildings within 300 m of a green space' },
           { label: 'Buildings', key: 'buildings', required: true,
             rule: 'Rule 3 — trees visible from building windows' },
       ];
@@ -849,96 +855,34 @@
       document.getElementById('layer-availability-panel').classList.remove('d-none');
   }
 
+  // Synchronous fallback used when Web Workers are unavailable. Delegates to
+  // js/compliance-core.js, the same implementation the worker runs, so both
+  // paths always agree.
   function updateComplianceStats() {
       const snapshot = draw.getSnapshot();
       const treePoints = snapshot.filter(f => f.geometry.type === 'Point');
       if (treePoints.length === 0) return;
 
-      // Rule 30 — Canopy cover ────────────────────────────────────────────
-      const sw = bounds.getSouthWest();
-      const ne = bounds.getNorthEast();
-      const studyAreaPolygon = turf.bboxPolygon([sw.lng, sw.lat, ne.lng, ne.lat]);
-      const studyAreaSize = turf.area(studyAreaPolygon);
-      let totalCanopyArea = 0;
-      treePoints.forEach(tree => {
-          const r = tree.properties.crown_radius || DEFAULT_CROWN_RADIUS_M;
-          totalCanopyArea += turf.area(
-              turf.circle(tree.geometry.coordinates, r, { units: 'meters' })
+      // Prepared once per layer load: clipping/dissolving the analytical
+      // layers and the Rule 300 building distances are static per study area.
+      if (!compliance_prepared) {
+          const sw = bounds.getSouthWest();
+          const ne = bounds.getNorthEast();
+          compliance_prepared = ComplianceCore.prepareLayers(
+              turf,
+              {
+                  existingCanopy: LAYER_REGISTRY.existingCanopy || [],
+                  greenSpaces: LAYER_REGISTRY.greenSpaces || [],
+                  buildings: LAYER_REGISTRY.buildings || [],
+              },
+              [sw.lng, sw.lat, ne.lng, ne.lat]
           );
-      });
-      if (LAYER_REGISTRY.existingCanopy) {
-          LAYER_REGISTRY.existingCanopy.forEach(f => { totalCanopyArea += turf.area(f); });
-      }
-      const canopyPct = (totalCanopyArea / studyAreaSize) * 100;
-      const el30 = document.getElementById('rule30-stat');
-      el30.textContent = `${canopyPct.toFixed(1)}% / 30%`;
-      el30.className = `badge fs-6 ${canopyPct >= 30 ? 'bg-success' : 'bg-danger'}`;
-
-      // Rule 3 — Trees visible ────────────────────────────────────────────
-      const el3 = document.getElementById('rule3-stat');
-      const treeFC = turf.featureCollection(treePoints);
-      if (!LAYER_REGISTRY.buildings) {
-          // Fallback: count tree neighbours within 50 m of each tree
-          let totalNeighbours = 0;
-          treePoints.forEach(tree => {
-              const buf = turf.circle(tree.geometry.coordinates, 50, { units: 'meters' });
-              const within = turf.pointsWithinPolygon(treeFC, buf);
-              totalNeighbours += Math.max(0, within.features.length - 1);
-          });
-          const avg = (totalNeighbours / treePoints.length).toFixed(1);
-          el3.textContent = `avg ${avg} trees / 50 m`;
-          el3.className = `badge fs-6 ${parseFloat(avg) >= 3 ? 'bg-success' : 'bg-danger'}`;
-      } else {
-          // With buildings: % of buildings (within the study bounds) that have
-          // ≥3 trees within 50 m of their centroid. The existing_buildings FGB
-          // frequently covers a whole city, so only buildings overlapping the
-          // project bounds are counted — mirrors the backend site evaluation.
-          const studyBounds = [sw.lng, sw.lat, ne.lng, ne.lat];
-          let metBuildings = 0;
-          let totalBuildings = 0;
-          LAYER_REGISTRY.buildings.forEach(b => {
-              try {
-                  const bb = turf.bbox(b);
-                  if (bb[2] < studyBounds[0] || bb[0] > studyBounds[2] ||
-                      bb[3] < studyBounds[1] || bb[1] > studyBounds[3]) return;
-              } catch (e) { return; }
-              const bc = turf.centroid(b);
-              const buf = turf.circle(bc.geometry.coordinates, 50, { units: 'meters' });
-              const within = turf.pointsWithinPolygon(treeFC, buf);
-              totalBuildings += 1;
-              if (within.features.length >= 3) metBuildings += 1;
-          });
-          const pct = totalBuildings > 0 ? Math.round((metBuildings / totalBuildings) * 100) : 0;
-          el3.textContent = `${pct}% / buildings ≥3 trees`;
-          el3.className = `badge fs-6 ${pct >= 100 ? 'bg-success' : 'bg-danger'}`;
       }
 
-      // Rule 300 — Green space proximity ─────────────────────────────────
-      const el300 = document.getElementById('rule300-stat');
-      if (!LAYER_REGISTRY.greenSpaces) {
-          el300.textContent = 'Layer unavailable';
-          el300.className = 'badge fs-6 bg-secondary';
-      } else {
-          let maxDist = 0;
-          treePoints.forEach(tree => {
-              let nearestDist = Infinity;
-              LAYER_REGISTRY.greenSpaces.forEach(gs => {
-                  const geom = gs.geometry;
-                  if (!geom) return;
-                  let dist;
-                  if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {
-                      // distance to the green space itself, not its centroid
-                      dist = turf.pointToPolygonDistance(tree, gs, { units: 'meters' });
-                  } else {
-                      dist = turf.distance(tree, turf.centroid(gs), { units: 'meters' });
-                  }
-                  if (dist < nearestDist) nearestDist = dist;
-              });
-              if (nearestDist > maxDist) maxDist = nearestDist;
-          });
-          el300.textContent = `${Math.round(maxDist)} m / 300 m`;
-          el300.className = `badge fs-6 ${maxDist <= 300 ? 'bg-success' : 'bg-danger'}`;
-      }
+      const stats = ComplianceCore.computeCompliance(turf, treePoints, compliance_prepared);
+      setComplianceBadge('rule3-stat', stats.rule3);
+      setComplianceBadge('rule30-stat', stats.rule30);
+      setComplianceBadge('rule300-stat', stats.rule300);
   }
 
   // Background execution: the same computation runs in a Web Worker
@@ -949,6 +893,7 @@
   // updateComplianceStats() above.
   const COMPLIANCE_WORKER_URL = "{{ url_for('static', filename='js/compliance-worker.js') }}";
   const COMPLIANCE_TURF_URL = "{{ url_for('static', filename='js/turf.min.js') }}";
+  const COMPLIANCE_CORE_URL = "{{ url_for('static', filename='js/compliance-core.js') }}";
   const COMPLIANCE_DEBOUNCE_MS = 400;
   let compliance_worker = null; // null = not started, false = unavailable
   let compliance_generation = 0;
@@ -977,9 +922,13 @@
           updateComplianceStats();
       };
       // sendLayersToComplianceWorker() is only called after init completes,
-      // so a promise-free handoff is enough: layers are pushed once turf is
-      // loaded inside the worker.
-      compliance_worker.postMessage({ type: 'init', turfUrl: COMPLIANCE_TURF_URL });
+      // so a promise-free handoff is enough: the core module and turf are
+      // loaded synchronously by importScripts inside the worker.
+      compliance_worker.postMessage({
+          type: 'init',
+          turfUrl: COMPLIANCE_TURF_URL,
+          coreUrl: COMPLIANCE_CORE_URL
+      });
       return compliance_worker;
   }
 
@@ -991,9 +940,15 @@
 
   // Push the analytical layers into the worker (called after FGB layers load)
   function sendLayersToComplianceWorker() {
+      // The synchronous fallback caches prepared layers too; invalidate it so
+      // both paths re-run preparation against the fully loaded FGB layers.
+      compliance_prepared = null;
       if (!initComplianceWorker()) return;
+      const sw = bounds.getSouthWest();
+      const ne = bounds.getNorthEast();
       compliance_worker.postMessage({
           type: 'layers',
+          bounds: [sw.lng, sw.lat, ne.lng, ne.lat],
           existingCanopy: LAYER_REGISTRY.existingCanopy || [],
           greenSpaces: LAYER_REGISTRY.greenSpaces || [],
           buildings: LAYER_REGISTRY.buildings || []
