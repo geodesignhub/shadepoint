@@ -300,10 +300,36 @@ def generate_drawn_trees_shadow():
     unprocessed_tree_geojson = geojson_payload["unprocessed_tree_geojson"]
     session_id = request.args.get("session_id")
     state_id = request.args.get("state_id")
+    project_id = request.args.get("project_id")
+    bounds = request.args.get("bounds", "")
+
+    # Resolve the existing-buildings layer and its optional height
+    # configuration server-side, by dom_id (same pattern as the site
+    # evaluation job). When the layer is not configured the shadows are
+    # computed for the drawn trees only.
+    buildings_url = ""
+    buildings_height_column = ""
+    buildings_default_height = 9.0
+    if project_id:
+        my_view_helper = ViewDataGenerator(
+            view_type="tree_shadow_analysis", project_id=project_id
+        )
+        fgb_layers: FGBDataSourceList = my_view_helper.generate_fgb_layers_list()
+        for fgb_layer in fgb_layers.layers:
+            if fgb_layer.dom_id == "existing_buildings":
+                buildings_url = fgb_layer.url or ""
+                buildings_height_column = fgb_layer.height_column or ""
+                buildings_default_height = fgb_layer.default_height or 9.0
+                break
+
     kickoff_drawn_trees_shadow_job(
         unprocessed_drawn_trees=unprocessed_tree_geojson,
         session_id=session_id,
         state_id=state_id,
+        bounds=bounds,
+        buildings_url=buildings_url,
+        buildings_height_column=buildings_height_column,
+        buildings_default_height=buildings_default_height,
     )
 
     return Response({}, status=200, mimetype=MIMETYPE)

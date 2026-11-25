@@ -37,6 +37,11 @@ tree_shadow_analysis:
       environment_key: "EXISTING_BUILDINGS_PROJECT_ID_FGB_URL"
       geometry_type: "polygon"
       color: "#AA336A"
+      # Optional: FGB property holding the building height in metres. When the
+      # column is empty, missing or not a positive number, default_height is
+      # used instead. Used to add building shadows to the drawn tree shadows.
+      height_column: ""
+      default_height: 9
     - url: ""
       name: "Existing Green Spaces"
       dom_id: "existing_greenspaces"

@@ -167,6 +167,8 @@ class ViewDataGenerator:
                     dom_id=fgb_layer["dom_id"],
                     color=fgb_layer["color"],
                     geometry_type=fgb_layer["geometry_type"],
+                    height_column=fgb_layer.get("height_column", ""),
+                    default_height=fgb_layer.get("default_height", 9.0),
                 )
                 all_fgb_layers.append(single_fgb_layer)
 

@@ -43,6 +43,55 @@ function get_building_shadow(shadow_download_url) {
     });
 }
 
+// Normalise the /get_drawn_trees_shadows payload. New results contain both
+// shadow layers; older cached results were a single dissolved FeatureCollection.
+function normalize_drawn_trees_shadows(shadow_data) {
+  const empty = { type: "FeatureCollection", features: [] };
+  if (!shadow_data) {
+    return { tree_shadows: empty, building_shadows: empty };
+  }
+  if (shadow_data.tree_shadows || shadow_data.building_shadows) {
+    return {
+      tree_shadows: shadow_data.tree_shadows || empty,
+      building_shadows: shadow_data.building_shadows || empty,
+    };
+  }
+  return { tree_shadows: shadow_data, building_shadows: empty };
+}
+
+// Render the tree and building shadows and update the shadowed-area stats.
+function render_drawn_trees_shadows(shadow_data) {
+  const payload = normalize_drawn_trees_shadows(shadow_data);
+  map.getSource("tree_shadows").setData(payload.tree_shadows);
+  if (map.getSource("building_shadows")) {
+    map.getSource("building_shadows").setData(payload.building_shadows);
+  }
+
+  const drawn_trees_shadow_area = document.getElementById(
+    "drawn_trees_shadow_area",
+  );
+  if (drawn_trees_shadow_area) {
+    drawn_trees_shadow_area.innerHTML = "";
+    const tree_mark = document.createElement("mark");
+    tree_mark.innerHTML =
+      "Trees: " + turf.area(payload.tree_shadows).toFixed(2) + " m²";
+    drawn_trees_shadow_area.appendChild(tree_mark);
+    if (
+      payload.building_shadows.features &&
+      payload.building_shadows.features.length > 0
+    ) {
+      drawn_trees_shadow_area.appendChild(document.createTextNode(" · "));
+      const building_mark = document.createElement("mark");
+      building_mark.innerHTML =
+        "Buildings: " +
+        turf.area(payload.building_shadows).toFixed(2) +
+        " m²";
+      drawn_trees_shadow_area.appendChild(building_mark);
+    }
+  }
+  return payload;
+}
+
 function get_drawn_trees_shadows(drawn_trees_download_url) {
   fetch(drawn_trees_download_url)
     .then((response) => {
@@ -50,27 +99,21 @@ function get_drawn_trees_shadows(drawn_trees_download_url) {
     })
     .then((shadow_data) => {
       let spinner_cont = document.getElementById("shadow_spinner");
-      spinner_cont.classList.add("d-none");
-      let shadows_to_render = shadow_data;
-      shadows_to_render = JSON.parse(shadows_to_render);
-      let area = turf.area(shadows_to_render);
-      //update the drawn_trees_shadow_area text with this in m2
-      let drawn_trees_shadow_area = document.getElementById(
-        "drawn_trees_shadow_area",
-      );
-
-      drawn_trees_shadow_area.innerHTML = "";
-      let marked_element = document.createElement("mark");
-      marked_element.innerHTML = area.toFixed(2) + "m2";
-      drawn_trees_shadow_area.appendChild(marked_element);
-
-      map.getSource("tree_shadows").setData(shadows_to_render);
-      if (shadows_to_render["features"]) {
+      if (spinner_cont) {
+        spinner_cont.classList.add("d-none");
+      }
+      if (typeof shadow_data === "string") {
+        shadow_data = JSON.parse(shadow_data);
+      }
+      const payload = render_drawn_trees_shadows(shadow_data);
+      if (
+        payload.tree_shadows.features &&
+        payload.tree_shadows.features.length > 0
+      ) {
         tree_editing_control.shadows_loaded();
       } else {
         tree_editing_control.empty_shadows_loaded();
       }
-      // map.getSource('existing_building_shadows').setData(shadows_to_render);
     })
     .catch((error) => {
       console.log(error);

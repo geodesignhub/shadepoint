@@ -239,6 +239,11 @@ class FGBDataSource:
     dom_id: str
     color: str
     geometry_type: GeometryType
+    # Optional building-height configuration: the FGB property holding the
+    # height in metres and the fallback height used when it is missing or
+    # invalid. Only used by the shadow computation.
+    height_column: str = ""
+    default_height: float = 9.0
 
 
 @dataclass
@@ -321,6 +326,12 @@ class DrawnTreesShadowGenerationRequest:
     state_id: str
     request_date_time: str
     processed_trees: dict
+    # Optional existing-buildings layer used to add building shadows to the
+    # drawn tree shadows. Empty ``buildings_url`` means "trees only".
+    bounds: str = ""
+    buildings_url: str = ""
+    buildings_height_column: str = ""
+    buildings_default_height: float = 9.0
 
 
 @dataclass

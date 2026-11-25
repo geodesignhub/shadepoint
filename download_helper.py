@@ -91,7 +91,13 @@ def export_to_json(data):
 
 
 def kickoff_drawn_trees_shadow_job(
-    session_id: str, state_id: str, unprocessed_drawn_trees: dict
+    session_id: str,
+    state_id: str,
+    unprocessed_drawn_trees: dict,
+    bounds: str = "",
+    buildings_url: str = "",
+    buildings_height_column: str = "",
+    buildings_default_height: float = 9.0,
 ):
     request_date_time = arrow.now().format("YYYY-MM-DDTHH:mm:ss")
     tree_processing_payload = DrawnTreesShadowGenerationRequest(
@@ -100,6 +106,10 @@ def kickoff_drawn_trees_shadow_job(
         state_id=state_id,
         request_date_time=request_date_time,
         processed_trees={},
+        bounds=bounds,
+        buildings_url=buildings_url,
+        buildings_height_column=buildings_height_column,
+        buildings_default_height=buildings_default_height,
     )
     job_id = session_id + "@drawn_trees_shadow_job"
 

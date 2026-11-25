@@ -406,8 +406,70 @@ def kickoff_gdh_roads_shadows_stats(roads_shadow_computation_start):
     # logger.info(shadow_roads_intersection_data)
 
 
+def _buildings_with_heights(
+    buildings_fc: dict,
+    bounds: str,
+    height_column: str,
+    default_height: float,
+):
+    """Return the polygon buildings in the study area with a valid ``height``
+    column in metres.
+
+    The height is taken from ``height_column`` when that property exists and
+    holds a positive number; otherwise ``default_height`` is used, so a layer
+    with partial or no height information can still cast shadows.
+    """
+    buildings_gdf = _features_to_gdf(buildings_fc.get("features", []))
+    if buildings_gdf.empty:
+        return buildings_gdf
+
+    # Only (multi)polygons can cast building shadows.
+    buildings_gdf = buildings_gdf[
+        buildings_gdf.geometry.notna()
+        & buildings_gdf.geometry.type.isin(["Polygon", "MultiPolygon"])
+    ]
+    if buildings_gdf.empty:
+        return buildings_gdf
+
+    # FGB files are downloaded whole; only buildings in the study area matter.
+    if bounds:
+        minx, miny, maxx, maxy = [float(c) for c in bounds.split(",")]
+        buildings_gdf = buildings_gdf[
+            buildings_gdf.intersects(ShapelyBox(minx, miny, maxx, maxy))
+        ]
+    if buildings_gdf.empty:
+        return buildings_gdf
+
+    # pybdshadow requires one Polygon per row, a unique building_id column and
+    # a height column (metres).
+    buildings_gdf = buildings_gdf.explode(index_parts=False)
+    buildings_gdf = buildings_gdf[
+        buildings_gdf.geometry.notna() & (buildings_gdf.geometry.type == "Polygon")
+    ].reset_index(drop=True)
+    if buildings_gdf.empty:
+        return buildings_gdf
+
+    if height_column and height_column in buildings_gdf.columns:
+        heights = pd.to_numeric(buildings_gdf[height_column], errors="coerce")
+    else:
+        heights = pd.Series(np.nan, index=buildings_gdf.index)
+
+    heights = heights.where(heights > 0, float(default_height))
+    buildings_gdf = buildings_gdf.copy()
+    buildings_gdf["height"] = heights.astype(float)
+    buildings_gdf["building_id"] = [
+        str(uuid.uuid4()) for _ in range(len(buildings_gdf))
+    ]
+    return buildings_gdf
+
+
 def drawn_trees_compute_shadow(tree_processing_payload: dict):
-    """This method computes the shadow of drawn trees"""
+    """This method computes the shadow of drawn trees.
+
+    When the project has an existing-buildings layer, its shadow is computed
+    with the same date/time and returned separately so the map can style tree
+    and building shadows differently.
+    """
 
     _drawn_trees_shadow_request = from_dict(
         data_class=DrawnTreesShadowGenerationRequest,
@@ -421,14 +483,50 @@ def drawn_trees_compute_shadow(tree_processing_payload: dict):
     )
 
     _drawn_trees_shadow_request.processed_trees = _processed_trees
-    _date_time = arrow.get(_drawn_trees_shadow_request.request_date_time).isoformat()
 
     processed_trees_serialzed = json.loads(geojson.dumps(_processed_trees))
     trees = gpd.GeoDataFrame.from_features(processed_trees_serialzed["features"])
     _shadow_date_time = get_default_shadow_datetime()
     _pd_date_time = pd.to_datetime(_shadow_date_time).tz_localize("UTC")
-    shadows = pybdshadow.bdshadow_sunlight(trees, _pd_date_time)
-    dissolved_shadows = shadows.dissolve()
+
+    # ── Tree shadows ───────────────────────────────────────────────────────
+    tree_shadows = pybdshadow.bdshadow_sunlight(trees, _pd_date_time)
+    dissolved_tree_shadows = tree_shadows.dissolve()
+
+    # ── Building shadows (only when the buildings layer is configured) ─────
+    empty_fc = {"type": "FeatureCollection", "features": []}
+    building_shadows_fc = empty_fc
+    if _drawn_trees_shadow_request.buildings_url and _drawn_trees_shadow_request.bounds:
+        buildings_fc = _read_fgb_layer(
+            _drawn_trees_shadow_request.buildings_url,
+            _drawn_trees_shadow_request.bounds,
+            "existing_buildings_raw",
+        )
+        buildings = _buildings_with_heights(
+            buildings_fc,
+            _drawn_trees_shadow_request.bounds,
+            _drawn_trees_shadow_request.buildings_height_column,
+            _drawn_trees_shadow_request.buildings_default_height,
+        )
+        if not buildings.empty:
+            building_shadows = pybdshadow.bdshadow_sunlight(buildings, _pd_date_time)
+            # Remove the building footprints so only the cast shadow remains.
+            footprints = buildings.geometry.union_all()
+            building_shadows = building_shadows.copy()
+            building_shadows["geometry"] = building_shadows.geometry.difference(
+                footprints
+            )
+            building_shadows = building_shadows[~building_shadows.geometry.is_empty]
+            if not building_shadows.empty:
+                dissolved_building_shadows = building_shadows.dissolve()
+                building_shadows_fc = json.loads(
+                    dissolved_building_shadows.to_json()
+                )
+    elif _drawn_trees_shadow_request.buildings_url:
+        logger.warning(
+            "Buildings layer configured but no bounds supplied; computing tree "
+            "shadows only"
+        )
 
     redis_key = (
         _drawn_trees_shadow_request.session_id
@@ -437,7 +535,15 @@ def drawn_trees_compute_shadow(tree_processing_payload: dict):
         + "_drawn_trees_shadow"
     )
 
-    r.set(redis_key, json.dumps(dissolved_shadows.to_json()))
+    r.set(
+        redis_key,
+        json.dumps(
+            {
+                "tree_shadows": json.loads(dissolved_tree_shadows.to_json()),
+                "building_shadows": building_shadows_fc,
+            }
+        ),
+    )
     r.expire(redis_key, time=6000)
     logger.info("Job Completed...")
 
@@ -549,7 +655,7 @@ def compute_site_evaluation(site_evaluation_payload: dict):
 
     # ── Analytical layers ──────────────────────────────────────────────────
     buildings_fc = _read_fgb_layer(
-        _site_evaluation_request.buildings_url, bounds, "existing_buildings"
+        _site_evaluation_request.buildings_url, bounds, "existing_buildings_raw"
     )
     greenspaces_fc = _read_fgb_layer(
         _site_evaluation_request.greenspaces_url, bounds, "existing_greenspaces"

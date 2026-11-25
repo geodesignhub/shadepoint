@@ -336,6 +336,17 @@
         >
           Get generated shadows
         </button>
+        <button
+          class="btn btn-outline-dark d-none"
+          id="toggle-shadow-only-btn"
+          type="button"
+          onclick="toggleShadowOnly()"
+          data-bs-toggle="tooltip"
+          data-bs-placement="left"
+          data-bs-title="Hide all other map layers and show only the generated shadows"
+        >
+          <i class="bi bi-eye"></i>&nbsp;Show shadow only
+        </button>
       </div>
       <div
         class="btn-group mt-2"
@@ -1015,6 +1026,79 @@
   }
   // ── end Site Evaluation ───────────────────────────────────────────────────
 
+  // ── Shadow-only view ──────────────────────────────────────────────────────
+  // Mirrors the design shadow view: hide every map layer except the generated
+  // tree and building shadows, remembering the visibility so it can be
+  // restored when the user switches back. The button is only shown once the
+  // shadows have been generated and rendered.
+  let _shadowOnlyActive = false;
+  let _savedLayerVisibility = {};
+  const SHADOW_ONLY_LAYER_IDS = ['tree_shadows', 'building_shadows'];
+
+  function resetShadowOnlyView() {
+      if (_shadowOnlyActive) toggleShadowOnly();
+  }
+
+  function toggleShadowOnly() {
+      if (!_shadowOnlyActive) {
+          _savedLayerVisibility = {};
+          const layerIds = (map.getStyle().layers || []).map(layer => layer.id);
+          layerIds.forEach(id => {
+              if (!map.getLayer(id)) return;
+              const visibility = map.getLayoutProperty(id, 'visibility') || 'visible';
+              _savedLayerVisibility[id] = visibility;
+              map.setLayoutProperty(
+                  id,
+                  'visibility',
+                  SHADOW_ONLY_LAYER_IDS.includes(id) ? 'visible' : 'none'
+              );
+          });
+          _shadowOnlyActive = true;
+      } else {
+          Object.keys(_savedLayerVisibility).forEach(id => {
+              if (map.getLayer(id)) {
+                  map.setLayoutProperty(id, 'visibility', _savedLayerVisibility[id]);
+              }
+          });
+          _savedLayerVisibility = {};
+          _shadowOnlyActive = false;
+      }
+      map.triggerRepaint();
+      const btn = document.getElementById('toggle-shadow-only-btn');
+      if (btn) {
+          btn.innerHTML = _shadowOnlyActive
+              ? '<i class="bi bi-eye-slash"></i>&nbsp;Show all layers'
+              : '<i class="bi bi-eye"></i>&nbsp;Show shadow only';
+          btn.classList.toggle('btn-outline-dark', !_shadowOnlyActive);
+          btn.classList.toggle('btn-dark', _shadowOnlyActive);
+      }
+  }
+
+  // Restore the placeholder under the "Shadow Detail" heading.
+  function resetShadowAreaStat() {
+      const drawn_trees_shadow_area = document.getElementById('drawn_trees_shadow_area');
+      if (!drawn_trees_shadow_area) return;
+      drawn_trees_shadow_area.innerHTML = "";
+      const small = document.createElement('small');
+      small.classList.add('text-muted');
+      small.innerHTML = "{{ gettext('Additional shadowed area in m2') }}";
+      drawn_trees_shadow_area.appendChild(small);
+  }
+
+  // Clear both shadow layers (used when the shadows are cleared or when the
+  // last drawn tree is removed).
+  function clearShadowLayers() {
+      const empty_fc = { "type": "FeatureCollection", "features": [] };
+      if (map.getSource('tree_shadows')) {
+          map.getSource('tree_shadows').setData(empty_fc);
+      }
+      if (map.getSource('building_shadows')) {
+          map.getSource('building_shadows').setData(empty_fc);
+      }
+      resetShadowAreaStat();
+  }
+  // ── end Shadow-only view ──────────────────────────────────────────────────
+
   // Drawn trees shadows are computed by a background job; poll the download
   // endpoint until the result lands in the cache instead of waiting a fixed
   // amount of time. The shadows are rendered as soon as they are available.
@@ -1155,6 +1239,10 @@
               document.getElementById('shadow_spinner').classList.add('d-none');
               document.getElementById('get_shadows_control').classList.add('d-none');
               document.getElementById('clear_shadows_control').classList.add('d-none');
+              // leave the shadow-only view and clear any stale shadows
+              resetShadowOnlyView();
+              document.getElementById('toggle-shadow-only-btn').classList.add('d-none');
+              clearShadowLayers();
               // hide the site evaluation controls and layers
               document.getElementById('generate_site_eval_control').classList.add('d-none');
               document.getElementById('clear_site_eval_control').classList.add('d-none');
@@ -1183,6 +1271,10 @@
 
               let clear_shadows_control = document.getElementById('clear_shadows_control');
               clear_shadows_control.classList.add('d-none');
+
+              // leave the shadow-only view while new shadows are generated
+              resetShadowOnlyView();
+              document.getElementById('toggle-shadow-only-btn').classList.add('d-none');
               this.send_generate_shadow_request(snapshot);
 
               new Notify ({
@@ -1237,9 +1329,10 @@
                       if (typeof shadow_data === 'string') {
                           shadow_data = JSON.parse(shadow_data);
                       }
-                      const shadows_ready = shadow_data
-                          && shadow_data['features']
-                          && shadow_data['features'].length > 0;
+                      const normalized_shadows = normalize_drawn_trees_shadows(shadow_data);
+                      const shadows_ready = normalized_shadows.tree_shadows
+                          && normalized_shadows.tree_shadows['features']
+                          && normalized_shadows.tree_shadows['features'].length > 0;
                       if (shadows_ready) {
                           _shadow_poll_timer = null;
                           this.drawn_trees_shadows_loaded(shadow_data);
@@ -1285,14 +1378,8 @@
           }, SHADOW_POLL_INTERVAL_MS);
       }
       this.drawn_trees_shadows_loaded = function (shadow_data) {
-          // render the shadows on the map and update the shadowed area stat
-          map.getSource('tree_shadows').setData(shadow_data);
-          const area = turf.area(shadow_data);
-          let drawn_trees_shadow_area = document.getElementById('drawn_trees_shadow_area');
-          drawn_trees_shadow_area.innerHTML = "";
-          let marked_element = document.createElement('mark');
-          marked_element.innerHTML = area.toFixed(2) + 'm2';
-          drawn_trees_shadow_area.appendChild(marked_element);
+          // render the tree and building shadows and update the area stats
+          render_drawn_trees_shadows(shadow_data);
           this.shadows_loaded();
       }
       this.clear_generated_shadows = function () {
@@ -1311,15 +1398,10 @@
           let clear_shadows_control = document.getElementById('clear_shadows_control');
           clear_shadows_control.classList.add('d-none');
 
-          let empty_fc = { "type": "FeatureCollection", "features": [] };
-          map.getSource('tree_shadows').setData(empty_fc);
-
-          let drawn_trees_shadow_area = document.getElementById('drawn_trees_shadow_area');
-          drawn_trees_shadow_area.innerHTML = "";
-          let small = document.createElement('small');
-          small.classList.add('text-muted');
-          small.innerHTML = "{{ gettext('Additional shadowed area in m2') }}";
-          drawn_trees_shadow_area.appendChild(small);
+          // leave the shadow-only view and clear both shadow layers
+          resetShadowOnlyView();
+          document.getElementById('toggle-shadow-only-btn').classList.add('d-none');
+          clearShadowLayers();
 
           new Notify ({
               status: 'suceess',
@@ -1349,7 +1431,7 @@
       }
 
       this.send_generate_shadow_request = function (snapshot) {
-          let post_shadow_url = window.location.origin + '/generate_drawn_trees_shadow?session_id=' + session_id+'&state_id='+state_id;
+          let post_shadow_url = window.location.origin + '/generate_drawn_trees_shadow?session_id=' + session_id + '&state_id=' + state_id + '&project_id=' + project_id + '&bounds=' + encodeURIComponent(bounds_str);
           fetch(post_shadow_url, {
               method: "post",
               headers: {
@@ -1425,6 +1507,10 @@
           // show the clear shadows button
           let clear_shadows_control = document.getElementById('clear_shadows_control');
           clear_shadows_control.classList.remove('d-none');
+
+          // offer the shadow-only view now that shadows are on the map
+          let toggle_shadow_only_btn = document.getElementById('toggle-shadow-only-btn');
+          if (toggle_shadow_only_btn) toggle_shadow_only_btn.classList.remove('d-none');
 
           // hide get generated shadows button
           let get_shadows_control = document.getElementById('get_shadows_control');
@@ -1692,6 +1778,24 @@
           }
       });
       // ── end Geodesignhub project bounds ──────────────────────────────────
+
+      // Building shadows are rendered beneath the tree shadows so the tree
+      // shadow stays readable where the two overlap.
+      map.addSource('building_shadows', {
+          'type': 'geojson',
+          'data': { "type": "FeatureCollection", "features": [] }
+      });
+      map.addLayer({
+          'id': 'building_shadows',
+          'type': 'fill',
+          'source': 'building_shadows',
+          'layout': {},
+          'paint': {
+              'fill-color': '#3d3d3d',
+              'fill-opacity': 0.55,
+              'fill-outline-color': '#2f2f2f'
+          }
+      });
 
       map.addSource('tree_shadows', {
           'type': 'geojson',
